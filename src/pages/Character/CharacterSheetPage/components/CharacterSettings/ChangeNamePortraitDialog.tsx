@@ -15,6 +15,7 @@ import { useStore } from "stores/store";
 import ZoomInIcon from "@mui/icons-material/ZoomIn";
 import ZoomOutIcon from "@mui/icons-material/ZoomOut";
 import AvatarEditor from "react-avatar-editor";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface ChangeNamePortraitDialogOpenProps {
   open: boolean;
@@ -125,7 +126,7 @@ export function ChangeNamePortraitDialog(
       .then(() => {
         onClose();
       })
-      .catch(() => {})
+      .catch(ignoreApiError)
       .finally(() => {
         setIsLoading(false);
       });

@@ -3,6 +3,7 @@ import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import { useStore } from "stores/store";
 import { StarforgedLocationVault } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
 import { GuideOnlyHeader } from "../../common";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface VaultContentProps {
   locationId: string;
@@ -27,7 +28,7 @@ export function VaultContent(props: VaultContentProps) {
           oracleTableId={undefined}
           initialValue={location.name}
           updateValue={(value) =>
-            updateLocation(locationId, { name: value }).catch(() => {})
+            updateLocation(locationId, { name: value }).catch(ignoreApiError)
           }
         />
       </Grid>
@@ -40,7 +41,7 @@ export function VaultContent(props: VaultContentProps) {
               oracleTableId={"starforged/oracles/vaults/location"}
               initialValue={location.location ?? ""}
               updateValue={(value) =>
-                updateLocation(locationId, { location: value }).catch(() => {})
+                updateLocation(locationId, { location: value }).catch(ignoreApiError)
               }
             />
           </Grid>
@@ -50,7 +51,7 @@ export function VaultContent(props: VaultContentProps) {
               oracleTableId={"starforged/oracles/vaults/scale"}
               initialValue={location.scale ?? ""}
               updateValue={(value) =>
-                updateLocation(locationId, { scale: value }).catch(() => {})
+                updateLocation(locationId, { scale: value }).catch(ignoreApiError)
               }
             />
           </Grid>
@@ -60,7 +61,7 @@ export function VaultContent(props: VaultContentProps) {
               oracleTableId={"starforged/oracles/vaults/form"}
               initialValue={location.form ?? ""}
               updateValue={(value) =>
-                updateLocation(locationId, { form: value }).catch(() => {})
+                updateLocation(locationId, { form: value }).catch(ignoreApiError)
               }
             />
           </Grid>
@@ -70,7 +71,7 @@ export function VaultContent(props: VaultContentProps) {
               oracleTableId={"starforged/oracles/vaults/shape"}
               initialValue={location.shape ?? ""}
               updateValue={(value) =>
-                updateLocation(locationId, { shape: value }).catch(() => {})
+                updateLocation(locationId, { shape: value }).catch(ignoreApiError)
               }
             />
           </Grid>
@@ -80,7 +81,7 @@ export function VaultContent(props: VaultContentProps) {
               oracleTableId={"starforged/oracles/vaults/material"}
               initialValue={location.material ?? ""}
               updateValue={(value) =>
-                updateLocation(locationId, { material: value }).catch(() => {})
+                updateLocation(locationId, { material: value }).catch(ignoreApiError)
               }
             />
           </Grid>
@@ -145,7 +146,7 @@ export function VaultContent(props: VaultContentProps) {
               updateValue={(value) =>
                 updateLocation(locationId, {
                   interiorOpportunity: value,
-                }).catch(() => {})
+                }).catch(ignoreApiError)
               }
             />
           </Grid>
@@ -198,7 +199,7 @@ export function VaultContent(props: VaultContentProps) {
               updateValue={(value) =>
                 updateLocation(locationId, {
                   sanctumOpportunity: value,
-                }).catch(() => {})
+                }).catch(ignoreApiError)
               }
             />
           </Grid>

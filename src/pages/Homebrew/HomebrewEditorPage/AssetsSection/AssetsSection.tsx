@@ -16,6 +16,7 @@ import { AssetDialog } from "./Assets/AssetDialog";
 import { useConfirm } from "material-ui-confirm";
 import { AssetPreviewCard } from "./AssetPreviewCard";
 import { MoveAssetDialog } from "./Assets/MoveAssetDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface AssetsSectionProps {
   homebrewId: string;
@@ -77,9 +78,9 @@ export function AssetsSection(props: AssetsSectionProps) {
     })
       .then(() => {
         setOpenCollectionKey(undefined);
-        deleteAssetCollection(homebrewId, collectionId).catch(() => {});
+        deleteAssetCollection(homebrewId, collectionId).catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
   const deleteAsset = useStore((store) => store.homebrew.deleteAsset);
   const handleDeleteAsset = (assetName: string, assetId: string) => {
@@ -94,9 +95,9 @@ export function AssetsSection(props: AssetsSectionProps) {
       },
     })
       .then(() => {
-        deleteAsset(assetId).catch(() => {});
+        deleteAsset(assetId).catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   return (

@@ -9,6 +9,7 @@ import { WorldSheet } from "components/features/worlds/WorldSheet";
 import { WorldEmptyState } from "components/features/worlds/WorldEmptyState";
 import { useStore } from "stores/store";
 import { useState } from "react";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function WorldSection() {
   const uid = useStore((store) => store.auth.uid);
@@ -49,7 +50,7 @@ export function WorldSection() {
   const updateCharacterWorld = (worldId?: string) => {
     setUpdateCharacterWorldLoading(true);
     updateCharacter({ worldId: worldId ?? null })
-      .catch(() => {})
+      .catch(ignoreApiError)
       .finally(() => {
         setUpdateCharacterWorldLoading(false);
       });

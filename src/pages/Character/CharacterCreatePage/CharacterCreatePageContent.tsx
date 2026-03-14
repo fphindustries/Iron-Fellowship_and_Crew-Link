@@ -18,6 +18,7 @@ import {
   constructCampaignSheetPath,
 } from "pages/Campaign/routes";
 import { constructCharacterSheetPath } from "../routes";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface Form {
   name: string;
@@ -85,7 +86,7 @@ export function CharacterCreatePageContent() {
           navigate(constructCharacterSheetPath(characterId));
         }
       })
-      .catch(() => {})
+      .catch(ignoreApiError)
       .finally(() => setLoading(false));
   };
 

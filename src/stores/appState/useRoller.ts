@@ -11,6 +11,7 @@ import { getRollResultLabel } from "components/features/charactersAndCampaigns/R
 import { TrackTypes } from "types/Track.type";
 import { LEGACY_TrackTypes } from "types/LegacyTrack.type";
 import { rollOracle } from "./rollers/rollOracle";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export const getRoll = (dieMax: number) => {
   return Math.floor(Math.random() * dieMax) + 1;
@@ -97,7 +98,7 @@ export function useRoller() {
         .then((rollId) => {
           addRollToScreen(rollId, statRoll);
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
 
       if (showSnackbar) {
         let announcement = `Rolled ${
@@ -176,7 +177,7 @@ export function useRoller() {
             .then((rollId) => {
               addRollToScreen(rollId, definedOracleRoll);
             })
-            .catch(() => {});
+            .catch(ignoreApiError);
         } else {
           addRollToScreen(
             definedOracleRoll.timestamp.toISOString(),
@@ -247,7 +248,7 @@ export function useRoller() {
         .then((rollId) => {
           addRollToScreen(rollId, trackProgressRoll);
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
       announce(
         `Rolled progress for ${trackProgressRoll.trackType} ${
           trackProgressRoll.rollLabel
@@ -298,7 +299,7 @@ export function useRoller() {
         .then((rollId) => {
           addRollToScreen(rollId, clockRoll);
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
       if (verboseScreenReaderRolls) {
         announce(
           `Rolled for clock ${clockRoll.rollLabel} with a ${

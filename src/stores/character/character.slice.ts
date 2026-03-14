@@ -9,6 +9,7 @@ import { getCharacterPortraitUrl } from "api-calls/character/getCharacterPortrai
 import { createCurrentCharacterSlice } from "./currentCharacter/currentCharacter.slice";
 import { updateCharacterPortrait } from "api-calls/character/updateCharacterPortrait";
 import { momentumTrack } from "data/defaultTracks";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
   ...params
@@ -109,7 +110,7 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
               };
             });
           })
-          .catch(() => {});
+          .catch(ignoreApiError);
       }
     },
 

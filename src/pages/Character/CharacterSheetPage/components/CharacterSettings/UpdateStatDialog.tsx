@@ -9,6 +9,7 @@ import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithClo
 import { NumberField } from "components/shared/NumberField";
 import { useState } from "react";
 import { useStore } from "stores/store";
+import { ignoreApiError } from "api-calls/createApiFunction";
 export interface UpdateStatDialogProps {
   open: boolean;
   onClose: () => void;
@@ -66,7 +67,7 @@ function UpdateStatDialogContents(props: { onClose: () => void }) {
       .then(() => {
         onClose();
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   if (!characterStats) {

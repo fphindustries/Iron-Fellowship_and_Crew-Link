@@ -18,6 +18,7 @@ import { useConfirm } from "material-ui-confirm";
 import { RtcRichTextEditor } from "components/shared/RichTextEditor";
 import { NotesSectionHeader } from "../../NotesSectionHeader";
 import { useCallback } from "react";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function SectorLocationDialog() {
   const confirm = useConfirm();
@@ -71,9 +72,9 @@ export function SectorLocationDialog() {
       })
         .then(() => {
           setOpenLocationId(undefined);
-          deleteLocation(openLocationId).catch(() => {});
+          deleteLocation(openLocationId).catch(ignoreApiError);
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
     }
   };
 

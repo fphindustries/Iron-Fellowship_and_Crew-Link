@@ -11,6 +11,7 @@ import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithClo
 import { useCampaignType } from "hooks/useCampaignType";
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface EditCampaignProps {
   open: boolean;
@@ -49,7 +50,7 @@ export function EditCampaign(props: EditCampaignProps) {
       name: newName,
       type: newType,
     })
-      .catch(() => {})
+      .catch(ignoreApiError)
       .finally(() => {
         setIsLoading(false);
         onClose();

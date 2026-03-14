@@ -1,6 +1,7 @@
 import { Grid } from "@mui/material";
 import { NonLinearMeter } from "components/features/charactersAndCampaigns/NonLinearMeter";
 import { useStore } from "stores/store";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 const getMdSize = (optionLength: number): number => {
   if (optionLength <= 6) {
@@ -45,7 +46,7 @@ export function NonLinearMeters() {
     updateCharacter({
       [`customTracks.${meter.dataswornId}`]: index,
       [`customTracks.${meter.label}`]: index,
-    }).catch(() => {});
+    }).catch(ignoreApiError);
   };
 
   return (

@@ -20,7 +20,11 @@ export const createUsersSlice: CreateSliceType<UserSlice> = (
             store.users.userMap[userId] = { loading: false, doc };
           });
         })
-        .catch(() => {});
+        .catch(() => {
+          set((store) => {
+            store.users.userMap[userId] = { loading: false };
+          });
+        });
     }
   },
   loadUserDocuments: (userIds) => {
@@ -37,7 +41,11 @@ export const createUsersSlice: CreateSliceType<UserSlice> = (
                 store.users.userMap[uid] = { loading: false, doc };
               });
             })
-            .catch(() => {});
+            .catch(() => {
+              set((store) => {
+                store.users.userMap[uid] = { loading: false };
+              });
+            });
         }
       }
     });

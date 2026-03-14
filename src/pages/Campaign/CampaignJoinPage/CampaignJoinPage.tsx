@@ -12,6 +12,7 @@ import { Head } from "providers/HeadProvider/Head";
 import { useStore } from "stores/store";
 import { CampaignDocument } from "api-calls/campaign/_campaign.type";
 import { useAppName } from "hooks/useAppName";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function CampaignJoinPage() {
   const { campaignId } = useParams();
@@ -50,7 +51,7 @@ export function CampaignJoinPage() {
     if (campaignId && uid) {
       setAddUserToCampaignLoading(true);
       addUserToCampaign(uid, campaignId)
-        .catch(() => {})
+        .catch(ignoreApiError)
         .finally(() => setAddUserToCampaignLoading(false));
     }
   };

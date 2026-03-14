@@ -9,6 +9,7 @@ import { useState } from "react";
 import MoveIcon from "@mui/icons-material/DriveFileMove";
 import ViewIcon from "@mui/icons-material/Visibility";
 import { MoveOracleTableDialog } from "./MoveOracleTableDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface OracleTableCardProps {
   oracleId: string;
@@ -35,9 +36,9 @@ export function OracleTableCard(props: OracleTableCardProps) {
       },
     })
       .then(() => {
-        deleteOracle(oracleId).catch(() => {});
+        deleteOracle(oracleId).catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const oracleMap = useStore(

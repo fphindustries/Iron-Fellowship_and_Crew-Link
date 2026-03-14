@@ -29,6 +29,7 @@ import { locationConfigs } from "config/locations.config";
 import { useRoller } from "stores/appState/useRoller";
 import { useImageDimensions } from "./useImageDimensions";
 import { MapOverflowOptionsMenu } from "./MapOverflowOptionsMenu";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface LocationMapProps {
   locationId: string;
@@ -131,7 +132,7 @@ export function LocationMap(props: LocationMapProps) {
         updateLocation(locationId, {
           [`map.${row}.${col}.type`]:
             currentCell?.type === MapEntryType.Path ? null : MapEntryType.Path,
-        }).catch(() => {});
+        }).catch(ignoreApiError);
       }
     } else if (mapTool?.type === MapTools.AddLocation) {
       const type = mapTool.locationType;
@@ -151,9 +152,9 @@ export function LocationMap(props: LocationMapProps) {
           updateLocation(locationId, {
             [`map.${row}.${col}.type`]: MapEntryType.Location,
             [`map.${row}.${col}.locationIds`]: arrayUnion(id),
-          }).catch(() => {});
+          }).catch(ignoreApiError);
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
       setMapTool(undefined);
     } else if (mapTool?.type === MapTools.MoveLocation) {
       const locationToMove = locationMap[mapTool.locationId];
@@ -164,14 +165,14 @@ export function LocationMap(props: LocationMapProps) {
           locationId,
           row,
           col
-        ).catch(() => {});
+        ).catch(ignoreApiError);
         setMapTool(undefined);
       }
     } else if (mapTool?.type === MapTools.BackgroundPaint) {
       const color = mapTool.color;
       updateLocation(locationId, {
         [`map.${row}.${col}.background.color`]: color,
-      }).catch(() => {});
+      }).catch(ignoreApiError);
     } else if (!mapTool && locationIds) {
       const filteredLocationIds = getValidLocations(
         locationId,
@@ -190,7 +191,7 @@ export function LocationMap(props: LocationMapProps) {
     } else if (mapTool?.type === MapTools.BackgroundEraser) {
       updateLocation(locationId, {
         [`map.${row}.${col}.background`]: null,
-      }).catch(() => {});
+      }).catch(ignoreApiError);
     }
   };
 
@@ -203,7 +204,7 @@ export function LocationMap(props: LocationMapProps) {
           updates[`map.${row}.${col}.background.color`] = color;
         }
       }
-      updateLocation(locationId, updates).catch(() => {});
+      updateLocation(locationId, updates).catch(ignoreApiError);
       setMapTool(undefined);
     } else if (mapTool?.type === MapTools.BackgroundEraser) {
       const updates: Record<string, null> = {};
@@ -212,7 +213,7 @@ export function LocationMap(props: LocationMapProps) {
           updates[`map.${row}.${col}.background`] = null;
         }
       }
-      updateLocation(locationId, updates).catch(() => {});
+      updateLocation(locationId, updates).catch(ignoreApiError);
       setMapTool(undefined);
     }
   };

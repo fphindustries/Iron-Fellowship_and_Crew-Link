@@ -12,6 +12,7 @@ import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithClo
 import { useState } from "react";
 import { useStore } from "stores/store";
 import { HomebrewMoveCategoryDocument } from "api-calls/homebrew/moves/categories/_homebrewMoveCategory.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface MoveMoveDialogProps {
   open: boolean;
@@ -35,7 +36,7 @@ export function MoveMoveDialog(props: MoveMoveDialogProps) {
         .then(() => {
           onClose();
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
     }
   };
 

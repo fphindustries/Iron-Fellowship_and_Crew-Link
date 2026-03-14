@@ -6,6 +6,7 @@ import { useStore } from "stores/store";
 import { useSnackbar } from "providers/SnackbarProvider";
 import { useConfirm } from "material-ui-confirm";
 import { MAX_FILE_SIZE, MAX_FILE_SIZE_LABEL } from "lib/storage.lib";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface MapOverflowOptionsMenuProps {
   locationId: string;
@@ -50,7 +51,7 @@ export function MapOverflowOptionsMenu(props: MapOverflowOptionsMenuProps) {
         );
         return;
       }
-      uploadBackgroundImage(locationId, file).catch(() => {});
+      uploadBackgroundImage(locationId, file).catch(ignoreApiError);
     }
   };
 
@@ -62,7 +63,7 @@ export function MapOverflowOptionsMenu(props: MapOverflowOptionsMenuProps) {
         color: "error",
       },
     }).then(() => {
-      removeBackgroundImage(locationId).catch(() => {});
+      removeBackgroundImage(locationId).catch(ignoreApiError);
     });
   };
 
@@ -107,7 +108,7 @@ export function MapOverflowOptionsMenu(props: MapOverflowOptionsMenuProps) {
                   mapStrokeColor === MapStrokeColors.Dark
                     ? MapStrokeColors.Light
                     : MapStrokeColors.Dark,
-              }).catch(() => {});
+              }).catch(ignoreApiError);
             }}
           >
             Use {mapStrokeColor === MapStrokeColors.Dark ? "Light" : "Dark"}{" "}
@@ -123,7 +124,7 @@ export function MapOverflowOptionsMenu(props: MapOverflowOptionsMenuProps) {
                   mapBackgroundImageFit === MapBackgroundImageFit.Contain
                     ? MapBackgroundImageFit.Cover
                     : MapBackgroundImageFit.Contain,
-              }).catch(() => {});
+              }).catch(ignoreApiError);
             }}
           >
             {mapBackgroundImageFit === MapBackgroundImageFit.Contain

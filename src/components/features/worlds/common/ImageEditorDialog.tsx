@@ -17,6 +17,7 @@ import { MAX_FILE_SIZE, MAX_FILE_SIZE_LABEL } from "lib/storage.lib";
 import { useSnackbar } from "providers/SnackbarProvider";
 import { ChangeEvent, useCallback, useRef, useState } from "react";
 import { IconColors, IconDefinition } from "types/Icon.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface ImageEditorDialogProps {
   name: string;
@@ -116,7 +117,7 @@ export function ImageEditorDialog(props: ImageEditorDialogProps) {
                 {imageUrl && (
                   <Button
                     color={"inherit"}
-                    onClick={() => handleRemove().catch(() => {})}
+                    onClick={() => handleRemove().catch(ignoreApiError)}
                   >
                     Remove Image
                   </Button>

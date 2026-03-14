@@ -3,6 +3,7 @@ import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import { useStore } from "stores/store";
 import { StarforgedLocationSettlement } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
 import { GuideOnlyHeader } from "../../common";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface SettlementContentProps {
   locationId: string;
@@ -36,7 +37,7 @@ export function SettlementContent(props: SettlementContentProps) {
           oracleTableId={"starforged/oracles/settlements/name"}
           initialValue={location.name}
           updateValue={(value) =>
-            updateLocation(locationId, { name: value }).catch(() => {})
+            updateLocation(locationId, { name: value }).catch(ignoreApiError)
           }
         />
       </Grid>
@@ -50,7 +51,7 @@ export function SettlementContent(props: SettlementContentProps) {
               oracleTableId={"starforged/oracles/settlements/location"}
               initialValue={location.location ?? ""}
               updateValue={(value) => {
-                updateLocation(locationId, { location: value }).catch(() => {});
+                updateLocation(locationId, { location: value }).catch(ignoreApiError);
               }}
             />
           </Grid>
@@ -96,7 +97,7 @@ export function SettlementContent(props: SettlementContentProps) {
               oracleTableId={"starforged/oracles/settlements/projects"}
               initialValue={location.projects ?? ""}
               updateValue={(value) => {
-                updateLocation(locationId, { projects: value }).catch(() => {});
+                updateLocation(locationId, { projects: value }).catch(ignoreApiError);
               }}
             />
           </Grid>
@@ -106,7 +107,7 @@ export function SettlementContent(props: SettlementContentProps) {
               oracleTableId={"starforged/oracles/settlements/trouble"}
               initialValue={location.trouble ?? ""}
               updateValue={(value) => {
-                updateLocation(locationId, { trouble: value }).catch(() => {});
+                updateLocation(locationId, { trouble: value }).catch(ignoreApiError);
               }}
             />
           </Grid>

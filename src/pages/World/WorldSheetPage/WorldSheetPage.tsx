@@ -22,6 +22,7 @@ import { useUpdateQueryStringValueWithoutNavigation } from "hooks/useUpdateQuery
 import { useWorldPermissions } from "components/features/worlds/useWorldPermissions";
 import { LocationsSection } from "components/features/worlds/Locations";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 enum TABS {
   DETAILS = "details",
@@ -122,9 +123,9 @@ export function WorldSheetPage() {
           .then(() => {
             navigate(constructWorldPath(WORLD_ROUTES.SELECT));
           })
-          .catch(() => {});
+          .catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   return (

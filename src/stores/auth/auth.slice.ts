@@ -8,6 +8,7 @@ import { clearAnalyticsUser, setAnalyticsUser } from "lib/analytics.lib";
 import { updateUserDoc } from "api-calls/user/updateUserDoc";
 import { listenToUserDoc } from "api-calls/user/listenToUserDoc";
 import { updateUserDocNestedFields } from "api-calls/user/updateUserDocNestedFields";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export const createAuthSlice: CreateSliceType<AuthSlice> = (set, getState) => ({
   ...defaultAuthSlice,
@@ -75,6 +76,6 @@ export const createAuthSlice: CreateSliceType<AuthSlice> = (set, getState) => ({
   updateUserDoc: (doc) => {
     const uid = getState().auth.uid;
 
-    updateUserDocNestedFields({ uid, user: doc }).catch(() => {});
+    updateUserDocNestedFields({ uid, user: doc }).catch(ignoreApiError);
   },
 });

@@ -2,6 +2,7 @@ import { Grid } from "@mui/material";
 import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import { useStore } from "stores/store";
 import { StarforgedLocationStar } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface StarContentProps {
   locationId: string;
@@ -24,7 +25,7 @@ export function StarContent(props: StarContentProps) {
           oracleTableId={undefined}
           initialValue={location.name}
           updateValue={(value) =>
-            updateLocation(locationId, { name: value }).catch(() => {})
+            updateLocation(locationId, { name: value }).catch(ignoreApiError)
           }
         />
       </Grid>
@@ -34,7 +35,7 @@ export function StarContent(props: StarContentProps) {
           oracleTableId={"starforged/oracles/space/stellar_object"}
           initialValue={location.description ?? ""}
           updateValue={(value) =>
-            updateLocation(locationId, { description: value }).catch(() => {})
+            updateLocation(locationId, { description: value }).catch(ignoreApiError)
           }
         />
       </Grid>

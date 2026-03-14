@@ -15,6 +15,7 @@ import { Note } from "types/Notes.type";
 import { StrictModeDroppable } from "./StrictModeDroppable";
 import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface NoteSidebarSectionProps {
   notes: Note[];
@@ -65,7 +66,7 @@ export function NoteSidebarSection(props: NoteSidebarSectionProps) {
     }
 
     tempReorder({ source: noteSource, id: noteId }, order);
-    updateNoteOrder({ source: noteSource, id: noteId }, order).catch(() => {});
+    updateNoteOrder({ source: noteSource, id: noteId }, order).catch(ignoreApiError);
   };
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -83,7 +84,7 @@ export function NoteSidebarSection(props: NoteSidebarSectionProps) {
         .then((noteId) => {
           setOpenNote({ source: noteSource, id: noteId });
         })
-        .catch(() => {})
+        .catch(ignoreApiError)
         .finally(() => {
           setLoading(false);
         });

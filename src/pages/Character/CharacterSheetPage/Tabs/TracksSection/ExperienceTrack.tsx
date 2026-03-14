@@ -4,6 +4,7 @@ import EarnedIcon from "@mui/icons-material/HighlightOff";
 import EmptyIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { ExperienceButtons } from "./ExperienceButtons";
 import { useStore } from "stores/store";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 const defaultTotalExp = 30;
 
@@ -22,7 +23,7 @@ export function ExperienceTrack() {
   );
 
   const updateExperience = (type: "earned" | "spent", value: number) => {
-    updateCharacter({ [`experience.${type}`]: value }).catch(() => {});
+    updateCharacter({ [`experience.${type}`]: value }).catch(ignoreApiError);
   };
 
   const handleEarnedExperienceChange = (proposedValue: number) => {

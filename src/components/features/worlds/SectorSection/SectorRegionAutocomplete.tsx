@@ -1,6 +1,7 @@
 import { Autocomplete, TextField } from "@mui/material";
 import { useStore } from "stores/store";
 import { Regions } from "types/Sector.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface SectorRegionAutocompleteProps {}
 
@@ -43,7 +44,7 @@ export function SectorRegionAutocomplete() {
       renderOption={(props, option) => <li {...props}>{option}</li>}
       value={currentRegion ?? null}
       onChange={(evt, newValue) =>
-        updateRegion(newValue ?? undefined).catch(() => {})
+        updateRegion(newValue ?? undefined).catch(ignoreApiError)
       }
       renderInput={(params) => <TextField {...params} label={"Region"} />}
     />

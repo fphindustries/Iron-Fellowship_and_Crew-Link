@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { useStore } from "stores/store";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface AccessibilitySettingsDialogProps {
   open?: boolean;
@@ -40,7 +41,7 @@ export function AccessibilitySettingsDialog(
               <Checkbox
                 checked={accessibilitySettings.verboseRollResults ?? false}
                 onChange={(evt, value) =>
-                  updateSettings({ verboseRollResults: value }).catch(() => {})
+                  updateSettings({ verboseRollResults: value }).catch(ignoreApiError)
                 }
               />
             }

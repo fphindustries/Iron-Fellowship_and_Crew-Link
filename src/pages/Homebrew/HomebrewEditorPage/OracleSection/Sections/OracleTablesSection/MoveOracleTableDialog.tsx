@@ -12,6 +12,7 @@ import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithClo
 import { useState } from "react";
 import { useStore } from "stores/store";
 import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface MoveOracleTableDialogProps {
   open: boolean;
@@ -36,7 +37,7 @@ export function MoveOracleTableDialog(props: MoveOracleTableDialogProps) {
         .then(() => {
           onClose();
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
     }
   };
 

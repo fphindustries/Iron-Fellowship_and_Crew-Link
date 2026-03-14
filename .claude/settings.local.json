@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm ls:*)",
+      "Bash(xargs grep:*)",
+      "Bash(git remote:*)",
+      "Bash(gh repo:*)",
+      "Bash(where gh:*)",
+      "Read(//usr/local/bin/**)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/cpken/AppData/Local/Programs/**)",
+      "Bash(git config:*)",
+      "Bash(git credential-manager:*)",
+      "Bash(curl --version)",
+      "Bash(winget install:*)",
+      "Bash(export PATH=\"/c/Program Files/GitHub CLI:$PATH\")",
+      "Bash(gh --version)",
+      "Bash(gh auth:*)",
+      "Bash(export PATH=\"/c/Program Files/GitHub CLI:$PATH\" gh issue list --repo fphindustries/Iron-Fellowship_and_Crew-Link)",
+      "Bash(npm run:*)"
+    ]
+  }
+}

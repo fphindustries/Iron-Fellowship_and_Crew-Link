@@ -19,6 +19,7 @@ import { MovesSection } from "./MovesSection";
 import { AssetsSection } from "./AssetsSection";
 import { arrayUnion } from "firebase/firestore";
 import { useSnackbar } from "providers/SnackbarProvider";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 enum TABS {
   ABOUT = "about",
@@ -80,7 +81,7 @@ export function HomebrewEditorPage() {
   const addSelfAsViewer = useCallback(() => {
     if (homebrewId && uid) {
       updateHomebrewCollection(homebrewId, { viewers: arrayUnion(uid) })
-        .catch(() => {})
+        .catch(ignoreApiError)
         .then(() => {
           success("Added collection to your homebrew");
         });

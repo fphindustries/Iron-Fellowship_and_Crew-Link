@@ -21,6 +21,7 @@ import { uploadLocationMapBackgroundImage } from "api-calls/world/locations/uplo
 import { removeLocationMapBackgroundImage } from "api-calls/world/locations/removeLocationMapBackgroundImage";
 import { getImageUrl } from "lib/storage.lib";
 import { constructLocationImagePath } from "api-calls/world/locations/_getRef";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
   set,
@@ -177,7 +178,7 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
               ) {
                 updateLocation(oldParentId, {
                   [`map.${row}.${col}.locationIds`]: arrayRemove(locationId),
-                }).catch(() => {});
+                }).catch(ignoreApiError);
               }
             });
           });
@@ -187,7 +188,7 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
     // Update the location with the new parent
     updateLocation(locationId, {
       parentLocationId: parentId ?? null,
-    }).catch(() => {});
+    }).catch(ignoreApiError);
 
     if (typeof row === "number" && typeof col === "number" && parentId) {
       // Add the new location to the map
@@ -299,7 +300,7 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
           ].mapBackgroundImageUrl = url;
         });
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   },
   removeLocationImage: (locationId) => {
     const world = getState().worlds.currentWorld;

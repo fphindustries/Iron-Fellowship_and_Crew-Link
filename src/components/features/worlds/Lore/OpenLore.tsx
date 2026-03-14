@@ -22,6 +22,7 @@ import { mergeIcons } from "components/shared/GameIcons/mergeIcons";
 import { IconColors } from "types/Icon.type";
 import { PageWithImage } from "../common/PageWithImage";
 import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface OpenLoreProps {
   worldId: string;
@@ -74,12 +75,12 @@ export function OpenLore(props: OpenLoreProps) {
     })
       .then(() => {
         deleteLore(loreId)
-          .catch(() => {})
+          .catch(ignoreApiError)
           .then(() => {
             closeLore();
           });
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const onFileUpload = (file: File) => {
@@ -90,7 +91,7 @@ export function OpenLore(props: OpenLoreProps) {
         );
         return;
       }
-      uploadLoreImage(loreId, file).catch(() => {});
+      uploadLoreImage(loreId, file).catch(ignoreApiError);
     }
   };
 
@@ -127,7 +128,7 @@ export function OpenLore(props: OpenLoreProps) {
           color={"primary"}
           initialValue={lore.name}
           updateValue={(newName) =>
-            updateLore(loreId, { name: newName }).catch(() => {})
+            updateLore(loreId, { name: newName }).catch(ignoreApiError)
           }
           fullWidth={true}
           sx={{
@@ -138,9 +139,9 @@ export function OpenLore(props: OpenLoreProps) {
       handleImageUpload={onFileUpload}
       handleIconSelection={(icon) => {
         if (lore.imageUrl) {
-          removeLoreImage(loreId).catch(() => {});
+          removeLoreImage(loreId).catch(ignoreApiError);
         }
-        updateLore(loreId, { icon }).catch(() => {});
+        updateLore(loreId, { icon }).catch(ignoreApiError);
       }}
       handleImageRemove={() => removeLoreImage(loreId)}
       handlePageClose={closeLore}
@@ -154,7 +155,7 @@ export function OpenLore(props: OpenLoreProps) {
                 tagList={tagList}
                 tags={lore.tags}
                 updateTags={(tags) =>
-                  updateLore(loreId, { tags }).catch(() => {})
+                  updateLore(loreId, { tags }).catch(ignoreApiError)
                 }
               />
             </Grid>
@@ -179,7 +180,7 @@ export function OpenLore(props: OpenLoreProps) {
                           onChange={(evt, value) =>
                             updateLore(loreId, {
                               sharedWithPlayers: value,
-                            }).catch(() => {})
+                            }).catch(ignoreApiError)
                           }
                         />
                       }

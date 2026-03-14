@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useStore } from "stores/store";
 import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
 import { MoveOracleCollectionDialog } from "./OracleCollectionsSection/MoveOracleCollectionDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface OracleInfoSectionProps {
   homebrewId: string;
@@ -53,12 +54,12 @@ export function OracleInfoSection(props: OracleInfoSectionProps) {
           .then(() => {
             closeCurrentOracleCollection();
           })
-          .catch(() => {})
+          .catch(ignoreApiError)
           .finally(() => {
             setIsDeleteLoading(false);
           });
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const [moveCollectionDialogOpen, setMoveCollectionDialogOpen] =

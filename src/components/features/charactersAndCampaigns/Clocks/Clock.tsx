@@ -16,6 +16,7 @@ import DieIcon from "@mui/icons-material/Casino";
 import { useRoller } from "stores/appState/useRoller";
 import { useSystemOracles } from "hooks/useSystemOracle";
 import { AskTheOracle } from "config/system.config";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface ClockProps {
   clock: IClock;
@@ -56,7 +57,7 @@ export function Clock(props: ClockProps) {
         .then(() => {
           onComplete();
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
     }
   };
 
@@ -74,7 +75,7 @@ export function Clock(props: ClockProps) {
         .then(() => {
           handleDelete();
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
     }
   };
 

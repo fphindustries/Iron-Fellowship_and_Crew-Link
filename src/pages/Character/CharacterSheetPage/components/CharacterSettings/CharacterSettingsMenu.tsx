@@ -28,6 +28,7 @@ import ThemeIcon from "@mui/icons-material/ColorLens";
 import { ThemeChooserDialog } from "components/shared/Layout/ThemeChooserDialog";
 import LayoutIcon from "@mui/icons-material/ViewComfy";
 import { LayoutChooserDialog } from "components/shared/Layout/LayoutChooserDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface CharacterSettingsMenuProps {
   open: boolean;
@@ -77,9 +78,9 @@ export function CharacterSettingsMenu(props: CharacterSettingsMenuProps) {
           .then(() => {
             navigate(constructCharacterPath(CHARACTER_ROUTES.SELECT));
           })
-          .catch(() => {});
+          .catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const copyOBSLinkToClipboard = () => {

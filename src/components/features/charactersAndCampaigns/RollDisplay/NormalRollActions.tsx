@@ -17,6 +17,7 @@ import { DieRerollDialog } from "./DieRerollDialog";
 import { ROLL_RESULT, ROLL_TYPE, Roll } from "types/DieRolls.type";
 import { useStore } from "stores/store";
 import { useCampaignType } from "hooks/useCampaignType";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface NormalRollActionsProps {
   rollId: string;
@@ -131,7 +132,7 @@ export function NormalRollActions(props: NormalRollActionsProps) {
       promises.push(updateCharacter({ momentum: momentumResetValue }));
 
       Promise.all(promises)
-        .catch(() => {})
+        .catch(ignoreApiError)
         .then(() => {
           success("Burned Momentum");
         });

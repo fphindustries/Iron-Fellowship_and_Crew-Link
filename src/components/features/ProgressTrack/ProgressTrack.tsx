@@ -17,6 +17,7 @@ import { GAME_SYSTEMS, GameSystemChooser } from "types/GameSystems.type";
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { useStore } from "stores/store";
 import { DebouncedClockCircle } from "../charactersAndCampaigns/Clocks/DebouncedClockCircle";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 const trackMoveIdSystemValues: GameSystemChooser<{
   [key in ProgressTracks | TrackTypes.SceneChallenge]: string;
@@ -146,7 +147,7 @@ export function ProgressTrack(props: ProgressTracksProps) {
       .then(() => {
         onComplete && onComplete();
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const handleDeleteClick = () => {
@@ -162,7 +163,7 @@ export function ProgressTrack(props: ProgressTracksProps) {
       .then(() => {
         onDelete && onDelete();
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const handleRollClick = () => {

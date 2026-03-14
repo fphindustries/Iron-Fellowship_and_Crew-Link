@@ -2,6 +2,7 @@ import { Grid } from "@mui/material";
 import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import { useStore } from "stores/store";
 import { StarforgedLocationOther } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface OtherContentProps {
   locationId: string;
@@ -23,7 +24,7 @@ export function OtherContent(props: OtherContentProps) {
           oracleTableId={undefined}
           initialValue={location.name}
           updateValue={(value) =>
-            updateLocation(locationId, { name: value }).catch(() => {})
+            updateLocation(locationId, { name: value }).catch(ignoreApiError)
           }
         />
       </Grid>

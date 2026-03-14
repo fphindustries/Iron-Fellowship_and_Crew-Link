@@ -19,6 +19,7 @@ import { useConfirm } from "material-ui-confirm";
 import { ImpactDialog } from "./ImpactDialog";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { ImpactPreviewDialog } from "./ImpactCategoryPreviewDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface ImpactsProps {
   homebrewId: string;
@@ -87,9 +88,9 @@ export function Impacts(props: ImpactsProps) {
       },
     })
       .then(() => {
-        deleteImpactCategory(categoryId).catch(() => {});
+        deleteImpactCategory(categoryId).catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
   const handleImpactDelete = (categoryId: string, impactId: string) => {
     confirm({
@@ -102,9 +103,9 @@ export function Impacts(props: ImpactsProps) {
       },
     })
       .then(() => {
-        deleteImpact(categoryId, impactId).catch(() => {});
+        deleteImpact(categoryId, impactId).catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   return (

@@ -3,6 +3,7 @@ import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithClo
 import { useEffect, useState } from "react";
 import { ExpansionSelector } from "./ExpansionSelector";
 import { useStore } from "stores/store";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface ExpansionSelectorDialogProps {
   open: boolean;
@@ -69,7 +70,7 @@ export function ExpansionSelectorDialog(props: ExpansionSelectorDialogProps) {
         .then(() => {
           onClose();
         })
-        .catch(() => {})
+        .catch(ignoreApiError)
         .finally(() => {
           setLoading(false);
         });
@@ -78,7 +79,7 @@ export function ExpansionSelectorDialog(props: ExpansionSelectorDialogProps) {
         .then(() => {
           onClose();
         })
-        .catch(() => {})
+        .catch(ignoreApiError)
         .finally(() => {
           setLoading(false);
         });

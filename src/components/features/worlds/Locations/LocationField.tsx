@@ -6,6 +6,7 @@ import {
 } from "config/locations.config";
 import { useStore } from "stores/store";
 import { LocationWithGMProperties } from "stores/world/currentWorld/locations/locations.slice.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface LocationFieldProps {
   locationId: string;
@@ -42,11 +43,11 @@ export function LocationField(props: LocationFieldProps) {
         fields: {
           [fieldConfig.key]: newValue,
         },
-      }).catch(() => {});
+      }).catch(ignoreApiError);
     } else {
       updateLocation(locationId, {
         [`fields.${fieldConfig.key}`]: newValue,
-      }).catch(() => {});
+      }).catch(ignoreApiError);
     }
   };
 
