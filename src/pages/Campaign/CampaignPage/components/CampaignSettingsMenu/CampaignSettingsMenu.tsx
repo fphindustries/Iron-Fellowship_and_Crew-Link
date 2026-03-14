@@ -26,6 +26,7 @@ import ThemeIcon from "@mui/icons-material/ColorLens";
 import { ThemeChooserDialog } from "components/shared/Layout/ThemeChooserDialog";
 import LayoutIcon from "@mui/icons-material/ViewComfy";
 import { LayoutChooserDialog } from "components/shared/Layout/LayoutChooserDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function CampaignSettingsMenu() {
   const confirm = useConfirm();
@@ -63,9 +64,9 @@ export function CampaignSettingsMenu() {
           .then(() => {
             navigate(constructCampaignPath(CAMPAIGN_ROUTES.SELECT));
           })
-          .catch(() => {});
+          .catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const isGuide = useStore(
@@ -93,7 +94,7 @@ export function CampaignSettingsMenu() {
         .then(() => {
           navigate(constructCampaignPath(CAMPAIGN_ROUTES.SELECT));
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
     });
   };
 
@@ -103,7 +104,7 @@ export function CampaignSettingsMenu() {
   );
 
   const removeSelfAsGuide = () => {
-    updateCampaignGM(uid, true).catch(() => {});
+    updateCampaignGM(uid, true).catch(ignoreApiError);
   };
   return (
     <>

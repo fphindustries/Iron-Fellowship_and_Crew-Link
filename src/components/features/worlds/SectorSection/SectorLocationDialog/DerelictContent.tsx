@@ -3,6 +3,7 @@ import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import { useStore } from "stores/store";
 import { StarforgedLocationDerelict } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
 import { GuideOnlyHeader } from "../../common";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface DerelictContentProps {
   locationId: string;
@@ -31,7 +32,7 @@ export function DerelictContent(props: DerelictContentProps) {
           oracleTableId={undefined}
           initialValue={location.name}
           updateValue={(value) =>
-            updateLocation(locationId, { name: value }).catch(() => {})
+            updateLocation(locationId, { name: value }).catch(ignoreApiError)
           }
         />
       </Grid>
@@ -45,7 +46,7 @@ export function DerelictContent(props: DerelictContentProps) {
               oracleTableId={"starforged/oracles/derelicts/location"}
               initialValue={location.location ?? ""}
               updateValue={(value) =>
-                updateLocation(locationId, { location: value }).catch(() => {})
+                updateLocation(locationId, { location: value }).catch(ignoreApiError)
               }
             />
           </Grid>
@@ -57,7 +58,7 @@ export function DerelictContent(props: DerelictContentProps) {
               }
               initialValue={location.subType ?? ""}
               updateValue={(value) =>
-                updateLocation(locationId, { subType: value }).catch(() => {})
+                updateLocation(locationId, { subType: value }).catch(ignoreApiError)
               }
             />
           </Grid>
@@ -67,7 +68,7 @@ export function DerelictContent(props: DerelictContentProps) {
               oracleTableId={"starforged/oracles/derelicts/condition"}
               initialValue={location.condition ?? ""}
               updateValue={(value) =>
-                updateLocation(locationId, { condition: value }).catch(() => {})
+                updateLocation(locationId, { condition: value }).catch(ignoreApiError)
               }
             />
           </Grid>

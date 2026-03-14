@@ -18,6 +18,7 @@ import { GAME_SYSTEMS } from "types/GameSystems.type";
 import EditIcon from "@mui/icons-material/Edit";
 import { useState } from "react";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function Debilities() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -33,7 +34,7 @@ export function Debilities() {
   );
 
   const updateDebility = (debilityKey: string, active: boolean) => {
-    updateCharacter({ [`debilities.${debilityKey}`]: active }).catch(() => {});
+    updateCharacter({ [`debilities.${debilityKey}`]: active }).catch(ignoreApiError);
   };
 
   const impactsLabel = useGameSystemValue({

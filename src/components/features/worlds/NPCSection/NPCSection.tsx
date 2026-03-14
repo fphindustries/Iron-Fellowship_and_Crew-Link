@@ -18,6 +18,7 @@ import { useState } from "react";
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { DefaultNPCSpecies, NPC } from "types/NPCs.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface NPCSectionProps {
   isSinglePlayer?: boolean;
@@ -81,7 +82,7 @@ export function NPCSection(props: NPCSectionProps) {
     setCreateNPCLoading(true);
     createNPC(defaultNPC)
       .then((npcId) => setOpenNPCId(npcId))
-      .catch(() => {})
+      .catch(ignoreApiError)
       .finally(() => setCreateNPCLoading(false));
   };
 

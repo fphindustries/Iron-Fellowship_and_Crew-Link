@@ -9,6 +9,7 @@ import { LocationCard } from "./LocationCard";
 import { LocationsSidebar } from "./LocationsSidebar";
 import { useWorldPermissions } from "../useWorldPermissions";
 import { OpenLocation } from "./OpenLocation";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface LocationsSectionProps {
   showHiddenTag?: boolean;
@@ -56,7 +57,7 @@ export function LocationsSection(props: LocationsSectionProps) {
       .then((locationId) => {
         setOpenLocationId(locationId);
       })
-      .catch(() => {})
+      .catch(ignoreApiError)
       .finally(() => setCreateLocationLoading(false));
   };
   const { filteredLocationIds, sortedLocationIds } = useFilterLocations(

@@ -12,6 +12,7 @@ import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithClo
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
 import { HomebrewAssetCollectionDocument } from "api-calls/homebrew/assets/collections/_homebrewAssetCollection.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface MoveAssetDialogProps {
   onClose: () => void;
@@ -41,7 +42,7 @@ export function MoveAssetDialog(props: MoveAssetDialogProps) {
         .then(() => {
           onClose();
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
     }
   };
 

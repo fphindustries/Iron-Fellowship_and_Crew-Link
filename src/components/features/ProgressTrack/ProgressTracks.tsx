@@ -10,6 +10,7 @@ import {
 import { ProgressTrack } from "./ProgressTrack";
 import { EmptyState } from "components/shared/EmptyState";
 import { EditOrCreateTrackDialog } from "./EditOrCreateTrackDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface ProgressTracksProps {
   isCampaign?: boolean;
@@ -73,14 +74,14 @@ export function ProgressTracks(props: ProgressTracksProps) {
   };
 
   const updateProgressTrackValue = (trackId: string, value: number) => {
-    updateProgressTrack(trackId, { value }).catch(() => {});
+    updateProgressTrack(trackId, { value }).catch(ignoreApiError);
   };
 
   const updateSceneChallengeValue = (
     trackId: string,
     segmentsFilled: number
   ) => {
-    updateProgressTrack(trackId, { segmentsFilled }).catch(() => {});
+    updateProgressTrack(trackId, { segmentsFilled }).catch(ignoreApiError);
   };
 
   const deleteCampaignProgressTrack = useStore(

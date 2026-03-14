@@ -11,6 +11,7 @@ import { WorldEmptyState } from "components/features/worlds/WorldEmptyState";
 import { useStore } from "stores/store";
 import { useState } from "react";
 import { useCampaignType } from "hooks/useCampaignType";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function WorldTab() {
   const confirm = useConfirm();
@@ -53,7 +54,7 @@ export function WorldTab() {
     })
       .then(() => {
         updateCampaignWorld(undefined)
-          .catch(() => {})
+          .catch(ignoreApiError)
           .finally(() => {
             setUpdateCampaignWorldLoading(false);
           });
@@ -93,7 +94,7 @@ export function WorldTab() {
           onChooseWorld={(worldIndex) => {
             setUpdateCampaignWorldLoading(true);
             updateCampaignWorld(worldIds[worldIndex])
-              .catch(() => {})
+              .catch(ignoreApiError)
               .finally(() => setUpdateCampaignWorldLoading(false));
           }}
           worldUpdateLoading={updateCampaignWorldLoading}

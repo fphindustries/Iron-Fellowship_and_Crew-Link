@@ -8,6 +8,7 @@ import { useStore } from "stores/store";
 import { SectionHeading } from "components/shared/SectionHeading";
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function AssetsSection() {
   const isStarforged = useGameSystem().gameSystem === GAME_SYSTEMS.STARFORGED;
@@ -79,7 +80,7 @@ export function AssetsSection() {
       ? addSharedAsset(asset)
       : addAsset(asset);
     promise
-      .catch(() => {})
+      .catch(ignoreApiError)
       .finally(() => {
         setIsAssetDialogOpen({ open: false });
         setAddAssetLoading(false);
@@ -100,12 +101,12 @@ export function AssetsSection() {
     })
       .then(() => {
         if (isShared) {
-          removeSharedAsset(assetId).catch(() => {});
+          removeSharedAsset(assetId).catch(ignoreApiError);
         } else {
-          removeAsset(assetId).catch(() => {});
+          removeAsset(assetId).catch(ignoreApiError);
         }
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const updateAssetOption = useStore(

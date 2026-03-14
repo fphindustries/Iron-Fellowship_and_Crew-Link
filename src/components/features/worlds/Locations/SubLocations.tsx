@@ -3,6 +3,7 @@ import { useStore } from "stores/store";
 import { LocationCard } from "./LocationCard";
 import { EmptyState } from "components/shared/EmptyState";
 import { SectionHeading } from "components/shared/SectionHeading";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface SubLocationsProps {
   locationId: string;
@@ -36,7 +37,7 @@ export function SubLocations(props: SubLocationsProps) {
       createdDate: new Date(),
     })
       .then((id) => setOpenLocationId(id))
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   return (

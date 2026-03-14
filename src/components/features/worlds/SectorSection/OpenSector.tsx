@@ -25,6 +25,7 @@ import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useConfirm } from "material-ui-confirm";
 import { useCallback } from "react";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 interface OpenSectorProps {
   sectorId: string;
@@ -171,7 +172,7 @@ export function OpenSector(props: OpenSectorProps) {
     if (cell && locationId) {
       cell.locationId = locationId;
     }
-    addHexToMap(row, col, cell).catch(() => {});
+    addHexToMap(row, col, cell).catch(ignoreApiError);
   };
 
   const handleSectorDelete = () => {
@@ -187,12 +188,12 @@ export function OpenSector(props: OpenSectorProps) {
     })
       .then(() => {
         deleteSector()
-          .catch(() => {})
+          .catch(ignoreApiError)
           .then(() => {
             setOpenSectorId();
           });
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const { showGMFields, showGMTips, isGuidedGame } = useWorldPermissions();
@@ -241,7 +242,7 @@ export function OpenSector(props: OpenSectorProps) {
       <SectorLocationDialog />
       <ItemHeader
         itemName={sector.name}
-        updateName={(name) => updateSectorName(name).catch(() => {})}
+        updateName={(name) => updateSectorName(name).catch(ignoreApiError)}
         nameOracleIds={[
           "starforged/oracles/space/sector_name/prefix",
           "starforged/oracles/space/sector_name/suffix",
@@ -262,7 +263,7 @@ export function OpenSector(props: OpenSectorProps) {
       <SectorMap
         map={sector.map}
         addHex={(row, col, type) =>
-          handleAddHex(row, col, type).catch(() => {})
+          handleAddHex(row, col, type).catch(ignoreApiError)
         }
       />
       <Box

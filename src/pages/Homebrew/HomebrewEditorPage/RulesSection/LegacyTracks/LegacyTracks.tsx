@@ -18,6 +18,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { LegacyTrackDialog } from "./LegacyTrackDialog";
 import { LegacyTrackPreviewDialog } from "./LegacyTrackPreviewDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface LegacyTracksProps {
   homebrewId: string;
@@ -74,9 +75,9 @@ export function LegacyTracks(props: LegacyTracksProps) {
       },
     })
       .then(() => {
-        deleteLegacyTrack(legacyTrackId).catch(() => {});
+        deleteLegacyTrack(legacyTrackId).catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   if (isLoading) {

@@ -32,6 +32,7 @@ import { mergeIcons } from "components/shared/GameIcons/mergeIcons";
 import { IconColors } from "types/Icon.type";
 import { PageWithImage } from "../common/PageWithImage";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 const defaultNPCSpeciesOptions: {
   enum: DefaultNPCSpecies;
@@ -146,7 +147,7 @@ export function OpenNPC(props: OpenNPCProps) {
   );
 
   const handleUpdateNPC = (doc: Partial<NPC>) => {
-    updateNPC(npcId, doc).catch(() => {});
+    updateNPC(npcId, doc).catch(ignoreApiError);
   };
 
   const handleNPCDelete = () => {
@@ -162,12 +163,12 @@ export function OpenNPC(props: OpenNPCProps) {
     })
       .then(() => {
         deleteNPC(npcId)
-          .catch(() => {})
+          .catch(ignoreApiError)
           .then(() => {
             closeNPC();
           });
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const currentCharacterId = useStore(
@@ -236,7 +237,7 @@ export function OpenNPC(props: OpenNPCProps) {
         );
         return;
       }
-      uploadNPCImage(npcId, file).catch(() => {});
+      uploadNPCImage(npcId, file).catch(ignoreApiError);
     }
   };
 
@@ -271,7 +272,7 @@ export function OpenNPC(props: OpenNPCProps) {
           joinOracleTables={isStarforged}
           initialValue={npc.name}
           updateValue={(newName) =>
-            updateNPC(npcId, { name: newName }).catch(() => {})
+            updateNPC(npcId, { name: newName }).catch(ignoreApiError)
           }
           fullWidth={true}
           sx={{
@@ -282,11 +283,11 @@ export function OpenNPC(props: OpenNPCProps) {
       handleImageUpload={onFileUpload}
       handleIconSelection={(icon) => {
         if (npc.imageUrl) {
-          removeNPCImage(npcId).catch(() => {});
+          removeNPCImage(npcId).catch(ignoreApiError);
         }
-        updateNPC(npcId, { icon }).catch(() => {});
+        updateNPC(npcId, { icon }).catch(ignoreApiError);
       }}
-      handleImageRemove={() => removeNPCImage(npcId).catch(() => {})}
+      handleImageRemove={() => removeNPCImage(npcId).catch(ignoreApiError)}
       handlePageClose={closeNPC}
       hideBorder={hideBorder}
     >
@@ -427,7 +428,7 @@ export function OpenNPC(props: OpenNPCProps) {
                     label={"Role"}
                     initialValue={npc?.gmProperties?.role ?? ""}
                     updateValue={(role) =>
-                      updateNPCGMProperties(npcId, { role }).catch(() => {})
+                      updateNPCGMProperties(npcId, { role }).catch(ignoreApiError)
                     }
                     oracleTableId={npcRoleOracle}
                   />
@@ -463,7 +464,7 @@ export function OpenNPC(props: OpenNPCProps) {
                     label={"Goal"}
                     initialValue={npc?.gmProperties?.goal ?? ""}
                     updateValue={(goal) =>
-                      updateNPCGMProperties(npcId, { goal }).catch(() => {})
+                      updateNPCGMProperties(npcId, { goal }).catch(ignoreApiError)
                     }
                     oracleTableId={npcGoalOracle}
                   />
@@ -476,7 +477,7 @@ export function OpenNPC(props: OpenNPCProps) {
                       updateValue={(revealedAspect) =>
                         updateNPCGMProperties(npcId, {
                           revealedAspect,
-                        }).catch(() => {})
+                        }).catch(ignoreApiError)
                       }
                       oracleTableId={
                         "starforged/oracles/characters/revealed_aspect"
@@ -498,7 +499,7 @@ export function OpenNPC(props: OpenNPCProps) {
                           onChange={(evt, value) =>
                             updateNPC(npcId, {
                               sharedWithPlayers: value,
-                            }).catch(() => {})
+                            }).catch(ignoreApiError)
                           }
                         />
                       }
@@ -518,7 +519,7 @@ export function OpenNPC(props: OpenNPCProps) {
                               npcId,
                               currentCharacterId,
                               bonded
-                            ).catch(() => {})
+                            ).catch(ignoreApiError)
                         : undefined
                     }
                     isBonded={singleplayerBond}
@@ -547,7 +548,7 @@ export function OpenNPC(props: OpenNPCProps) {
                               npcId,
                               currentCharacterId,
                               connected
-                            ).catch(() => {})
+                            ).catch(ignoreApiError)
                         : undefined
                     }
                     inheritedBondName={
@@ -584,7 +585,7 @@ export function OpenNPC(props: OpenNPCProps) {
                             npcId,
                             currentCharacterId,
                             bonded
-                          ).catch(() => {})
+                          ).catch(ignoreApiError)
                       : undefined
                   }
                   isBonded={singleplayerBond}
@@ -613,7 +614,7 @@ export function OpenNPC(props: OpenNPCProps) {
                             npcId,
                             currentCharacterId,
                             connected
-                          ).catch(() => {})
+                          ).catch(ignoreApiError)
                       : undefined
                   }
                   inheritedBondName={

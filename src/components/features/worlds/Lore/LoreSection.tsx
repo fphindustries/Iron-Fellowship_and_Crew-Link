@@ -16,6 +16,7 @@ import { FilterBar } from "components/features/worlds/FilterBar";
 import { LoreCard } from "./LoreCard";
 import { useStore } from "stores/store";
 import { useState } from "react";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface LoreSectionProps {
   isSinglePlayer?: boolean;
@@ -59,7 +60,7 @@ export function LoreSection(props: LoreSectionProps) {
     setCreateLoreLoading(true);
     createLore()
       .then((loreId) => setOpenLoreId(loreId))
-      .catch(() => {})
+      .catch(ignoreApiError)
       .finally(() => {
         setCreateLoreLoading(false);
       });

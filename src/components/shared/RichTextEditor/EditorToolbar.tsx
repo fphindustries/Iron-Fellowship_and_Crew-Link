@@ -10,6 +10,7 @@ import BulletListIcon from "@mui/icons-material/FormatListBulleted";
 import NumberedListIcon from "@mui/icons-material/FormatListNumbered";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useConfirm } from "material-ui-confirm";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface EditorToolbarProps {
   editor: Editor;
@@ -39,7 +40,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
       .then(() => {
         deleteNote && deleteNote();
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   return (

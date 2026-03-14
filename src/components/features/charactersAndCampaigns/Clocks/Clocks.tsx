@@ -5,6 +5,7 @@ import { Clock } from "./Clock";
 import { useState } from "react";
 import { EmptyState } from "components/shared/EmptyState";
 import { ClockDialog } from "./ClockDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface ClocksProps {
   isCampaignSection?: boolean;
@@ -97,7 +98,7 @@ export function Clocks(props: ClocksProps) {
                   : (oracleKey) =>
                       updateClock(clockId, {
                         oracleKey,
-                      }).catch(() => {})
+                      }).catch(ignoreApiError)
               }
               onComplete={
                 isCompleted
@@ -105,14 +106,14 @@ export function Clocks(props: ClocksProps) {
                   : () =>
                       updateClock(clockId, {
                         status: TrackStatus.Completed,
-                      }).catch(() => {})
+                      }).catch(ignoreApiError)
               }
               onValueChange={
                 isCompleted
                   ? undefined
-                  : (value) => updateClock(clockId, { value }).catch(() => {})
+                  : (value) => updateClock(clockId, { value }).catch(ignoreApiError)
               }
-              handleDelete={() => deleteClock(clockId).catch(() => {})}
+              handleDelete={() => deleteClock(clockId).catch(ignoreApiError)}
             />
           ))}
         </Stack>

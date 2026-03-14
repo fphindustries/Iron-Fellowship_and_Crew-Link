@@ -15,6 +15,7 @@ import { useStore } from "stores/store";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { constructHomebrewEditorPath } from "../routes";
 import { PackageTypes } from "api-calls/homebrew/_homebrewCollection.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface CreateExpansionDialogProps {
   open: boolean;
@@ -65,7 +66,7 @@ export function CreateExpansionDialog(props: CreateExpansionDialogProps) {
         onClose();
         navigate(constructHomebrewEditorPath(id));
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   return (

@@ -9,6 +9,7 @@ import { Head } from "providers/HeadProvider/Head";
 import { useStore } from "stores/store";
 import { shallow } from "zustand/shallow";
 import { FooterFab } from "components/shared/Layout/FooterFab";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function WorldSelectPage() {
   const worldIds = useStore(
@@ -42,7 +43,7 @@ export function WorldSelectPage() {
       .then((worldId) => {
         navigate(constructWorldSheetPath(worldId));
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   if (loading) {

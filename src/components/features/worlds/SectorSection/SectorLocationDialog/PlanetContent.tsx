@@ -3,6 +3,7 @@ import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import { useStore } from "stores/store";
 import { StarforgedLocationPlanet } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
 import { GuideOnlyHeader } from "../../common";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface PlanetContentProps {
   locationId: string;
@@ -68,7 +69,7 @@ export function PlanetContent(props: PlanetContentProps) {
           oracleTableId={baseSubTypeId + "/name"}
           initialValue={location.name}
           updateValue={(value) =>
-            updateLocation(locationId, { name: value }).catch(() => {})
+            updateLocation(locationId, { name: value }).catch(ignoreApiError)
           }
         />
       </Grid>
@@ -78,7 +79,7 @@ export function PlanetContent(props: PlanetContentProps) {
           oracleTableId={undefined}
           initialValue={location.description ?? ""}
           updateValue={(value) => {
-            updateLocation(locationId, { description: value }).catch(() => {});
+            updateLocation(locationId, { description: value }).catch(ignoreApiError);
           }}
         />
       </Grid>
@@ -91,7 +92,7 @@ export function PlanetContent(props: PlanetContentProps) {
               oracleTableId={baseSubTypeId + "/feature"}
               initialValue={location.feature ?? ""}
               updateValue={(value) => {
-                updateLocation(locationId, { feature: value }).catch(() => {});
+                updateLocation(locationId, { feature: value }).catch(ignoreApiError);
               }}
             />
           </Grid>
@@ -125,7 +126,7 @@ export function PlanetContent(props: PlanetContentProps) {
               oracleTableId={baseSubTypeId + "/life"}
               initialValue={location.life ?? ""}
               updateValue={(value) => {
-                updateLocation(locationId, { life: value }).catch(() => {});
+                updateLocation(locationId, { life: value }).catch(ignoreApiError);
               }}
             />
           </Grid>

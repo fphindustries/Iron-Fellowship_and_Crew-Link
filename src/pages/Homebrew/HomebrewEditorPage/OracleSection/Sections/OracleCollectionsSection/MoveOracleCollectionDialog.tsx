@@ -13,6 +13,7 @@ import { deleteField } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
 import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface MoveOracleCollectionDialogProps {
   open: boolean;
@@ -54,7 +55,7 @@ export function MoveOracleCollectionDialog(
       .then(() => {
         onClose();
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   return (

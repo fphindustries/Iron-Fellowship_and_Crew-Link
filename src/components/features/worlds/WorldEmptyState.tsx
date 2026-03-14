@@ -13,6 +13,7 @@ import { useStore } from "stores/store";
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { useCampaignType } from "hooks/useCampaignType";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface WorldEmptyStateProps {
   worldsToChooseFrom?: World[];
@@ -49,12 +50,12 @@ export function WorldEmptyState(props: WorldEmptyStateProps) {
     createWorld()
       .then((worldId) => {
         if (campaignId) {
-          updateCampaign({ worldId }).catch(() => {});
+          updateCampaign({ worldId }).catch(ignoreApiError);
         } else if (characterId) {
-          updateCharacter({ worldId }).catch(() => {});
+          updateCharacter({ worldId }).catch(ignoreApiError);
         }
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const isStarforged = useGameSystem().gameSystem === GAME_SYSTEMS.STARFORGED;

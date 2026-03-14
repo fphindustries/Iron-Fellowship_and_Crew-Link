@@ -14,6 +14,7 @@ import { Themes } from "providers/ThemeProvider/themes/theme.types";
 import { useToggleTheme } from "providers/ThemeProvider";
 import CheckIcon from "@mui/icons-material/CheckCircle";
 import { useStore } from "stores/store";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface ThemeChooserDialogProps {
   open: boolean;
@@ -39,10 +40,10 @@ export function ThemeChooserDialog(props: ThemeChooserDialogProps) {
 
   const setTheme = (key: Themes) => {
     if (hasCampaign) {
-      updateCampaign({ theme: key }).catch(() => {});
+      updateCampaign({ theme: key }).catch(ignoreApiError);
     }
     if (hasCharacter) {
-      updateCharacter({ theme: key }).catch(() => {});
+      updateCharacter({ theme: key }).catch(ignoreApiError);
     }
   };
 

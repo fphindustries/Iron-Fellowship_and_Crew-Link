@@ -18,6 +18,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ViewIcon from "@mui/icons-material/Visibility";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { StatViewerPreviewDialog } from "./StatViewerPreviewDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface StatsProps {
   homebrewId: string;
@@ -69,9 +70,9 @@ export function Stats(props: StatsProps) {
         },
       })
         .then(() => {
-          deleteStat(statId).catch(() => {});
+          deleteStat(statId).catch(ignoreApiError);
         })
-        .catch(() => {});
+        .catch(ignoreApiError);
     }
   };
 

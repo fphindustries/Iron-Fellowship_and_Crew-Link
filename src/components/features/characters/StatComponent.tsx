@@ -9,6 +9,7 @@ import { useStore } from "stores/store";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "hooks/useIsMobile";
 import { useRoller } from "stores/appState/useRoller";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface StatComponentProps {
   label: string;
@@ -106,7 +107,7 @@ export function StatComponent(props: StatComponentProps) {
       onClick={() => {
         if (!(updateTrack || disableRoll)) {
           rollStat(label, value, moveInfo, adds);
-          resetAdds({ adds: 0 }).catch(() => {});
+          resetAdds({ adds: 0 }).catch(ignoreApiError);
         }
       }}
     >

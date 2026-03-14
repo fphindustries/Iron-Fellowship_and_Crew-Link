@@ -11,6 +11,7 @@ import { MoveDialog } from "./MoveDialog";
 import { useStore } from "stores/store";
 import { useConfirm } from "material-ui-confirm";
 import { MoveCard } from "./MoveCard";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface MovesEditorPaneProps {
   homebrewId: string;
@@ -66,9 +67,9 @@ export function MovesEditorPane(props: MovesEditorPaneProps) {
     })
       .then(() => {
         setOpenMoveCategoryId(undefined);
-        deleteMoveCategory(homebrewId, categoryId).catch(() => {});
+        deleteMoveCategory(homebrewId, categoryId).catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
   const deleteMove = useStore((store) => store.homebrew.deleteMove);
   const handleDeleteMove = (moveName: string, moveId: string) => {
@@ -83,9 +84,9 @@ export function MovesEditorPane(props: MovesEditorPaneProps) {
       },
     })
       .then(() => {
-        deleteMove(moveId).catch(() => {});
+        deleteMove(moveId).catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   return (

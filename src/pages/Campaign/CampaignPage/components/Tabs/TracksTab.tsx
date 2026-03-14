@@ -10,6 +10,7 @@ import { useStore } from "stores/store";
 import { ClockSection } from "components/features/charactersAndCampaigns/Clocks/ClockSection";
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function TracksTab() {
   const isStarforged = useGameSystem().gameSystem === GAME_SYSTEMS.STARFORGED;
@@ -50,7 +51,7 @@ export function TracksTab() {
                   }
                   label={conditionMeterRules[cm].label}
                   onChange={(newValue) =>
-                    updateCampaignConditionMeter(cm, newValue).catch(() => {})
+                    updateCampaignConditionMeter(cm, newValue).catch(ignoreApiError)
                   }
                 />
               </Grid>

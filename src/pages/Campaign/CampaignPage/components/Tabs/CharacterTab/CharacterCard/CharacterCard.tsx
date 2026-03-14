@@ -25,6 +25,7 @@ import {
 import { LinkComponent } from "components/shared/LinkComponent";
 import { constructCharacterSheetPath } from "pages/Character/routes";
 import { useCampaignType } from "hooks/useCampaignType";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface CharacterCardProps {
   uid: string;
@@ -64,7 +65,7 @@ export function CharacterCard(props: CharacterCardProps) {
   );
 
   const updateCharacterInitiative = (initiativeStatus: InitiativeStatus) => {
-    updateCharacter(characterId, { initiativeStatus }).catch(() => {});
+    updateCharacter(characterId, { initiativeStatus }).catch(ignoreApiError);
   };
 
   const removeCharacterFromCampaign = useStore(

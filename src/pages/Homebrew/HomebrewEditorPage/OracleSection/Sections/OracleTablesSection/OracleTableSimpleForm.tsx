@@ -16,6 +16,7 @@ import { OracleTable } from "./OracleTable";
 import { HomebrewOracleTableDocument } from "api-calls/homebrew/oracles/tables/_homebrewOracleTable.type";
 import { useStore } from "stores/store";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 interface OracleTableBaseFormContents {
   name: string;
@@ -117,14 +118,14 @@ export function OracleTableSimpleForm(props: OracleTableSimpleFormProps) {
 
     if (editingOracleTableId) {
       updateTable(editingOracleTableId, oracleTable)
-        .catch(() => {})
+        .catch(ignoreApiError)
         .finally(() => {
           onClose();
           setLoading(false);
         });
     } else {
       createTable(oracleTable)
-        .catch(() => {})
+        .catch(ignoreApiError)
         .finally(() => {
           onClose();
           setLoading(false);

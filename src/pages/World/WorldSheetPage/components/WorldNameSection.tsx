@@ -2,6 +2,7 @@ import { TextField } from "@mui/material";
 import { SectionHeading } from "components/shared/SectionHeading";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "stores/store";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function WorldNameSection() {
   const worldName = useStore(
@@ -19,7 +20,7 @@ export function WorldNameSection() {
   const handleSave = () => {
     setLoading(true);
     updateWorld({ name: tmpWorldName })
-      .catch(() => {})
+      .catch(ignoreApiError)
       .finally(() => {
         setLoading(false);
       });

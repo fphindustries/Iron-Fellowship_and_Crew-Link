@@ -16,6 +16,7 @@ import { useStore } from "stores/store";
 import { LocationWithGMProperties } from "stores/world/currentWorld/locations/locations.slice.type";
 import { LocationItemAvatar } from "./LocationMap/LocationItemAvatar";
 import { useState } from "react";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface MoveLocationDialogProps {
   open: boolean;
@@ -70,7 +71,7 @@ export function MoveLocationDialog(props: MoveLocationDialogProps) {
       .then(() => {
         onClose();
       })
-      .catch(() => {})
+      .catch(ignoreApiError)
       .finally(() => {
         setMoveLoading(false);
       });

@@ -10,6 +10,7 @@ import { SectionHeading } from "components/shared/SectionHeading";
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { useStore } from "stores/store";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function DebilitiesOrImpacts() {
   const impacts = useStore((store) => store.rules.impacts);
@@ -23,7 +24,7 @@ export function DebilitiesOrImpacts() {
   );
 
   const updateDebility = (debilityKey: string, active: boolean) => {
-    updateCharacter({ [`debilities.${debilityKey}`]: active }).catch(() => {});
+    updateCharacter({ [`debilities.${debilityKey}`]: active }).catch(ignoreApiError);
   };
 
   const impactsLabel = useGameSystemValue({

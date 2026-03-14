@@ -15,6 +15,7 @@ import { useConfirm } from "material-ui-confirm";
 import { useState } from "react";
 import { useStore } from "stores/store";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export function SharedAssetSection() {
   const isStarforged = useGameSystem().gameSystem === GAME_SYSTEMS.STARFORGED;
@@ -57,7 +58,7 @@ export function SharedAssetSection() {
   const handleAssetAdd = (asset: AssetDocument) => {
     setAddAssetLoading(true);
     addSharedAsset(asset)
-      .catch(() => {})
+      .catch(ignoreApiError)
       .finally(() => {
         setIsAssetDialogOpen(false);
         setAddAssetLoading(false);
@@ -77,9 +78,9 @@ export function SharedAssetSection() {
       },
     })
       .then(() => {
-        removeSharedAsset(assetId).catch(() => {});
+        removeSharedAsset(assetId).catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   if (!isStarforged) return null;

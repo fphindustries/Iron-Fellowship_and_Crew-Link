@@ -24,6 +24,7 @@ import { removeSelfAsEditor } from "api-calls/homebrew/editorFunction/removeSelf
 import { useNavigate } from "react-router-dom";
 import { BASE_ROUTES, basePaths } from "routes";
 import { Description } from "./Description";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface AboutSectionProps {
   id: string;
@@ -102,9 +103,9 @@ export function AboutSection(props: AboutSectionProps) {
           .then(() => {
             navigate(basePaths[BASE_ROUTES.HOMEBREW]);
           })
-          .catch(() => {});
+          .catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   return (

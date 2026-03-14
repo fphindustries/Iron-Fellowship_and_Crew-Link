@@ -18,6 +18,7 @@ import { useConfirm } from "material-ui-confirm";
 import { NonLinearMeterDialog } from "./NonLinearMeterDialog";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { NonLinearMeterPreviewDialog } from "./NonLinearMeterPreviewDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface NonLinearMetersProps {
   homebrewId: string;
@@ -79,9 +80,9 @@ export function NonLinearMeters(props: NonLinearMetersProps) {
       },
     })
       .then(() => {
-        deleteNonLinearMeter(meterId).catch(() => {});
+        deleteNonLinearMeter(meterId).catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   return (

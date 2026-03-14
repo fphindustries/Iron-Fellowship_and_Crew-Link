@@ -47,6 +47,7 @@ import MoveLocationIcon from "@mui/icons-material/ModeOfTravel";
 import { useState } from "react";
 import { MoveLocationDialog } from "./MoveLocationDialog";
 import { LocationBreadcrumbs } from "./LocationBreadcrumbs";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface OpenLocationProps {
   worldId: string;
@@ -159,12 +160,12 @@ export function OpenLocation(props: OpenLocationProps) {
     })
       .then(() => {
         deleteLocation(locationId)
-          .catch(() => {})
+          .catch(ignoreApiError)
           .then(() => {
             closeLocation();
           });
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   const onFileUpload = (file: File) => {
@@ -175,7 +176,7 @@ export function OpenLocation(props: OpenLocationProps) {
         );
         return;
       }
-      uploadLocationImage(locationId, file).catch(() => {});
+      uploadLocationImage(locationId, file).catch(ignoreApiError);
     }
   };
 
@@ -216,7 +217,7 @@ export function OpenLocation(props: OpenLocationProps) {
                       onClick={() => {
                         updateLocation(locationId, {
                           showMap: !location.showMap,
-                        }).catch(() => {});
+                        }).catch(ignoreApiError);
                       }}
                       sx={{
                         bgcolor: location.showMap ? "darkGrey.main" : undefined,
@@ -254,7 +255,7 @@ export function OpenLocation(props: OpenLocationProps) {
           joinOracleTables={nameConfig?.joinOracles}
           initialValue={location.name}
           updateValue={(newName) =>
-            updateLocation(locationId, { name: newName }).catch(() => {})
+            updateLocation(locationId, { name: newName }).catch(ignoreApiError)
           }
           fullWidth={true}
           sx={{
@@ -265,9 +266,9 @@ export function OpenLocation(props: OpenLocationProps) {
       handleImageUpload={onFileUpload}
       handleIconSelection={(icon) => {
         if (location.imageUrl) {
-          removeLocationImage(locationId).catch(() => {});
+          removeLocationImage(locationId).catch(ignoreApiError);
         }
-        updateLocation(locationId, { icon }).catch(() => {});
+        updateLocation(locationId, { icon }).catch(ignoreApiError);
       }}
       handleImageRemove={() => removeLocationImage(locationId)}
       handlePageClose={closeLocation}
@@ -366,7 +367,7 @@ export function OpenLocation(props: OpenLocationProps) {
                               onChange={(evt, value) =>
                                 updateLocation(locationId, {
                                   sharedWithPlayers: value,
-                                }).catch(() => {})
+                                }).catch(ignoreApiError)
                               }
                             />
                           }
@@ -385,7 +386,7 @@ export function OpenLocation(props: OpenLocationProps) {
                                   locationId,
                                   currentCharacterId,
                                   bonded
-                                ).catch(() => {})
+                                ).catch(ignoreApiError)
                             : undefined
                         }
                         isBonded={singleplayerBond}
@@ -420,7 +421,7 @@ export function OpenLocation(props: OpenLocationProps) {
                                   locationId,
                                   currentCharacterId,
                                   bonded
-                                ).catch(() => {})
+                                ).catch(ignoreApiError)
                             : undefined
                         }
                         isBonded={singleplayerBond}

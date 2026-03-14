@@ -18,6 +18,7 @@ import { useConfirm } from "material-ui-confirm";
 import { ConditionMeterDialog } from "./ConditionMeterDialog";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { ConditionMeterPreviewDialog } from "./ConditionMeterPreviewDialog";
+import { ignoreApiError } from "api-calls/createApiFunction";
 
 export interface ConditionMetersProps {
   homebrewId: string;
@@ -80,9 +81,9 @@ export function ConditionMeters(props: ConditionMetersProps) {
       },
     })
       .then(() => {
-        deleteConditionMeter(conditionMeterId).catch(() => {});
+        deleteConditionMeter(conditionMeterId).catch(ignoreApiError);
       })
-      .catch(() => {});
+      .catch(ignoreApiError);
   };
 
   return (
