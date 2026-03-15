@@ -138,6 +138,23 @@ export interface AiCopilotResponse {
   recap?: SessionRecapOutput;
 }
 
+// --- Path recommendation (character creation) ---
+
+export interface PathRecommendation {
+  backgroundName: string;
+  asset1: string;
+  asset2: string;
+  reasoning: string;
+}
+
+export interface PathRecommendationOutput {
+  recommendations: PathRecommendation[];
+}
+
+export interface PathRecommendationRequest {
+  description: string;
+}
+
 // --- Firestore event document ---
 
 export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";

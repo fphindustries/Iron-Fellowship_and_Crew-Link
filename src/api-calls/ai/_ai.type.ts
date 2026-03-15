@@ -125,6 +125,21 @@ export interface AiCopilotResponse {
   recap?: SessionRecapOutput;
 }
 
+export interface PathRecommendation {
+  backgroundName: string;
+  asset1: string;
+  asset2: string;
+  reasoning: string;
+}
+
+export interface PathRecommendationOutput {
+  recommendations: PathRecommendation[];
+}
+
+export interface PathRecommendationRequest {
+  description: string;
+}
+
 export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";
 
 export interface AiEventDocument {
