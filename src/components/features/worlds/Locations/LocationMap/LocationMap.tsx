@@ -37,8 +37,6 @@ export interface LocationMapProps {
   map?: ILocationMap;
 }
 
-const DEFAULT_ROWS = 13;
-const DEFAULT_COLS = 18;
 
 export function LocationMap(props: LocationMapProps) {
   const { locationId, map = {}, backgroundImageUrl } = props;
@@ -431,7 +429,7 @@ export function LocationMap(props: LocationMapProps) {
 
                           paintOrder: "stroke",
                           stroke: "#000000",
-                          strokeOpacity: !!backgroundImageUrl ? "100%" : "60%",
+                          strokeOpacity: backgroundImageUrl ? "100%" : "60%",
                           strokeWidth: s / 12,
                           strokeLinecap: "butt",
                           strokeLinejoin: "miter",

@@ -6,7 +6,7 @@ import { AssetAbilities } from "./AssetAbilities";
 import { AssetControls } from "./AssetControls";
 import { AssetHeader } from "./AssetHeader";
 import { AssetNameAndDescription } from "./AssetNameAndDescription";
-import { ForwardedRef, ReactNode, forwardRef } from "react";
+import { ReactNode, Ref } from "react";
 import { Datasworn } from "@datasworn/core";
 
 export interface AssetCardProps {
@@ -24,24 +24,21 @@ export interface AssetCardProps {
 
   showSharedIcon?: boolean;
   sx?: SxProps<Theme>;
+  ref?: Ref<HTMLDivElement>;
 }
 
-const AssetCardComponent = (
-  props: AssetCardProps,
-  ref: ForwardedRef<HTMLDivElement>
-) => {
-  const {
-    assetId,
-    storedAsset,
-    actions,
-    onAssetRemove,
-    onAssetAbilityToggle,
-    onAssetOptionChange,
-    onAssetControlChange,
-    showSharedIcon,
-    sx,
-  } = props;
-
+export function AssetCard({
+  ref,
+  assetId,
+  storedAsset,
+  actions,
+  onAssetRemove,
+  onAssetAbilityToggle,
+  onAssetOptionChange,
+  onAssetControlChange,
+  showSharedIcon,
+  sx,
+}: AssetCardProps) {
   const assetMap = useStore((store) => store.rules.assetMaps.assetMap);
 
   const asset = assetMap[assetId];
@@ -140,8 +137,4 @@ const AssetCardComponent = (
       </Box>
     </Card>
   );
-};
-
-export const AssetCard = forwardRef<HTMLDivElement, AssetCardProps>(
-  AssetCardComponent
-);
+}

@@ -18,7 +18,7 @@ export function LayoutPathListener() {
   const state = useStore((store) => store.auth.status);
   const { error } = useSnackbar();
 
-  const previousMagicLinkPathnameChecked = useRef<string>();
+  const previousMagicLinkPathnameChecked = useRef<string | undefined>(undefined);
   const { redirectWithContinueUrl, navigateToContinueURL } = useContinueUrl();
 
   useEffect(() => {

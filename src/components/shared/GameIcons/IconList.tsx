@@ -8,8 +8,8 @@ import {
 import {
   FC,
   PropsWithChildren,
-  forwardRef,
   CSSProperties,
+  Ref,
   memo,
   useEffect,
   useState,
@@ -23,22 +23,23 @@ export interface IconListProps {
   onClick: (iconKey: string) => void;
 }
 
-const ListComponent = forwardRef<
-  HTMLDivElement,
-  PropsWithChildren<{ style?: CSSProperties }>
->((props, ref) => (
-  <Box
-    style={props.style}
-    ref={ref} // Fix: Use 'ref' instead of 'props.ref'
-    display={"flex"}
-    flexDirection={"row"}
-    flexWrap={"wrap"}
-  >
-    {props.children}
-  </Box>
-));
-
-ListComponent.displayName = "ListComponent"; // Fix: Add display name
+function ListComponent({
+  style,
+  children,
+  ref,
+}: PropsWithChildren<{ style?: CSSProperties; ref?: Ref<HTMLDivElement> }>) {
+  return (
+    <Box
+      style={style}
+      ref={ref}
+      display={"flex"}
+      flexDirection={"row"}
+      flexWrap={"wrap"}
+    >
+      {children}
+    </Box>
+  );
+}
 
 const gridComponents: GridComponents = {
   List: ListComponent,

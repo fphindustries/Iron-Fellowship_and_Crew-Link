@@ -8,7 +8,7 @@ import {
   ListItemText,
 } from "@mui/material";
 import { useCampaignType } from "hooks/useCampaignType";
-import { DragDropContext, Draggable, DropResult } from "react-beautiful-dnd";
+import { DragDropContext, Draggable, DropResult } from "@hello-pangea/dnd";
 import { NoteSource, ROLL_LOG_ID } from "stores/notes/notes.slice.type";
 import { useStore } from "stores/store";
 import { Note } from "types/Notes.type";

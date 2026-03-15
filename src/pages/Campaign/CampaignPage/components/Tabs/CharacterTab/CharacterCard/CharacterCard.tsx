@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Accordion,
   AccordionDetails,
@@ -46,7 +47,7 @@ export function CharacterCard(props: CharacterCardProps) {
     [GAME_SYSTEMS.STARFORGED]: "Legacy Tracks",
   });
   const TrackComponent = useGameSystemValue<
-    (props: { characterId: string }) => JSX.Element
+    (props: { characterId: string }) => React.JSX.Element
   >({
     [GAME_SYSTEMS.IRONSWORN]: IronswornTracks,
     [GAME_SYSTEMS.STARFORGED]: LegacyTracks,
