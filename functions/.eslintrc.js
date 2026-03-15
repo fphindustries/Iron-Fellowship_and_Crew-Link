@@ -25,4 +25,17 @@ module.exports = {
     "import/no-unresolved": 0,
     indent: ["error", 2],
   },
+  overrides: [
+    {
+      files: ["**/*.test.ts"],
+      rules: {
+        // `require()` is needed in test files to control module load order
+        // so firebase-admin stubs are in place before index.ts is required.
+        "@typescript-eslint/no-var-requires": "off",
+        "@typescript-eslint/no-require-imports": "off",
+        // Test helpers use `any` to avoid recreating large SDK types.
+        "@typescript-eslint/no-explicit-any": "off",
+      },
+    },
+  ],
 };
