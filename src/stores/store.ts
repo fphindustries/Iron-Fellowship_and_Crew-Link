@@ -14,6 +14,7 @@ import { createAccessibilitySettingsSlice } from "./accessibilitySettings/access
 import { createAppStateSlice } from "./appState/appState.slice";
 import { createHomebrewSlice } from "./homebrew/homebrew.slice";
 import { createRulesSlice } from "./rules/rules.slice";
+import { createAiSlice } from "./ai/ai.slice";
 
 export const useStore = createWithEqualityFn<IStore>()(
   immer((...params) => ({
@@ -29,6 +30,7 @@ export const useStore = createWithEqualityFn<IStore>()(
     accessibilitySettings: createAccessibilitySettingsSlice(...params),
     homebrew: createHomebrewSlice(...params),
     rules: createRulesSlice(...params),
+    ai: createAiSlice(...params),
   })),
   shallow
 );

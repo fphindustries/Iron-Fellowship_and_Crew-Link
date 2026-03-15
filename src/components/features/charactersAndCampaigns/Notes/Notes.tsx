@@ -14,6 +14,7 @@ import { useCallback } from "react";
 import { useStore } from "stores/store";
 import { useCampaignType } from "hooks/useCampaignType";
 import { CampaignType } from "api-calls/campaign/_campaign.type";
+import { AiTriggerButton } from "components/shared/AiTriggerButton";
 
 export interface NotesProps {
   hideSidebar?: boolean;
@@ -141,7 +142,22 @@ export function Notes(props: NotesProps) {
                 </Typography>
               </Breadcrumbs>
             )}
-          {selectedNote === ROLL_LOG_ID && <GameLog />}
+          {selectedNote === ROLL_LOG_ID && (
+            <>
+              <Box
+                display="flex"
+                justifyContent="flex-end"
+                px={1}
+                pt={0.5}
+              >
+                <AiTriggerButton
+                  mode="sessionRecap"
+                  tooltip="Generate session recap with AI Copilot"
+                />
+              </Box>
+              <GameLog />
+            </>
+          )}
           {selectedNote &&
             selectedNote !== ROLL_LOG_ID &&
             selectedNote &&
@@ -155,24 +171,30 @@ export function Notes(props: NotesProps) {
                 onSave={saveCallback}
                 onDelete={handleDelete}
                 extraEditorActions={
-                  selectedNote.source === NoteSource.Campaign &&
-                  campaignType === CampaignType.Guided &&
-                  !showGuidedPlayerView ? (
-                    <FormControlLabel
-                      label={"Shared"}
-                      sx={{ px: 1 }}
-                      control={
-                        <Checkbox
-                          checked={selectedNoteItem?.shared ?? false}
-                          onChange={(_, checked) =>
-                            updateNoteShared(selectedNote, checked).catch(
-                              () => {}
-                            )
-                          }
-                        />
-                      }
+                  <>
+                    <AiTriggerButton
+                      mode="sessionRecap"
+                      tooltip="Generate session recap with AI Copilot"
                     />
-                  ) : undefined
+                    {selectedNote.source === NoteSource.Campaign &&
+                    campaignType === CampaignType.Guided &&
+                    !showGuidedPlayerView ? (
+                      <FormControlLabel
+                        label={"Shared"}
+                        sx={{ px: 1 }}
+                        control={
+                          <Checkbox
+                            checked={selectedNoteItem?.shared ?? false}
+                            onChange={(_, checked) =>
+                              updateNoteShared(selectedNote, checked).catch(
+                                () => {}
+                              )
+                            }
+                          />
+                        }
+                      />
+                    ) : null}
+                  </>
                 }
               />
             )}

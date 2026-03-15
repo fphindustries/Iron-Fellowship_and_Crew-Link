@@ -4,7 +4,7 @@
     "iron-fellowship-dev": "iron-fellowship-dev",
     "crew-link-prod": "starforged-crew-link",
     "crew-link-dev": "crew-link-dev",
-    "default": "iron-fellowship-dev"
+    "default": "irownsworn-starforge"
   },
   "targets": {},
   "etags": {}

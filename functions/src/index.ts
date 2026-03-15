@@ -14,6 +14,8 @@ import * as logger from "firebase-functions/logger";
 
 admin.initializeApp();
 
+export { callAiCopilot } from "./ai/aiCopilot";
+
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
 

@@ -11,6 +11,7 @@ import { AccessibilitySettingsSlice } from "./accessibilitySettings/accessibilit
 import { AppStateSlice } from "./appState/appState.slice.type";
 import { HomebrewSlice } from "./homebrew/homebrew.slice.type";
 import { RulesSlice } from "./rules/rules.slice.type";
+import { AiSlice } from "./ai/ai.slice.type";
 
 export type IStore = {
   appState: AppStateSlice;
@@ -25,6 +26,7 @@ export type IStore = {
   accessibilitySettings: AccessibilitySettingsSlice;
   homebrew: HomebrewSlice;
   rules: RulesSlice;
+  ai: AiSlice;
 };
 
 export type CreateSliceType<T> = StateCreator<

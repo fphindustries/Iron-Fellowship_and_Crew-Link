@@ -32,6 +32,20 @@ service cloud.firestore {
       match /game-log/{document=**} {
       	allow read: if true;
       }
+
+      // AI copilot event log.
+      // Documents are created server-side only by the callAiCopilot Cloud Function
+      // (Admin SDK bypasses these rules). Clients may read events and update the
+      // status/response fields only (accept / reject / edit a suggestion).
+      // Note: the /{document=**} catch-all above also grants authenticated access;
+      // this rule adds field-level update restriction and explicit intent documentation.
+      match /ai-events/{eventId} {
+        allow read: if request.auth.uid != null;
+        allow update: if request.auth.uid != null
+          && request.resource.data.diff(resource.data)
+               .affectedKeys().hasOnly(["status", "response"]);
+        allow create, delete: if false;
+      }
     }
     match /worlds/{worldId} {
     	allow read: if true;
@@ -198,6 +212,12 @@ service cloud.firestore {
       }
       match /settings/{document=**} {
       	allow read, write, delete: if userId == request.auth.uid;
+      }
+      // AI rate-limit counter — written server-side by Admin SDK; clients may
+      // read to display remaining quota but must not write.
+      match /ai-rate-limit/{document=**} {
+        allow read: if userId == request.auth.uid;
+        allow write: if false;
       }
     }
     match /{document=**} {

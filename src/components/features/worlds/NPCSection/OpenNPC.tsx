@@ -33,6 +33,7 @@ import { IconColors } from "types/Icon.type";
 import { PageWithImage } from "../common/PageWithImage";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
 import { ignoreApiError } from "api-calls/createApiFunction";
+import { AiTriggerButton } from "components/shared/AiTriggerButton";
 
 const defaultNPCSpeciesOptions: {
   enum: DefaultNPCSpecies;
@@ -254,6 +255,15 @@ export function OpenNPC(props: OpenNPCProps) {
       icon={icon}
       actions={
         <>
+          <AiTriggerButton
+            mode="actionElaborator"
+            prefill={
+              npc.gmProperties?.role
+                ? `${npc.name} (${npc.gmProperties.role})`
+                : npc.name
+            }
+            tooltip="Elaborate action with AI Copilot"
+          />
           {showGMFields && (
             <Tooltip title={"Delete"}>
               <IconButton onClick={() => handleNPCDelete()}>

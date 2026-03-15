@@ -17,6 +17,8 @@ import { NPCSection } from "components/features/worlds/NPCSection";
 import { LoreSection } from "components/features/worlds/Lore";
 import { LocationsSection } from "components/features/worlds/Locations";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
+import { useAiCopilot } from "hooks/featureFlags/useAiCopilot";
+import { AiCopilotPanel } from "components/features/aiCopilot/AiCopilotPanel";
 
 enum CampaignTabs {
   Characters = "characters",
@@ -27,6 +29,7 @@ enum CampaignTabs {
   Sectors = "sectors",
   NPCs = "ncps",
   Lore = "lore",
+  AiCopilot = "ai-copilot",
 }
 
 export interface CampaignContentProps {
@@ -53,6 +56,7 @@ export function CampaignContent(props: CampaignContentProps) {
   const hasWorld = useStore(
     (store) => !!store.campaigns.currentCampaign.currentCampaign?.worldId
   );
+  const showAiCopilot = useAiCopilot();
 
   return (
     <Card
@@ -88,6 +92,9 @@ export function CampaignContent(props: CampaignContentProps) {
         )}
         <StyledTab label="NPCs" value={CampaignTabs.NPCs} />
         <StyledTab label="Lore" value={CampaignTabs.Lore} />
+        {showAiCopilot && (
+          <StyledTab label="AI" value={CampaignTabs.AiCopilot} />
+        )}
       </StyledTabs>
       <ContainedTabPanel isVisible={selectedTab === CampaignTabs.Characters}>
         <CharacterTab openInviteDialog={openInviteDialog} />
@@ -134,6 +141,11 @@ export function CampaignContent(props: CampaignContentProps) {
       >
         <LoreSection showHiddenTag={showGuideTips} />
       </ContainedTabPanel>
+      {showAiCopilot && (
+        <ContainedTabPanel isVisible={selectedTab === CampaignTabs.AiCopilot}>
+          <AiCopilotPanel />
+        </ContainedTabPanel>
+      )}
     </Card>
   );
 }

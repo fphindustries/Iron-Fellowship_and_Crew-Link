@@ -1,6 +1,10 @@
 import { FirebaseOptions, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
 import { getSystem } from "hooks/useGameSystem";
@@ -34,7 +38,11 @@ export const firebaseApp = initializeApp(firebaseConfigs[gameSystem]);
 
 export const firebaseAuth = getAuth(firebaseApp);
 
-export const firestore = getFirestore(firebaseApp);
+export const firestore = initializeFirestore(firebaseApp, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
+});
 
 export const storage = getStorage(firebaseApp);
 
