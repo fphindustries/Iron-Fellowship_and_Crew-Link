@@ -155,6 +155,14 @@ export interface PathRecommendationRequest {
   description: string;
 }
 
+export interface BackstoryRequest {
+  prompt: string;
+}
+
+export interface BackstoryOutput {
+  backstory: string;
+}
+
 // --- Firestore event document ---
 
 export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";

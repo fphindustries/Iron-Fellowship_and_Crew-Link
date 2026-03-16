@@ -437,12 +437,12 @@ function AiPanel({
               const asset1 = Object.values(assetMap).find(
                 (a) =>
                   a.name.toUpperCase() === rec.asset1.toUpperCase() &&
-                  a._id.includes("/paths/")
+                  a._id.includes("/path/")
               );
               const asset2 = Object.values(assetMap).find(
                 (a) =>
                   a.name.toUpperCase() === rec.asset2.toUpperCase() &&
-                  a._id.includes("/paths/")
+                  a._id.includes("/path/")
               );
               const isSelected =
                 selectedBackground?.name === rec.backgroundName;

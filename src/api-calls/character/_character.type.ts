@@ -58,4 +58,5 @@ export interface CharacterDocument {
   };
 
   theme?: Themes;
+  backstory?: string;
 }

@@ -140,6 +140,14 @@ export interface PathRecommendationRequest {
   description: string;
 }
 
+export interface BackstoryRequest {
+  prompt: string;
+}
+
+export interface BackstoryOutput {
+  backstory: string;
+}
+
 export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";
 
 export interface AiEventDocument {

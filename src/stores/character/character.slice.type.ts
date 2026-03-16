@@ -30,7 +30,8 @@ export interface CharacterSliceActions {
         y: number;
       };
     },
-    expansionIds?: string[]
+    expansionIds?: string[],
+    backstory?: string
   ) => Promise<string>;
   deleteCharacter: (characterId: string) => Promise<void>;
   loadCharacterPortrait: (

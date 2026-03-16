@@ -36,6 +36,7 @@ export interface Form {
   enabledExpansionMap: Record<string, boolean>;
   stats: Record<string, number>;
   assets: AssetDocument[];
+  backstory?: string;
 }
 
 export function CharacterCreatePageContent() {
@@ -59,7 +60,7 @@ export function CharacterCreatePageContent() {
   const stats = useStore((store) => store.rules.stats);
   const createCharacter = useStore((store) => store.characters.createCharacter);
 
-  const { control, watch, handleSubmit } = useForm<Form>({
+  const { control, watch, handleSubmit, setValue } = useForm<Form>({
     disabled: loading,
   });
 
@@ -81,7 +82,8 @@ export function CharacterCreatePageContent() {
       parsedStats,
       values.assets,
       values.portrait,
-      expansionIds
+      expansionIds,
+      values.backstory
     )
       .then((characterId) => {
         if (campaignId) {
@@ -133,7 +135,7 @@ export function CharacterCreatePageContent() {
           )}
           {creationMode === "guided" && showGuidedToggle ? (
             <>
-              <GuidedCharacterCreation control={control} />
+              <GuidedCharacterCreation control={control} setValue={setValue} />
               <Stats control={control} />
               <Assets control={control} />
             </>

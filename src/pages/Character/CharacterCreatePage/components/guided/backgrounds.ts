@@ -44,7 +44,7 @@ export function resolvePathAssets(
     const asset = Object.values(assetMap).find(
       (a) =>
         a.name.toUpperCase() === name.toUpperCase() &&
-        a._id.includes("/paths/")
+        a._id.includes("/path/")
     );
     if (!asset) return [];
     const enabledAbilities: Record<number, boolean> = {};

@@ -114,7 +114,7 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
       }
     },
 
-    createCharacter: (name, stats, assets, portrait, expansionIds) => {
+    createCharacter: (name, stats, assets, portrait, expansionIds, backstory) => {
       const uid = getState().auth.user?.uid;
       if (!uid) {
         return new Promise((res, reject) =>
@@ -128,6 +128,7 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
           stats,
           assets,
           expansionIds,
+          backstory,
         }).then((characterId) => {
           if (
             portrait &&

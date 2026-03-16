@@ -16,6 +16,7 @@ admin.initializeApp();
 
 export { callAiCopilot } from "./ai/aiCopilot";
 export { recommendCharacterPaths } from "./ai/recommendCharacterPaths";
+export { generateCharacterBackstory } from "./ai/generateCharacterBackstory";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript

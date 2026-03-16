@@ -45,7 +45,9 @@
       "Bash(grep -rl httpsCallable c:/Repos/Iron-Fellowship_and_Crew-Link/src --include=*.ts)",
       "Bash(npm --prefix functions run lint)",
       "Bash(npm --prefix functions run build)",
-      "Bash(npx firebase:*)"
+      "Bash(npx firebase:*)",
+      "Bash(grep -r starforged/assets --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"starforged.*path\\\\|/paths/\" --include=*.ts --include=*.tsx /c/Repos/Iron-Fellowship_and_Crew-Link/src)"
     ]
   }
 }
