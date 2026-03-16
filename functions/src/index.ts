@@ -20,6 +20,8 @@ export { generateCharacterBackstory } from "./ai/generateCharacterBackstory";
 export { generateCharacterVow } from "./ai/generateCharacterVow";
 export { recommendFinalAsset } from "./ai/recommendFinalAsset";
 export { recommendStatAllocation } from "./ai/recommendStatAllocation";
+export { randomizeCharacterAppearance } from "./ai/randomizeCharacterAppearance";
+export { generateCharacterPortraits } from "./ai/generateCharacterPortraits";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript

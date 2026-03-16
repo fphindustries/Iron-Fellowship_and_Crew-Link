@@ -213,6 +213,35 @@ export interface StatAllocationOutput {
   reasoning: string;
 }
 
+// --- Randomize character appearance (character creation) ---
+
+export interface RandomizeAppearanceRequest {
+  paths: string[];
+  backstory: string;
+  backgroundVow: string;
+}
+
+export interface RandomizeAppearanceOutput {
+  look: string;
+  act: string;
+  wear: string;
+}
+
+// --- Portrait generation (character creation) ---
+
+export interface PortraitGenerationRequest {
+  look: string;
+  act: string;
+  wear: string;
+  paths: string[];
+  backstory: string;
+  backgroundVow: string;
+}
+
+export interface PortraitGenerationOutput {
+  images: string[];
+}
+
 // --- Firestore event document ---
 
 export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";

@@ -76,6 +76,7 @@ export function CharacterGuidedCreatePageContent() {
     backstory: string;
     backgroundVow: string;
     stats: Record<string, number>;
+    portrait?: { image: File; scale: number; position: { x: number; y: number } };
   }>({
     assets: [],
     backstory: "",
@@ -116,13 +117,22 @@ export function CharacterGuidedCreatePageContent() {
     advance();
   };
 
+  const handleEnvisionComplete = (portrait?: {
+    image: File;
+    scale: number;
+    position: { x: number; y: number };
+  }) => {
+    setFormData((prev) => ({ ...prev, portrait }));
+    advance();
+  };
+
   const handleNameComplete = (name: string) => {
     setLoading(true);
     createCharacter(
       name,
       formData.stats,
       formData.assets,
-      undefined,
+      formData.portrait,
       undefined,
       formData.backstory || undefined,
       formData.backgroundVow || undefined
@@ -196,7 +206,12 @@ export function CharacterGuidedCreatePageContent() {
               />
             )}
             {activeStep === 5 && (
-              <EnvisionCharacterStep onComplete={advance} />
+              <EnvisionCharacterStep
+                onComplete={handleEnvisionComplete}
+                pathNames={completedPathNames}
+                backstory={completedBackstory}
+                backgroundVow={completedBackgroundVow}
+              />
             )}
             {activeStep === 6 && (
               <NameCharacterStep
