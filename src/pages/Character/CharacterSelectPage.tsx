@@ -10,7 +10,12 @@ import { Link } from "react-router-dom";
 import { CharacterList } from "../../components/features/characters/CharacterList";
 import { EmptyState } from "../../components/shared/EmptyState/EmptyState";
 import AddCharacterIcon from "@mui/icons-material/PersonAdd";
-import { CHARACTER_ROUTES, constructCharacterPath } from "./routes";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
+import {
+  CHARACTER_ROUTES,
+  constructCharacterPath,
+  constructCharacterGuidedCreatePath,
+} from "./routes";
 import { PageHeader } from "components/shared/Layout/PageHeader";
 import { PageContent } from "components/shared/Layout";
 import { Head } from "providers/HeadProvider/Head";
@@ -18,12 +23,18 @@ import { useStore } from "stores/store";
 import { useAppName } from "hooks/useAppName";
 import { FooterFab } from "components/shared/Layout/FooterFab";
 import { LinkComponent } from "components/shared/LinkComponent";
+import { useGameSystemValue } from "hooks/useGameSystemValue";
+import { GAME_SYSTEMS } from "types/GameSystems.type";
 
 export function Component() {
   const characters = useStore((store) => store.characters.characterMap);
   const isLoading = useStore((store) => store.characters.loading);
   const errorMessage = useStore((store) => store.characters.error);
   const appName = useAppName();
+  const showGuidedCreate = useGameSystemValue({
+    [GAME_SYSTEMS.IRONSWORN]: false,
+    [GAME_SYSTEMS.STARFORGED]: true,
+  });
 
   if (isLoading) {
     return <LinearProgress color={"primary"} />;
@@ -39,15 +50,28 @@ export function Component() {
         label={"Your Characters"}
         actions={
           <Hidden smDown>
-            <Button
-              component={Link}
-              to={constructCharacterPath(CHARACTER_ROUTES.CREATE)}
-              variant={"contained"}
-              color={"primary"}
-              endIcon={<AddCharacterIcon aria-hidden />}
-            >
-              Create a Character
-            </Button>
+            <Box display="flex" gap={1}>
+              {showGuidedCreate && (
+                <Button
+                  component={Link}
+                  to={constructCharacterGuidedCreatePath()}
+                  variant={"outlined"}
+                  color={"primary"}
+                  endIcon={<MenuBookIcon aria-hidden />}
+                >
+                  Guided Creation
+                </Button>
+              )}
+              <Button
+                component={Link}
+                to={constructCharacterPath(CHARACTER_ROUTES.CREATE)}
+                variant={"contained"}
+                color={"primary"}
+                endIcon={<AddCharacterIcon aria-hidden />}
+              >
+                Create a Character
+              </Button>
+            </Box>
           </Hidden>
         }
       />

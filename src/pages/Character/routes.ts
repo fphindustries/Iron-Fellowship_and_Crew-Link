@@ -2,6 +2,7 @@ import { BASE_ROUTES, basePaths } from "routes";
 
 export enum CHARACTER_ROUTES {
   CREATE,
+  GUIDED_CREATE,
   SHEET,
   SELECT,
   CARD,
@@ -9,6 +10,7 @@ export enum CHARACTER_ROUTES {
 
 export const characterPaths: { [key in CHARACTER_ROUTES]: string } = {
   [CHARACTER_ROUTES.CREATE]: "create",
+  [CHARACTER_ROUTES.GUIDED_CREATE]: "guided",
   [CHARACTER_ROUTES.SHEET]: ":characterId",
   [CHARACTER_ROUTES.CARD]: ":characterId/card",
   [CHARACTER_ROUTES.SELECT]: "",
@@ -24,6 +26,14 @@ export function constructCharacterPath(key: CHARACTER_ROUTES) {
 
 export function constructCharacterSheetPath(characterId: string) {
   return `${basePaths[BASE_ROUTES.CHARACTER]}/${characterId}`;
+}
+
+export function constructCharacterGuidedCreatePath() {
+  return `${basePaths[BASE_ROUTES.CHARACTER]}/${characterPaths[CHARACTER_ROUTES.GUIDED_CREATE]}`;
+}
+
+export function constructCharacterGuidedCreateInCampaignUrl(campaignId: string) {
+  return `${basePaths[BASE_ROUTES.CHARACTER]}/${characterPaths[CHARACTER_ROUTES.GUIDED_CREATE]}?campaignId=${campaignId}`;
 }
 
 export function constructCharacterCreateInCampaignUrl(campaignId: string) {

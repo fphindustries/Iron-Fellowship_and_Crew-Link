@@ -9,9 +9,8 @@ import { CharacterDetails } from "./components/CharacterDetails";
 import { ExpansionsAndHomebrew } from "./components/ExpansionsAndHomebrew";
 import { Stats } from "./components/Stats";
 import { Assets } from "./components/Assets";
-import { GuidedCharacterCreation } from "./components/guided/GuidedCharacterCreation";
 import { AssetDocument } from "api-calls/assets/_asset.type";
-import { Box, Button, ToggleButton, ToggleButtonGroup } from "@mui/material";
+import { Box, Button } from "@mui/material";
 import { useStore } from "stores/store";
 import { addCharacterToCampaign } from "api-calls/campaign/addCharacterToCampaign";
 import {
@@ -20,8 +19,6 @@ import {
 } from "pages/Campaign/routes";
 import { constructCharacterSheetPath } from "../routes";
 import { ignoreApiError } from "api-calls/createApiFunction";
-import { useGameSystemValue } from "hooks/useGameSystemValue";
-import { GAME_SYSTEMS } from "types/GameSystems.type";
 
 export interface Form {
   name: string;
@@ -49,19 +46,11 @@ export function CharacterCreatePageContent() {
   const appName = useAppName();
 
   const [loading, setLoading] = useState(false);
-  const [creationMode, setCreationMode] = useState<"standard" | "guided">(
-    "standard"
-  );
-
-  const showGuidedToggle = useGameSystemValue({
-    [GAME_SYSTEMS.IRONSWORN]: false,
-    [GAME_SYSTEMS.STARFORGED]: true,
-  });
 
   const stats = useStore((store) => store.rules.stats);
   const createCharacter = useStore((store) => store.characters.createCharacter);
 
-  const { control, watch, handleSubmit, setValue } = useForm<Form>({
+  const { control, watch, handleSubmit } = useForm<Form>({
     disabled: loading,
   });
 
@@ -83,15 +72,12 @@ export function CharacterCreatePageContent() {
       parsedStats,
       values.assets,
       values.portrait,
-      expansionIds,
-      values.backstory,
-      values.backgroundVow
+      expansionIds
     )
       .then((characterId) => {
         if (campaignId) {
           addCharacterToCampaign({ uid, campaignId, characterId }).finally(
             () => {
-              // add character to campaign
               navigate(
                 constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
               );
@@ -122,31 +108,8 @@ export function CharacterCreatePageContent() {
         <form onSubmit={handleSubmit(onSubmit)}>
           <CharacterDetails control={control} watch={watch} />
           {!campaignId && <ExpansionsAndHomebrew control={control} />}
-          {showGuidedToggle && (
-            <Box>
-              <ToggleButtonGroup
-                value={creationMode}
-                exclusive
-                onChange={(_, val) => val && setCreationMode(val)}
-                size="small"
-              >
-                <ToggleButton value="standard">Standard</ToggleButton>
-                <ToggleButton value="guided">Guided</ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-          )}
-          {creationMode === "guided" && showGuidedToggle ? (
-            <>
-              <GuidedCharacterCreation control={control} setValue={setValue} />
-              <Stats control={control} />
-              <Assets control={control} />
-            </>
-          ) : (
-            <>
-              <Stats control={control} />
-              <Assets control={control} />
-            </>
-          )}
+          <Stats control={control} />
+          <Assets control={control} />
           <Box display={"flex"} justifyContent={"flex-end"}>
             <Button
               variant={"contained"}

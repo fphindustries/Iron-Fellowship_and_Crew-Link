@@ -61,6 +61,10 @@ const router = createBrowserRouter(
               lazy={() => import("pages/Character/CharacterCreatePage")}
             />
             <Route
+              path={characterPaths[CHARACTER_ROUTES.GUIDED_CREATE]}
+              lazy={() => import("pages/Character/CharacterGuidedCreatePage")}
+            />
+            <Route
               path={characterPaths[CHARACTER_ROUTES.SHEET]}
               lazy={() => import("pages/Character/CharacterSheetPage")}
             />
