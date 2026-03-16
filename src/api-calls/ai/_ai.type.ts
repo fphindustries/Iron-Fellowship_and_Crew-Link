@@ -148,6 +148,16 @@ export interface BackstoryOutput {
   backstory: string;
 }
 
+export interface VowRequest {
+  paths: string[];
+  backstory: string;
+  prompt: string;
+}
+
+export interface VowOutput {
+  vow: string;
+}
+
 export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";
 
 export interface AiEventDocument {

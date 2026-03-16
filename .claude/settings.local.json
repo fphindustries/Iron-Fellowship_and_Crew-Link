@@ -47,7 +47,10 @@
       "Bash(npm --prefix functions run build)",
       "Bash(npx firebase:*)",
       "Bash(grep -r starforged/assets --include=*.ts --include=*.tsx)",
-      "Bash(grep -r \"starforged.*path\\\\|/paths/\" --include=*.ts --include=*.tsx /c/Repos/Iron-Fellowship_and_Crew-Link/src)"
+      "Bash(grep -r \"starforged.*path\\\\|/paths/\" --include=*.ts --include=*.tsx /c/Repos/Iron-Fellowship_and_Crew-Link/src)",
+      "Bash(grep -r \"action.*oracle\\\\|theme.*oracle\" c:ReposIron-Fellowship_and_Crew-Linksrcdata --include=*.ts)",
+      "Bash(grep -o \"\"_id\"\"[[:space:]]*:[[:space:]]*\"\"[^\"\"]*action[^\"\"]*\"\" /c/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@datasworn/starforged/json/starforged.json)",
+      "Bash(python3:*)"
     ]
   }
 }

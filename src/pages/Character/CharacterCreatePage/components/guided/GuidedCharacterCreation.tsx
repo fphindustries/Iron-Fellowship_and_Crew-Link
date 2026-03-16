@@ -12,9 +12,11 @@ import { Form } from "../../CharacterCreatePageContent";
 import { AssetDocument } from "api-calls/assets/_asset.type";
 import { ChoosePathsStep } from "./ChoosePathsStep";
 import { CreateBackstoryStep } from "./CreateBackstoryStep";
+import { CreateBackgroundVowStep } from "./CreateBackgroundVowStep";
+import { useStore } from "stores/store";
 import { useState } from "react";
 
-const STEPS = ["Choose Your Paths", "Create Your Backstory"];
+const STEPS = ["Choose Your Paths", "Create Your Backstory", "Write Your Background Vow"];
 
 interface GuidedCharacterCreationProps {
   control: Control<Form>;
@@ -26,6 +28,10 @@ export function GuidedCharacterCreation({
   setValue,
 }: GuidedCharacterCreationProps) {
   const [activeStep, setActiveStep] = useState(0);
+  const [completedPathNames, setCompletedPathNames] = useState<string[]>([]);
+  const [completedBackstory, setCompletedBackstory] = useState("");
+
+  const assetMap = useStore((s) => s.rules.assetMaps.assetMap);
 
   const { append } = useFieldArray({
     control,
@@ -35,12 +41,19 @@ export function GuidedCharacterCreation({
 
   const handlePathsComplete = (assets: AssetDocument[]) => {
     assets.forEach((asset) => append(asset));
+    setCompletedPathNames(assets.map((a) => assetMap[a.id]?.name ?? "").filter(Boolean));
     setActiveStep(1);
   };
 
   const handleBackstoryComplete = (backstory: string) => {
     setValue("backstory", backstory);
+    setCompletedBackstory(backstory);
     setActiveStep(2);
+  };
+
+  const handleVowComplete = (vow: string) => {
+    setValue("backgroundVow", vow);
+    setActiveStep(3);
   };
 
   return (
@@ -74,7 +87,21 @@ export function GuidedCharacterCreation({
         </>
       )}
 
-      {activeStep >= 2 && (
+      {activeStep === 2 && (
+        <>
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            Step 3 of {STEPS.length}: Envision and write a background vow that
+            drives your character.
+          </Typography>
+          <CreateBackgroundVowStep
+            onComplete={handleVowComplete}
+            pathNames={completedPathNames}
+            backstory={completedBackstory}
+          />
+        </>
+      )}
+
+      {activeStep >= 3 && (
         <Stack direction="row" alignItems="center" spacing={1} color="success.main">
           <CheckCircleOutlineIcon />
           <Typography variant="body2" fontWeight={500}>

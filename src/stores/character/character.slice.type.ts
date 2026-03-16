@@ -31,7 +31,8 @@ export interface CharacterSliceActions {
       };
     },
     expansionIds?: string[],
-    backstory?: string
+    backstory?: string,
+    backgroundVow?: string
   ) => Promise<string>;
   deleteCharacter: (characterId: string) => Promise<void>;
   loadCharacterPortrait: (

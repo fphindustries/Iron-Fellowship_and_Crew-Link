@@ -37,6 +37,7 @@ export interface Form {
   stats: Record<string, number>;
   assets: AssetDocument[];
   backstory?: string;
+  backgroundVow?: string;
 }
 
 export function CharacterCreatePageContent() {
@@ -83,7 +84,8 @@ export function CharacterCreatePageContent() {
       values.assets,
       values.portrait,
       expansionIds,
-      values.backstory
+      values.backstory,
+      values.backgroundVow
     )
       .then((characterId) => {
         if (campaignId) {

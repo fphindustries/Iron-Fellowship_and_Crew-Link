@@ -10,6 +10,8 @@ import { createCurrentCharacterSlice } from "./currentCharacter/currentCharacter
 import { updateCharacterPortrait } from "api-calls/character/updateCharacterPortrait";
 import { momentumTrack } from "data/defaultTracks";
 import { ignoreApiError } from "api-calls/createApiFunction";
+import { addProgressTrack } from "api-calls/tracks/addProgressTrack";
+import { Difficulty, TrackStatus, TrackTypes } from "types/Track.type";
 
 export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
   ...params
@@ -114,7 +116,7 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
       }
     },
 
-    createCharacter: (name, stats, assets, portrait, expansionIds, backstory) => {
+    createCharacter: (name, stats, assets, portrait, expansionIds, backstory, backgroundVow) => {
       const uid = getState().auth.user?.uid;
       if (!uid) {
         return new Promise((res, reject) =>
@@ -130,6 +132,24 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
           expansionIds,
           backstory,
         }).then((characterId) => {
+          const afterPortrait = () => {
+            if (backgroundVow) {
+              addProgressTrack({
+                characterId,
+                track: {
+                  label: backgroundVow,
+                  type: TrackTypes.Vow,
+                  difficulty: Difficulty.Epic,
+                  value: 0,
+                  status: TrackStatus.Active,
+                  createdDate: new Date(),
+                },
+              }).finally(() => resolve(characterId));
+            } else {
+              resolve(characterId);
+            }
+          };
+
           if (
             portrait &&
             portrait.image &&
@@ -142,14 +162,10 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
               scale: portrait.scale,
               position: portrait.position,
             })
-              .then(() => {
-                resolve(characterId);
-              })
-              .catch(() => {
-                resolve(characterId);
-              });
+              .then(afterPortrait)
+              .catch(afterPortrait);
           } else {
-            resolve(characterId);
+            afterPortrait();
           }
         });
       });
