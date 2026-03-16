@@ -158,6 +158,46 @@ export interface VowOutput {
   vow: string;
 }
 
+export interface AssetRecommendationRequest {
+  paths: string[];
+  backstory: string;
+  backgroundVow: string;
+}
+
+export interface AssetRecommendation {
+  assetName: string;
+  reasoning: string;
+}
+
+export interface AssetRecommendationOutput {
+  recommendations: AssetRecommendation[];
+}
+
+// --- Stat allocation (character creation) ---
+
+export interface StatAllocationEntry {
+  key: string;
+  label: string;
+  description: string;
+}
+
+export interface StatAllocationRequest {
+  paths: string[];
+  backstory: string;
+  backgroundVow: string;
+  stats: StatAllocationEntry[];
+}
+
+export interface StatAllocation {
+  statKey: string;
+  value: number;
+}
+
+export interface StatAllocationOutput {
+  allocations: StatAllocation[];
+  reasoning: string;
+}
+
 export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";
 
 export interface AiEventDocument {

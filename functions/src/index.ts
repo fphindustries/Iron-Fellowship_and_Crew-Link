@@ -18,6 +18,8 @@ export { callAiCopilot } from "./ai/aiCopilot";
 export { recommendCharacterPaths } from "./ai/recommendCharacterPaths";
 export { generateCharacterBackstory } from "./ai/generateCharacterBackstory";
 export { generateCharacterVow } from "./ai/generateCharacterVow";
+export { recommendFinalAsset } from "./ai/recommendFinalAsset";
+export { recommendStatAllocation } from "./ai/recommendStatAllocation";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript

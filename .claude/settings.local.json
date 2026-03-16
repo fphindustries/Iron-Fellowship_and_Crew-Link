@@ -50,7 +50,10 @@
       "Bash(grep -r \"starforged.*path\\\\|/paths/\" --include=*.ts --include=*.tsx /c/Repos/Iron-Fellowship_and_Crew-Link/src)",
       "Bash(grep -r \"action.*oracle\\\\|theme.*oracle\" c:ReposIron-Fellowship_and_Crew-Linksrcdata --include=*.ts)",
       "Bash(grep -o \"\"_id\"\"[[:space:]]*:[[:space:]]*\"\"[^\"\"]*action[^\"\"]*\"\" /c/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@datasworn/starforged/json/starforged.json)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(firebase deploy:*)",
+      "mcp__plugin_firebase_firebase__firestore_update_document",
+      "Bash(firebase firestore:delete \"users/YRk5oZgAt0hIBAie4k9x9rPIZKs1/ai-rate-limit/daily\" --project irownsworn-starforge --force)"
     ]
   }
 }

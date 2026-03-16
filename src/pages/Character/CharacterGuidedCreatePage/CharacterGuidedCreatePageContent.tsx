@@ -58,6 +58,7 @@ export function CharacterGuidedCreatePageContent() {
   // Context captured from earlier steps to pass forward
   const [completedPathNames, setCompletedPathNames] = useState<string[]>([]);
   const [completedBackstory, setCompletedBackstory] = useState("");
+  const [completedBackgroundVow, setCompletedBackgroundVow] = useState("");
 
   const assetMap = useStore((s) => s.rules.assetMaps.assetMap);
   const createCharacter = useStore((store) => store.characters.createCharacter);
@@ -100,7 +101,18 @@ export function CharacterGuidedCreatePageContent() {
   };
 
   const handleVowComplete = (backgroundVow: string) => {
+    setCompletedBackgroundVow(backgroundVow);
     setFormData((prev) => ({ ...prev, backgroundVow }));
+    advance();
+  };
+
+  const handleFinalAssetComplete = (asset: AssetDocument) => {
+    setFormData((prev) => ({ ...prev, assets: [...prev.assets, asset] }));
+    advance();
+  };
+
+  const handleStatsComplete = (stats: Record<string, number>) => {
+    setFormData((prev) => ({ ...prev, stats }));
     advance();
   };
 
@@ -168,10 +180,20 @@ export function CharacterGuidedCreatePageContent() {
               />
             )}
             {activeStep === 3 && (
-              <ChooseFinalAssetStep onComplete={advance} />
+              <ChooseFinalAssetStep
+                onComplete={handleFinalAssetComplete}
+                pathNames={completedPathNames}
+                backstory={completedBackstory}
+                backgroundVow={completedBackgroundVow}
+              />
             )}
             {activeStep === 4 && (
-              <SetStatsStep onComplete={advance} />
+              <SetStatsStep
+                onComplete={handleStatsComplete}
+                pathNames={completedPathNames}
+                backstory={completedBackstory}
+                backgroundVow={completedBackgroundVow}
+              />
             )}
             {activeStep === 5 && (
               <EnvisionCharacterStep onComplete={advance} />
