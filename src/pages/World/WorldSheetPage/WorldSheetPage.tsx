@@ -23,6 +23,8 @@ import { useWorldPermissions } from "components/features/worlds/useWorldPermissi
 import { LocationsSection } from "components/features/worlds/Locations";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
 import { ignoreApiError } from "api-calls/createApiFunction";
+import { WorldAiSettingsSection } from "components/features/worlds/WorldAiSettingsSection";
+import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 
 enum TABS {
   DETAILS = "details",
@@ -30,12 +32,14 @@ enum TABS {
   LOCATIONS = "locations",
   NPCS = "npcs",
   LORE = "lore",
+  AI_SETTINGS = "ai-settings",
 }
 
 export function WorldSheetPage() {
   useSyncStore();
 
   const { showGMFields } = useWorldPermissions();
+  const showAiSettings = useAiGuide() && showGMFields;
 
   const showNewLocations = useNewMaps();
   const shouldShowSectors =
@@ -167,6 +171,9 @@ export function WorldSheetPage() {
             )}
             <StyledTab value={TABS.NPCS} label={"NPCs"} />
             <StyledTab value={TABS.LORE} label={"Lore"} />
+            {showAiSettings && (
+              <StyledTab value={TABS.AI_SETTINGS} label={"AI Settings"} />
+            )}
           </StyledTabs>
         </BreakContainer>
         {selectedTab === TABS.DETAILS && <WorldSheet canEdit={canEdit} />}
@@ -215,6 +222,9 @@ export function WorldSheetPage() {
           >
             <LoreSection showHiddenTag />
           </BreakContainer>
+        )}
+        {selectedTab === TABS.AI_SETTINGS && showAiSettings && (
+          <WorldAiSettingsSection />
         )}
       </PageContent>
     </>

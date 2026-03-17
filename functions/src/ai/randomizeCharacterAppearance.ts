@@ -1,7 +1,8 @@
 import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import OpenAI from "openai";
 import { openaiApiKey } from "./openai.client";
+import { anthropicApiKey } from "./anthropic.client";
+import { callStructuredGeneration } from "./callProvider";
 import {
   RandomizeAppearanceRequest,
   RandomizeAppearanceOutput,
@@ -23,7 +24,7 @@ export const randomizeCharacterAppearance = onCall<
   RandomizeAppearanceRequest,
   Promise<RandomizeAppearanceOutput | null>
 >(
-  { secrets: [openaiApiKey] },
+  { secrets: [openaiApiKey, anthropicApiKey] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -34,8 +35,6 @@ export const randomizeCharacterAppearance = onCall<
     const { paths, backstory, backgroundVow } = request.data;
 
     logger.info("randomizeCharacterAppearance called", { uid });
-
-    const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
     const systemPrompt = [
       "You are a Starforged character creation assistant for a sci-fi narrative RPG.",
@@ -54,23 +53,14 @@ export const randomizeCharacterAppearance = onCall<
       .filter(Boolean)
       .join("\n") || "Generate appearance for a new Starforged character.";
 
-    const completion = await openai.responses.create({
-      model: "gpt-4o-mini",
-      instructions: systemPrompt,
-      input: userPrompt,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "appearance_output",
-          schema: APPEARANCE_SCHEMA,
-          strict: true,
-        },
-      },
+    const resultText = await callStructuredGeneration({
+      systemPrompt,
+      userPrompt,
+      schema: APPEARANCE_SCHEMA,
+      schemaName: "appearance_output",
     });
 
-    const output = JSON.parse(
-      completion.output_text
-    ) as RandomizeAppearanceOutput;
+    const output = JSON.parse(resultText) as RandomizeAppearanceOutput;
 
     logger.info("randomizeCharacterAppearance: completed", { uid });
 

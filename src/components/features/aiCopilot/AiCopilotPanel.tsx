@@ -126,7 +126,8 @@ export function AiGuidePanel() {
       noteText: mode === "sessionRecap" ? noteText : undefined,
     };
 
-    requestAi({ mode, campaignId, context });
+    const worldId = storeState.worlds.currentWorld.currentWorldId;
+    requestAi({ mode, campaignId, context, worldId });
   };
 
   const handleUpdateStatus = (

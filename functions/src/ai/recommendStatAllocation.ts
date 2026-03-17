@@ -1,7 +1,8 @@
 import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import OpenAI from "openai";
 import { openaiApiKey } from "./openai.client";
+import { anthropicApiKey } from "./anthropic.client";
+import { callStructuredGeneration } from "./callProvider";
 import {
   StatAllocationRequest,
   StatAllocationOutput,
@@ -33,7 +34,7 @@ export const recommendStatAllocation = onCall<
   StatAllocationRequest,
   Promise<StatAllocationOutput | null>
 >(
-  { secrets: [openaiApiKey] },
+  { secrets: [openaiApiKey, anthropicApiKey] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -44,8 +45,6 @@ export const recommendStatAllocation = onCall<
     const { paths, backstory, backgroundVow, stats } = request.data;
 
     logger.info("recommendStatAllocation called", { uid });
-
-    const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
     const statList = stats
       .map((s) => `- ${s.key} (${s.label}): ${s.description}`)
@@ -71,23 +70,14 @@ export const recommendStatAllocation = onCall<
       .filter(Boolean)
       .join("\n");
 
-    const completion = await openai.responses.create({
-      model: "gpt-4o-mini",
-      instructions: systemPrompt,
-      input: userPrompt || "Recommend stat allocations for a new Starforged character.",
-      text: {
-        format: {
-          type: "json_schema",
-          name: "stat_allocation_output",
-          schema: STAT_ALLOCATION_SCHEMA,
-          strict: true,
-        },
-      },
+    const resultText = await callStructuredGeneration({
+      systemPrompt,
+      userPrompt: userPrompt || "Recommend stat allocations for a new Starforged character.",
+      schema: STAT_ALLOCATION_SCHEMA,
+      schemaName: "stat_allocation_output",
     });
 
-    const output = JSON.parse(
-      completion.output_text
-    ) as StatAllocationOutput;
+    const output = JSON.parse(resultText) as StatAllocationOutput;
 
     logger.info("recommendStatAllocation: completed", {
       uid,

@@ -37,14 +37,14 @@ export const createAiSlice: CreateSliceType<AiSlice> = (set, getState) => ({
     });
   },
 
-  requestAi: async ({ mode, campaignId, context }) => {
+  requestAi: async ({ mode, campaignId, context, worldId }) => {
     set((store) => {
       store.ai.isRequesting = true;
       store.ai.activeRequestMode = mode;
     });
 
     try {
-      const response = await callAiGuide({ mode, campaignId, context });
+      const response = await callAiGuide({ mode, campaignId, context, worldId });
       return response;
     } finally {
       set((store) => {

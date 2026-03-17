@@ -1,7 +1,8 @@
 import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import OpenAI from "openai";
 import { openaiApiKey } from "./openai.client";
+import { anthropicApiKey } from "./anthropic.client";
+import { callTextGeneration } from "./callProvider";
 import { BackstoryRequest, BackstoryOutput } from "./_ai.type";
 
 
@@ -9,7 +10,7 @@ export const generateCharacterBackstory = onCall<
   BackstoryRequest,
   Promise<BackstoryOutput | null>
 >(
-  { secrets: [openaiApiKey] },
+  { secrets: [openaiApiKey, anthropicApiKey] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -25,8 +26,6 @@ export const generateCharacterBackstory = onCall<
 
     logger.info("generateCharacterBackstory called", { uid });
 
-    const openai = new OpenAI({ apiKey: openaiApiKey.value() });
-
     const systemPrompt = [
       "You are a character creation assistant for Ironsworn: Starforged, a sci-fi narrative RPG.",
       "Write a concise character backstory (2–3 short paragraphs) based on the given prompt.",
@@ -36,14 +35,13 @@ export const generateCharacterBackstory = onCall<
       "Write in second person (\"you\").",
     ].join("\n");
 
-    const completion = await openai.responses.create({
-      model: "gpt-4o-mini",
-      instructions: systemPrompt,
-      input: prompt,
+    const backstory = await callTextGeneration({
+      systemPrompt,
+      userPrompt: prompt,
     });
 
     logger.info("generateCharacterBackstory: completed", { uid });
 
-    return { backstory: completion.output_text };
+    return { backstory };
   }
 );

@@ -2,17 +2,19 @@ import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import OpenAI from "openai";
 import { openaiApiKey } from "./openai.client";
+import { anthropicApiKey } from "./anthropic.client";
 import {
   PortraitGenerationRequest,
   PortraitGenerationOutput,
 } from "./_ai.type";
 
 
+// Portrait generation always uses OpenAI/DALL-E regardless of provider setting.
 export const generateCharacterPortraits = onCall<
   PortraitGenerationRequest,
   Promise<PortraitGenerationOutput | null>
 >(
-  { secrets: [openaiApiKey] },
+  { secrets: [openaiApiKey, anthropicApiKey] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {

@@ -53,7 +53,11 @@
       "Bash(python3:*)",
       "Bash(firebase deploy:*)",
       "mcp__plugin_firebase_firebase__firestore_update_document",
-      "Bash(firebase firestore:delete \"users/YRk5oZgAt0hIBAie4k9x9rPIZKs1/ai-rate-limit/daily\" --project irownsworn-starforge --force)"
+      "Bash(firebase firestore:delete \"users/YRk5oZgAt0hIBAie4k9x9rPIZKs1/ai-rate-limit/daily\" --project irownsworn-starforge --force)",
+      "Bash(xargs wc:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(ls /c/repos/Iron-Fellowship_and_Crew-Link/node_modules/.bin/tsc*)",
+      "Bash(node_modules/.bin/tsc --noEmit)"
     ]
   }
 }

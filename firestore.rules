@@ -57,7 +57,12 @@ service cloud.firestore {
       	let world = get(/databases/$(database)/documents/worlds/$(worldId)).data;
         return request.auth.uid in world.ownerIds || request.auth.uid in world.campaignGuides;
       }
-      
+
+      match /settings/{settingId} {
+        allow read: if request.auth.uid != null;
+        allow write: if checkIsOwner();
+      }
+
       match /locations/{locationId} {
      		allow read, create, update: if true;
         allow delete: if checkIsOwner();

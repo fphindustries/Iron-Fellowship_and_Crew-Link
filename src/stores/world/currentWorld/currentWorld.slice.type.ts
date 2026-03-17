@@ -1,8 +1,10 @@
 import { Truth, World } from "api-calls/world/_world.type";
+import { WorldAiSettings } from "api-calls/world/settings/_worldSettings.type";
 import { LocationsSlice } from "./locations/locations.slice.type";
 import { NPCsSlice } from "./npcs/npcs.slice.type";
 import { LoreSlice } from "./lore/lore.slice.type";
 import { SectorSlice } from "./sector/sector.slice.type";
+import { Unsubscribe } from "firebase/firestore";
 
 export interface CurrentWorldSliceData {
   currentWorldId?: string;
@@ -12,6 +14,9 @@ export interface CurrentWorldSliceData {
   currentWorldLocations: LocationsSlice;
   currentWorldNPCs: NPCsSlice;
   currentWorldLore: LoreSlice;
+
+  worldAiSettings?: WorldAiSettings;
+  worldAiSettingsLoading: boolean;
 }
 
 export interface CurrentWorldSliceActions {
@@ -23,6 +28,9 @@ export interface CurrentWorldSliceActions {
     isBeaconRequest?: boolean
   ) => Promise<void>;
   updateCurrentWorldTruth: (truthKey: string, truth: Truth) => Promise<void>;
+
+  subscribeToWorldAiSettings: (worldId: string) => Unsubscribe;
+  updateWorldAiSettings: (settings: Partial<WorldAiSettings>) => Promise<void>;
 
   resetStore: () => void;
 }

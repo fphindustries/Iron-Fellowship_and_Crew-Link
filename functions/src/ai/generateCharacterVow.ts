@@ -1,7 +1,8 @@
 import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import OpenAI from "openai";
 import { openaiApiKey } from "./openai.client";
+import { anthropicApiKey } from "./anthropic.client";
+import { callTextGeneration } from "./callProvider";
 import { VowRequest, VowOutput } from "./_ai.type";
 
 
@@ -9,7 +10,7 @@ export const generateCharacterVow = onCall<
   VowRequest,
   Promise<VowOutput | null>
 >(
-  { secrets: [openaiApiKey] },
+  { secrets: [openaiApiKey, anthropicApiKey] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -20,8 +21,6 @@ export const generateCharacterVow = onCall<
     const { paths, backstory, prompt } = request.data;
 
     logger.info("generateCharacterVow called", { uid });
-
-    const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
     const systemPrompt = [
       "You are a character creation assistant for Ironsworn: Starforged, a sci-fi narrative RPG.",
@@ -46,14 +45,13 @@ export const generateCharacterVow = onCall<
       .filter(Boolean)
       .join("\n");
 
-    const completion = await openai.responses.create({
-      model: "gpt-4o-mini",
-      instructions: systemPrompt,
-      input: userInput || "Generate a fitting background vow.",
+    const vow = await callTextGeneration({
+      systemPrompt,
+      userPrompt: userInput || "Generate a fitting background vow.",
     });
 
     logger.info("generateCharacterVow: completed", { uid });
 
-    return { vow: completion.output_text.trim() };
+    return { vow: vow.trim() };
   }
 );

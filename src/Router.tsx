@@ -28,6 +28,7 @@ import { useListenToHomebrew } from "stores/homebrew/useListenToHomebrew";
 import { HOMEBREW_ROUTES, homebrewPaths } from "pages/Homebrew/routes";
 import { useSyncCampaignWorldPermissions } from "stores/campaign/useSyncCampaignWorldPermissions";
 import { useListenToAiEvents } from "stores/ai/useListenToAiEvents";
+import { useListenToWorldAiSettings } from "stores/world/currentWorld/useListenToWorldAiSettings";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -151,6 +152,7 @@ export function Router() {
 
   useSyncCampaignWorldPermissions();
   useListenToAiEvents();
+  useListenToWorldAiSettings();
 
   return <RouterProvider router={router} />;
 }

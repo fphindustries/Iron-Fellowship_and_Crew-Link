@@ -1,7 +1,8 @@
 import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import OpenAI from "openai";
 import { openaiApiKey } from "./openai.client";
+import { anthropicApiKey } from "./anthropic.client";
+import { callStructuredGeneration } from "./callProvider";
 import {
   PathRecommendationRequest,
   PathRecommendationOutput,
@@ -57,7 +58,7 @@ export const recommendCharacterPaths = onCall<
   PathRecommendationRequest,
   Promise<PathRecommendationOutput | null>
 >(
-  { secrets: [openaiApiKey] },
+  { secrets: [openaiApiKey, anthropicApiKey] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -72,8 +73,6 @@ export const recommendCharacterPaths = onCall<
     }
 
     logger.info("recommendCharacterPaths called", { uid });
-
-    const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
     const systemPrompt = [
       "You are a character creation assistant for Ironsworn: Starforged, a sci-fi narrative RPG.",
@@ -91,23 +90,14 @@ export const recommendCharacterPaths = onCall<
       "Recommend 3 backgrounds that best fit this concept.",
     ].join("\n");
 
-    const completion = await openai.responses.create({
-      model: "gpt-4o-mini",
-      instructions: systemPrompt,
-      input: userPrompt,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "path_recommendation_output",
-          schema: PATH_RECOMMENDATION_SCHEMA,
-          strict: true,
-        },
-      },
+    const resultText = await callStructuredGeneration({
+      systemPrompt,
+      userPrompt,
+      schema: PATH_RECOMMENDATION_SCHEMA,
+      schemaName: "path_recommendation_output",
     });
 
-    const output = JSON.parse(
-      completion.output_text
-    ) as PathRecommendationOutput;
+    const output = JSON.parse(resultText) as PathRecommendationOutput;
 
     logger.info("recommendCharacterPaths: completed", {
       uid,

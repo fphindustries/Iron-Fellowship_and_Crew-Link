@@ -35,6 +35,7 @@ export interface AiSliceActions {
     mode: AiMode;
     campaignId: string;
     context: AiCampaignContext;
+    worldId?: string;
   }) => Promise<AiGuideResponse>;
 
   updateEventStatus: (params: {

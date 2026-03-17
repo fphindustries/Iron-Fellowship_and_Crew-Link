@@ -1,7 +1,8 @@
 import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import OpenAI from "openai";
 import { openaiApiKey } from "./openai.client";
+import { anthropicApiKey } from "./anthropic.client";
+import { callTextGeneration } from "./callProvider";
 import { CharacterSummaryRequest, CharacterSummaryOutput } from "./_ai.type";
 
 
@@ -9,7 +10,7 @@ export const generateCharacterSummary = onCall<
   CharacterSummaryRequest,
   Promise<CharacterSummaryOutput | null>
 >(
-  { secrets: [openaiApiKey] },
+  { secrets: [openaiApiKey, anthropicApiKey] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -21,8 +22,6 @@ export const generateCharacterSummary = onCall<
       request.data;
 
     logger.info("generateCharacterSummary called", { uid });
-
-    const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
     const systemPrompt = [
       "You are a narrative writer for Ironsworn: Starforged, a gritty sci-fi tabletop RPG.",
@@ -52,14 +51,13 @@ export const generateCharacterSummary = onCall<
       .filter(Boolean)
       .join("\n");
 
-    const completion = await openai.responses.create({
-      model: "gpt-4o-mini",
-      instructions: systemPrompt,
-      input: userPrompt,
+    const summary = await callTextGeneration({
+      systemPrompt,
+      userPrompt,
     });
 
     logger.info("generateCharacterSummary: completed", { uid });
 
-    return { summary: completion.output_text };
+    return { summary };
   }
 );

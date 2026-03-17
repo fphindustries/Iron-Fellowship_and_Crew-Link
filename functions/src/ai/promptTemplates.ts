@@ -20,17 +20,26 @@ const SYSTEM_TONE: Record<GameSystem, string> = {
 // Shared role block (injected into every system prompt)
 // ---------------------------------------------------------------------------
 
-function buildRoleBlock(context: AiCampaignContext): string {
+function buildRoleBlock(
+  context: AiCampaignContext,
+  worldTonePrompt?: string
+): string {
   const systemName = SYSTEM_NAME[context.gameSystem];
   const tone = SYSTEM_TONE[context.gameSystem];
-  return [
+  const lines = [
     `You are a narrative game copilot for ${systemName}, a solo/co-op narrative RPG.`,
     "Your role is to SUGGEST, not decide. The player is the author of their story.",
     "Never invent game mechanics or override established campaign facts.",
     "Keep all suggestions consistent with the provided world truths, vows, and canon facts.",
     `Match the tone: ${tone}.`,
     "Be vivid, specific, and evocative. Output only what is explicitly requested.",
-  ].join("\n");
+  ];
+
+  if (worldTonePrompt) {
+    lines.push(`Additional world tone: ${worldTonePrompt}`);
+  }
+
+  return lines.join("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -128,29 +137,42 @@ function buildContextBlock(context: AiCampaignContext): string {
 }
 
 // ---------------------------------------------------------------------------
+// Options for custom prompt injection
+// ---------------------------------------------------------------------------
+
+export interface BuildPromptOptions {
+  worldTonePrompt?: string;
+  modeCustomInstructions?: string;
+}
+
+// ---------------------------------------------------------------------------
 // Mode: Story Generator
 // ---------------------------------------------------------------------------
 
-function buildStoryGeneratorPrompts(context: AiCampaignContext): {
-  systemPrompt: string;
-  userPrompt: string;
-} {
-  const systemPrompt = [
-    buildRoleBlock(context),
-    "",
+function buildStoryGeneratorPrompts(
+  context: AiCampaignContext,
+  options?: BuildPromptOptions
+): { modeInstructions: string; userPrompt: string } {
+  const modeLines = [
     "Generate scene possibilities from the provided context.",
     "Do not resolve the scenes — give the player distinct choices to make.",
+  ];
+
+  if (options?.modeCustomInstructions) {
+    modeLines.push(options.modeCustomInstructions);
+  }
+
+  // Structural format requirements (hardcoded, not overridable)
+  modeLines.push(
     "Label each suggestion type clearly (A/B/C for scenes, Complication, Sensory, Twist).",
-    "For each item, prefix with one of: [established fact], [likely inference], [suggestion], or [dramatic twist].",
-  ].join("\n");
+    "For each item, prefix with one of: [established fact], [likely inference], [suggestion], or [dramatic twist]."
+  );
 
   const objectiveLine = context.freeformInput
     ? `Current objective: ${context.freeformInput}`
     : "Current objective: Explore what comes next.";
 
   const userPrompt = [
-    buildContextBlock(context),
-    "",
     objectiveLine,
     "",
     "Generate:",
@@ -160,25 +182,30 @@ function buildStoryGeneratorPrompts(context: AiCampaignContext): {
     "4. ONE unexpected twist or revelation that could deepen the story.",
   ].join("\n");
 
-  return { systemPrompt, userPrompt };
+  return { modeInstructions: modeLines.join("\n"), userPrompt };
 }
 
 // ---------------------------------------------------------------------------
 // Mode: Stuck Player
 // ---------------------------------------------------------------------------
 
-function buildStuckPlayerPrompts(context: AiCampaignContext): {
-  systemPrompt: string;
-  userPrompt: string;
-} {
-  const systemPrompt = [
-    buildRoleBlock(context),
-    "",
+function buildStuckPlayerPrompts(
+  context: AiCampaignContext,
+  options?: BuildPromptOptions
+): { modeInstructions: string; userPrompt: string } {
+  const modeLines = [
     "The player is stuck or uncertain what to do next.",
     "Provide concrete, actionable options that respect player agency.",
     "Each option must start with a strong action verb.",
-    "Draw on the active vows, recent events, and world context to make suggestions specific.",
-  ].join("\n");
+  ];
+
+  if (options?.modeCustomInstructions) {
+    modeLines.push(options.modeCustomInstructions);
+  }
+
+  modeLines.push(
+    "Draw on the active vows, recent events, and world context to make suggestions specific."
+  );
 
   const lastRoll = context.recentRolls[0];
   const lastRollLine = lastRoll
@@ -190,8 +217,6 @@ function buildStuckPlayerPrompts(context: AiCampaignContext): {
     : "Current situation: The player is unsure what to do next.";
 
   const userPrompt = [
-    buildContextBlock(context),
-    "",
     situationLine,
     lastRollLine,
     "",
@@ -205,25 +230,30 @@ function buildStuckPlayerPrompts(context: AiCampaignContext): {
     "   - \"Reveal something hidden\": ...",
   ].join("\n");
 
-  return { systemPrompt, userPrompt };
+  return { modeInstructions: modeLines.join("\n"), userPrompt };
 }
 
 // ---------------------------------------------------------------------------
 // Mode: Action Elaborator
 // ---------------------------------------------------------------------------
 
-function buildActionElaboratorPrompts(context: AiCampaignContext): {
-  systemPrompt: string;
-  userPrompt: string;
-} {
+function buildActionElaboratorPrompts(
+  context: AiCampaignContext,
+  options?: BuildPromptOptions
+): { modeInstructions: string; userPrompt: string } {
   const systemName = SYSTEM_NAME[context.gameSystem];
-  const systemPrompt = [
-    buildRoleBlock(context),
-    "",
+  const modeLines = [
     "Elaborate on a player-described character action.",
     `Suggest relevant ${systemName} move names where applicable.`,
-    "Do not resolve outcomes — only elaborate on the attempt and its narrative implications.",
-  ].join("\n");
+  ];
+
+  if (options?.modeCustomInstructions) {
+    modeLines.push(options.modeCustomInstructions);
+  }
+
+  modeLines.push(
+    "Do not resolve outcomes — only elaborate on the attempt and its narrative implications."
+  );
 
   const primaryChar = context.characters[0];
   const charLine = primaryChar
@@ -231,8 +261,6 @@ function buildActionElaboratorPrompts(context: AiCampaignContext): {
     : "Character: unknown";
 
   const userPrompt = [
-    buildContextBlock(context),
-    "",
     `Action to elaborate: "${context.freeformInput ?? "unspecified action"}"`,
     charLine,
     "",
@@ -243,24 +271,29 @@ function buildActionElaboratorPrompts(context: AiCampaignContext): {
     `4. TWO ${systemName} move names that most naturally fit this action.`,
   ].join("\n");
 
-  return { systemPrompt, userPrompt };
+  return { modeInstructions: modeLines.join("\n"), userPrompt };
 }
 
 // ---------------------------------------------------------------------------
 // Mode: Session Recap
 // ---------------------------------------------------------------------------
 
-function buildSessionRecapPrompts(context: AiCampaignContext): {
-  systemPrompt: string;
-  userPrompt: string;
-} {
-  const systemPrompt = [
-    buildRoleBlock(context),
-    "",
+function buildSessionRecapPrompts(
+  context: AiCampaignContext,
+  options?: BuildPromptOptions
+): { modeInstructions: string; userPrompt: string } {
+  const modeLines = [
     "Summarize a play session and extract canon facts for the campaign record.",
     "Distinguish established facts from inferences.",
-    "Use EXACTLY the section headers listed — they will be parsed programmatically.",
-  ].join("\n");
+  ];
+
+  if (options?.modeCustomInstructions) {
+    modeLines.push(options.modeCustomInstructions);
+  }
+
+  modeLines.push(
+    "Use EXACTLY the section headers listed — they will be parsed programmatically."
+  );
 
   const allRollsStr = context.recentRolls
     .map((r) => {
@@ -274,8 +307,6 @@ function buildSessionRecapPrompts(context: AiCampaignContext): {
     : "No session notes provided.";
 
   const userPrompt = [
-    buildContextBlock(context),
-    "",
     notesSection,
     "",
     `All rolls this session:\n${allRollsStr || "None recorded."}`,
@@ -298,25 +329,30 @@ function buildSessionRecapPrompts(context: AiCampaignContext): {
     "(a short evocative title for this session, max 8 words)",
   ].join("\n");
 
-  return { systemPrompt, userPrompt };
+  return { modeInstructions: modeLines.join("\n"), userPrompt };
 }
 
 // ---------------------------------------------------------------------------
 // Mode: Bookkeeper
 // ---------------------------------------------------------------------------
 
-function buildBookkeeperPrompts(context: AiCampaignContext): {
-  systemPrompt: string;
-  userPrompt: string;
-} {
-  const systemPrompt = [
-    buildRoleBlock(context),
-    "",
+function buildBookkeeperPrompts(
+  context: AiCampaignContext,
+  options?: BuildPromptOptions
+): { modeInstructions: string; userPrompt: string } {
+  const modeLines = [
     "Extract structured campaign updates from freeform session text.",
     "Only suggest changes clearly supported by the text — do not invent.",
+  ];
+
+  if (options?.modeCustomInstructions) {
+    modeLines.push(options.modeCustomInstructions);
+  }
+
+  modeLines.push(
     "For existing records, use the exact names from the known lists when possible.",
-    "Return a JSON object matching the bookkeeper_output schema exactly.",
-  ].join("\n");
+    "Return a JSON object matching the bookkeeper_output schema exactly."
+  );
 
   const knownVows = context.activeVows.map((v) => `"${v.label}"`).join(", ");
   const knownNPCs = (context.currentNPCs ?? [])
@@ -332,7 +368,7 @@ function buildBookkeeperPrompts(context: AiCampaignContext): {
     `Session text to extract from:\n"${context.freeformInput ?? ""}"`,
   ].join("\n");
 
-  return { systemPrompt, userPrompt };
+  return { modeInstructions: modeLines.join("\n"), userPrompt };
 }
 
 // ---------------------------------------------------------------------------
@@ -340,29 +376,58 @@ function buildBookkeeperPrompts(context: AiCampaignContext): {
 // ---------------------------------------------------------------------------
 
 export interface BuiltPrompt {
-  systemPrompt: string;
+  systemPromptStatic: string;
+  systemPromptDynamic: string;
   userPrompt: string;
   useStructuredOutput: boolean;
 }
 
 export function buildPrompt(
   mode: AiMode,
-  context: AiCampaignContext
+  context: AiCampaignContext,
+  options?: BuildPromptOptions
 ): BuiltPrompt {
+  let modeResult: { modeInstructions: string; userPrompt: string };
+  let useStructuredOutput = false;
+
   switch (mode) {
   case "storyGenerator":
-    return { ...buildStoryGeneratorPrompts(context), useStructuredOutput: false };
+    modeResult = buildStoryGeneratorPrompts(context, options);
+    break;
   case "stuckPlayer":
-    return { ...buildStuckPlayerPrompts(context), useStructuredOutput: false };
+    modeResult = buildStuckPlayerPrompts(context, options);
+    break;
   case "actionElaborator":
-    return { ...buildActionElaboratorPrompts(context), useStructuredOutput: false };
+    modeResult = buildActionElaboratorPrompts(context, options);
+    break;
   case "sessionRecap":
-    return { ...buildSessionRecapPrompts(context), useStructuredOutput: false };
+    modeResult = buildSessionRecapPrompts(context, options);
+    break;
   case "bookkeeper":
-    return { ...buildBookkeeperPrompts(context), useStructuredOutput: true };
+    modeResult = buildBookkeeperPrompts(context, options);
+    useStructuredOutput = true;
+    break;
   default: {
     const exhaustiveCheck: never = mode;
     throw new Error(`Unknown AI mode: ${exhaustiveCheck}`);
   }
   }
+
+  // Static: role block (with world tone) + mode instructions (with custom instructions)
+  // This content is stable across requests for the same world/mode and benefits from caching.
+  const systemPromptStatic = [
+    buildRoleBlock(context, options?.worldTonePrompt),
+    "",
+    modeResult.modeInstructions,
+  ].join("\n");
+
+  // Dynamic: context block (characters, vows, rolls, NPCs — changes every request)
+  const systemPromptDynamic = buildContextBlock(context);
+
+  return {
+    systemPromptStatic,
+    systemPromptDynamic,
+    userPrompt: modeResult.userPrompt,
+    useStructuredOutput,
+  };
 }

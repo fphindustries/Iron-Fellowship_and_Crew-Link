@@ -8,6 +8,8 @@ import { createNPCsSlice } from "./npcs/npcs.slice";
 import { createLoreSlice } from "./lore/lore.slice";
 import { createSectorSlice } from "./sector/sector.slice";
 import { updateWorldTruth } from "api-calls/world/updateWorldTruth";
+import { listenToWorldAiSettings } from "api-calls/world/settings/listenToWorldAiSettings";
+import { updateWorldAiSettings as updateWorldAiSettingsApi } from "api-calls/world/settings/updateWorldAiSettings";
 
 export const createCurrentWorldSlice: CreateSliceType<CurrentWorldSlice> = (
   ...params
@@ -60,6 +62,27 @@ export const createCurrentWorldSlice: CreateSliceType<CurrentWorldSlice> = (
       } else {
         return new Promise((res, reject) => reject("No world id defined."));
       }
+    },
+
+    subscribeToWorldAiSettings: (worldId) => {
+      set((store) => {
+        store.worlds.currentWorld.worldAiSettingsLoading = true;
+      });
+
+      return listenToWorldAiSettings(worldId, (settings) => {
+        set((store) => {
+          store.worlds.currentWorld.worldAiSettings = settings;
+          store.worlds.currentWorld.worldAiSettingsLoading = false;
+        });
+      });
+    },
+
+    updateWorldAiSettings: (settings) => {
+      const worldId = getState().worlds.currentWorld.currentWorldId;
+      if (!worldId) {
+        return Promise.reject("No world id defined.");
+      }
+      return updateWorldAiSettingsApi({ worldId, settings });
     },
 
     resetStore: () => {

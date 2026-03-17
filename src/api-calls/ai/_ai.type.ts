@@ -12,6 +12,25 @@ export type AiGameSystem = "ironsworn" | "starforged";
 
 export type AiCampaignType = "solo" | "co-op" | "guided";
 
+// --- Provider & world AI settings ---
+
+export type AiProviderName = "openai" | "anthropic";
+
+export type AnthropicModelId =
+  | "claude-sonnet-4-20250514"
+  | "claude-haiku-4-5-20251001";
+
+export interface WorldAiModeConfig {
+  anthropicModel?: AnthropicModelId;
+  customInstructions?: string;
+}
+
+export interface WorldAiSettings {
+  provider: AiProviderName;
+  worldTonePrompt?: string;
+  modeConfigs?: Partial<Record<AiMode, WorldAiModeConfig>>;
+}
+
 export interface AiRollResult {
   label: string;
   result: "hit" | "weakHit" | "miss";
@@ -65,6 +84,7 @@ export interface AiGuideRequest {
   mode: AiMode;
   context: AiCampaignContext;
   campaignId: string;
+  worldId?: string;
 }
 
 export interface BookkeeperVowUpdate {

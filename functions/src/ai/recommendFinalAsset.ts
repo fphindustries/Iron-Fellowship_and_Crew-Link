@@ -1,7 +1,8 @@
 import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import OpenAI from "openai";
 import { openaiApiKey } from "./openai.client";
+import { anthropicApiKey } from "./anthropic.client";
+import { callStructuredGeneration } from "./callProvider";
 import {
   AssetRecommendationRequest,
   AssetRecommendationOutput,
@@ -32,7 +33,7 @@ export const recommendFinalAsset = onCall<
   AssetRecommendationRequest,
   Promise<AssetRecommendationOutput | null>
 >(
-  { secrets: [openaiApiKey] },
+  { secrets: [openaiApiKey, anthropicApiKey] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -43,8 +44,6 @@ export const recommendFinalAsset = onCall<
     const { paths, backstory, backgroundVow, availableAssets } = request.data;
 
     logger.info("recommendFinalAsset called", { uid });
-
-    const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
     const systemPrompt = [
       "You are a character creation assistant for Ironsworn: Starforged, a sci-fi narrative RPG.",
@@ -68,23 +67,14 @@ export const recommendFinalAsset = onCall<
       .filter(Boolean)
       .join("\n");
 
-    const completion = await openai.responses.create({
-      model: "gpt-4o-mini",
-      instructions: systemPrompt,
-      input: userPrompt || "Recommend 3 assets for a new Starforged character.",
-      text: {
-        format: {
-          type: "json_schema",
-          name: "asset_recommendation_output",
-          schema: ASSET_RECOMMENDATION_SCHEMA,
-          strict: true,
-        },
-      },
+    const resultText = await callStructuredGeneration({
+      systemPrompt,
+      userPrompt: userPrompt || "Recommend 3 assets for a new Starforged character.",
+      schema: ASSET_RECOMMENDATION_SCHEMA,
+      schemaName: "asset_recommendation_output",
     });
 
-    const output = JSON.parse(
-      completion.output_text
-    ) as AssetRecommendationOutput;
+    const output = JSON.parse(resultText) as AssetRecommendationOutput;
 
     logger.info("recommendFinalAsset: completed", {
       uid,
