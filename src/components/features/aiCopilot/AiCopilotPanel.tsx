@@ -14,6 +14,7 @@ import {
   AiEventStatus,
   AiMode,
 } from "api-calls/ai/_ai.type";
+
 import { CampaignType } from "api-calls/campaign/_campaign.type";
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
@@ -80,7 +81,7 @@ function buildContext(
   };
 }
 
-export function AiCopilotPanel() {
+export function AiGuidePanel() {
   const [mode, setMode] = useState<AiMode>("storyGenerator");
   const [freeformInput, setFreeformInput] = useState("");
 
@@ -147,7 +148,7 @@ export function AiCopilotPanel() {
     return (
       <Box p={2}>
         <Alert severity="info">
-          Open a campaign to use the AI Copilot.
+          Open a campaign to use the AI Guide.
         </Alert>
       </Box>
     );

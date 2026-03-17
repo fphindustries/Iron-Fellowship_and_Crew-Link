@@ -2,7 +2,7 @@ import { CreateSliceType } from "stores/store.type";
 import { AiSlice, BookkeeperApplyPayload } from "./ai.slice.type";
 import { defaultAiSlice } from "./ai.slice.default";
 import { listenToAiEvents } from "api-calls/ai/listenToAiEvents";
-import { callAiCopilot } from "api-calls/ai/callAiCopilot";
+import { callAiGuide } from "api-calls/ai/callAiCopilot";
 import { updateAiEventStatus } from "api-calls/ai/updateAiEventStatus";
 import { TrackStatus, TrackTypes } from "types/Track.type";
 
@@ -44,7 +44,7 @@ export const createAiSlice: CreateSliceType<AiSlice> = (set, getState) => ({
     });
 
     try {
-      const response = await callAiCopilot({ mode, campaignId, context });
+      const response = await callAiGuide({ mode, campaignId, context });
       return response;
     } finally {
       set((store) => {

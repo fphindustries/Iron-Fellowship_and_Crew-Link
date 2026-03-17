@@ -14,7 +14,7 @@ import ListAltIcon from "@mui/icons-material/ListAlt";
 import CasinoIcon from "@mui/icons-material/Casino";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useState } from "react";
-import { useAiCopilot } from "hooks/featureFlags/useAiCopilot";
+import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { generateCharacterBackstory } from "api-calls/ai/generateCharacterBackstory";
 import {
   BACKSTORY_PROMPTS,
@@ -29,7 +29,7 @@ export interface CreateBackstoryStepProps {
 }
 
 export function CreateBackstoryStep({ onComplete }: CreateBackstoryStepProps) {
-  const showAi = useAiCopilot();
+  const showAi = useAiGuide();
 
   const [method, setMethod] = useState<Method>("write");
   const [backstory, setBackstory] = useState("");

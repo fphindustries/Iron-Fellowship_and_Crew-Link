@@ -2,7 +2,7 @@ import { IconButton, Tooltip } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { AiMode } from "api-calls/ai/_ai.type";
 import { useStore } from "stores/store";
-import { useAiCopilot } from "hooks/featureFlags/useAiCopilot";
+import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 
 interface AiTriggerButtonProps {
   mode: AiMode;
@@ -14,13 +14,13 @@ interface AiTriggerButtonProps {
 export function AiTriggerButton({
   mode,
   prefill,
-  tooltip = "Open AI Copilot",
+  tooltip = "Open AI Guide",
   size = "small",
 }: AiTriggerButtonProps) {
-  const showAiCopilot = useAiCopilot();
+  const showAiGuide = useAiGuide();
   const openWithMode = useStore((store) => store.ai.openWithMode);
 
-  if (!showAiCopilot) return null;
+  if (!showAiGuide) return null;
 
   return (
     <Tooltip title={tooltip}>

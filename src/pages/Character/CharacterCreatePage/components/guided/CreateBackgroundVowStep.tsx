@@ -14,7 +14,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CasinoIcon from "@mui/icons-material/Casino";
 import PsychologyIcon from "@mui/icons-material/Psychology";
 import { useState } from "react";
-import { useAiCopilot } from "hooks/featureFlags/useAiCopilot";
+import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { useStore } from "stores/store";
 import { generateCharacterVow } from "api-calls/ai/generateCharacterVow";
 import { Datasworn } from "@datasworn/core";
@@ -47,7 +47,7 @@ export function CreateBackgroundVowStep({
   pathNames,
   backstory,
 }: CreateBackgroundVowStepProps) {
-  const showAi = useAiCopilot();
+  const showAi = useAiGuide();
   const oracleRollableMap = useStore(
     (s) => s.rules.oracleMaps.oracleRollableMap
   );

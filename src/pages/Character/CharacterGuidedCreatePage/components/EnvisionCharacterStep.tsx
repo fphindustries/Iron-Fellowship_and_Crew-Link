@@ -15,7 +15,7 @@ import {
 import CasinoIcon from "@mui/icons-material/Casino";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useState } from "react";
-import { useAiCopilot } from "hooks/featureFlags/useAiCopilot";
+import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { randomizeCharacterAppearance } from "api-calls/ai/randomizeCharacterAppearance";
 import { generateCharacterPortraits } from "api-calls/ai/generateCharacterPortraits";
 
@@ -23,14 +23,20 @@ const PRONOUN_OPTIONS = ["he/him", "she/her", "they/them", "xe/xem"];
 const CUSTOM_PRONOUNS_VALUE = "custom";
 
 export interface EnvisionCharacterStepProps {
-  onComplete: (portrait?: {
-    image: File;
-    scale: number;
-    position: { x: number; y: number };
+  onComplete: (data: {
+    portrait?: { image: File; scale: number; position: { x: number; y: number } };
+    look: string;
+    act: string;
+    wear: string;
+    pronouns: string;
   }) => void;
   pathNames: string[];
   backstory: string;
   backgroundVow: string;
+  initialLook?: string;
+  initialAct?: string;
+  initialWear?: string;
+  initialPronouns?: string;
 }
 
 export function EnvisionCharacterStep({
@@ -38,15 +44,28 @@ export function EnvisionCharacterStep({
   pathNames,
   backstory,
   backgroundVow,
+  initialLook,
+  initialAct,
+  initialWear,
+  initialPronouns,
 }: EnvisionCharacterStepProps) {
-  const showAi = useAiCopilot();
+  const showAi = useAiGuide();
 
-  const [look, setLook] = useState("");
-  const [act, setAct] = useState("");
-  const [wear, setWear] = useState("");
-  const [pronouns, setPronouns] = useState("they/them");
-  const [customPronounsText, setCustomPronounsText] = useState("");
-  const [showCustom, setShowCustom] = useState(false);
+  const [look, setLook] = useState(initialLook ?? "");
+  const [act, setAct] = useState(initialAct ?? "");
+  const [wear, setWear] = useState(initialWear ?? "");
+
+  const resolvedInitialPronouns = initialPronouns ?? "they/them";
+  const isInitialCustom =
+    resolvedInitialPronouns !== "" &&
+    !PRONOUN_OPTIONS.includes(resolvedInitialPronouns);
+  const [pronouns, setPronouns] = useState(
+    isInitialCustom ? CUSTOM_PRONOUNS_VALUE : resolvedInitialPronouns
+  );
+  const [customPronounsText, setCustomPronounsText] = useState(
+    isInitialCustom ? resolvedInitialPronouns : ""
+  );
+  const [showCustom, setShowCustom] = useState(isInitialCustom);
 
   const [randomizeLoading, setRandomizeLoading] = useState(false);
   const [randomizeError, setRandomizeError] = useState<string | null>(null);
@@ -116,7 +135,13 @@ export function EnvisionCharacterStep({
     }
   };
 
+  const effectivePronouns = showCustom ? customPronounsText : pronouns;
+
   const handleContinue = () => {
+    let portrait:
+      | { image: File; scale: number; position: { x: number; y: number } }
+      | undefined;
+
     if (selectedImageIndex !== null && generatedImages[selectedImageIndex]) {
       const base64 = generatedImages[selectedImageIndex];
       const bytes = atob(base64);
@@ -126,10 +151,10 @@ export function EnvisionCharacterStep({
       }
       const blob = new Blob([arr], { type: "image/png" });
       const file = new File([blob], "ai-portrait.png", { type: "image/png" });
-      onComplete({ image: file, scale: 1, position: { x: 0.5, y: 0.5 } });
-    } else {
-      onComplete(undefined);
+      portrait = { image: file, scale: 1, position: { x: 0.5, y: 0.5 } };
     }
+
+    onComplete({ portrait, look, act, wear, pronouns: effectivePronouns });
   };
 
   return (

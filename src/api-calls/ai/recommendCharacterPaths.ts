@@ -5,12 +5,14 @@ import {
   PathRecommendationRequest,
   PathRecommendationOutput,
 } from "./_ai.type";
+import { recordAiCall } from "stores/aiDebug";
 
 export const recommendCharacterPaths = createApiFunction<
   PathRecommendationRequest,
   PathRecommendationOutput
 >(
   async (params) => {
+    recordAiCall("recommendCharacterPaths", params);
     const fn = httpsCallable<
       PathRecommendationRequest,
       PathRecommendationOutput

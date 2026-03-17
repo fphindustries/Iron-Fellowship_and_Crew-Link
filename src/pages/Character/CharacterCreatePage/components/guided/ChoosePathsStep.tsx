@@ -25,7 +25,7 @@ import { useState } from "react";
 import { useStore } from "stores/store";
 import { AssetCard } from "components/features/assets/AssetCard";
 import { AssetCardDialog } from "components/features/assets/AssetCardDialog";
-import { useAiCopilot } from "hooks/featureFlags/useAiCopilot";
+import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import {
   BACKGROUNDS,
   Background,
@@ -40,7 +40,7 @@ export interface ChoosePathsStepProps {
 }
 
 export function ChoosePathsStep({ onComplete }: ChoosePathsStepProps) {
-  const showAi = useAiCopilot();
+  const showAi = useAiGuide();
   const assetMap = useStore((store) => store.rules.assetMaps.assetMap);
 
   const [method, setMethod] = useState<Method>("table");

@@ -262,7 +262,7 @@ export function OpenNPC(props: OpenNPCProps) {
                 ? `${npc.name} (${npc.gmProperties.role})`
                 : npc.name
             }
-            tooltip="Elaborate action with AI Copilot"
+            tooltip="Elaborate action with AI Guide"
           />
           {showGMFields && (
             <Tooltip title={"Delete"}>

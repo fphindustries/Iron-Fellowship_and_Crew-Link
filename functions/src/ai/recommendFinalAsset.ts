@@ -1,6 +1,5 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import { getFirestore } from "firebase-admin/firestore";
 import OpenAI from "openai";
 import { openaiApiKey } from "./openai.client";
 import {
@@ -8,29 +7,6 @@ import {
   AssetRecommendationOutput,
 } from "./_ai.type";
 
-const MAX_DAILY_REQUESTS = 20;
-
-async function checkRateLimit(uid: string): Promise<void> {
-  const db = getFirestore();
-  const ref = db.doc(`/users/${uid}/ai-rate-limit/daily`);
-  const today = new Date().toISOString().slice(0, 10);
-
-  await db.runTransaction(async (tx) => {
-    const doc = await tx.get(ref);
-    const data = doc.data();
-    const count: number =
-      data?.date === today ? (data?.count ?? 0) : 0;
-
-    if (count >= MAX_DAILY_REQUESTS) {
-      throw new HttpsError(
-        "resource-exhausted",
-        `Daily AI request limit of ${MAX_DAILY_REQUESTS} reached. Try again tomorrow.`
-      );
-    }
-
-    tx.set(ref, { count: count + 1, date: today });
-  });
-}
 
 const ASSET_RECOMMENDATION_SCHEMA = {
   type: "object",
@@ -64,30 +40,31 @@ export const recommendFinalAsset = onCall<
       return null;
     }
 
-    const { paths, backstory, backgroundVow } = request.data;
+    const { paths, backstory, backgroundVow, availableAssets } = request.data;
 
     logger.info("recommendFinalAsset called", { uid });
-
-    await checkRateLimit(uid);
 
     const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
     const systemPrompt = [
       "You are a character creation assistant for Ironsworn: Starforged, a sci-fi narrative RPG.",
-      "The player has already chosen 2 path assets. Now recommend exactly 3 additional assets from other categories.",
-      "Starforged asset categories include: Command Vehicle, Module, Support Vehicle, Companion, and Path.",
-      "Recommend assets from categories other than Path (e.g. companions, command vehicles, modules, support vehicles).",
-      "For each recommendation, provide the exact asset name and a single sentence explaining why it fits.",
+      "The player has already chosen 2 path assets. Now recommend exactly 3 additional assets from the provided list.",
+      "You MUST only choose asset names from the 'Available assets' list provided in the user message. Do not invent or guess asset names.",
+      "For each recommendation, provide the exact asset name (copied verbatim from the list) and a single sentence explaining why it fits.",
       "Base your reasoning on the character's paths, backstory, and background vow.",
-      "Use only real Starforged asset names. Keep reasoning concise and personal.",
+      "Keep reasoning concise and personal.",
     ].join("\n");
 
     const pathsLine =
       paths.length > 0 ? `Chosen paths: ${paths.join(", ")}.` : "";
     const backstoryLine = backstory ? `Backstory: ${backstory}` : "";
     const vowLine = backgroundVow ? `Background vow: ${backgroundVow}` : "";
+    const assetsLine =
+      availableAssets.length > 0
+        ? `Available assets: ${availableAssets.join(", ")}`
+        : "";
 
-    const userPrompt = [pathsLine, backstoryLine, vowLine]
+    const userPrompt = [pathsLine, backstoryLine, vowLine, assetsLine]
       .filter(Boolean)
       .join("\n");
 

@@ -9,7 +9,7 @@ import {
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useState } from "react";
 import { useStore } from "stores/store";
-import { useAiCopilot } from "hooks/featureFlags/useAiCopilot";
+import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { StatInput } from "pages/Character/CharacterCreatePage/components/StatInput";
 import { recommendStatAllocation } from "api-calls/ai/recommendStatAllocation";
 
@@ -20,6 +20,7 @@ export interface SetStatsStepProps {
   pathNames: string[];
   backstory: string;
   backgroundVow: string;
+  initialStats?: Record<string, number>;
 }
 
 export function SetStatsStep({
@@ -27,19 +28,25 @@ export function SetStatsStep({
   pathNames,
   backstory,
   backgroundVow,
+  initialStats,
 }: SetStatsStepProps) {
-  const showAi = useAiCopilot();
+  const showAi = useAiGuide();
   const stats = useStore((store) => store.rules.stats);
 
   const numberOfStats = Object.keys(stats).length;
   const canUseStandardArray = numberOfStats === STANDARD_ARRAY.length;
-  const [usingStandardArray, setUsingStandardArray] = useState(true);
+  const hasInitial = initialStats && Object.keys(initialStats).length > 0;
+  const [usingStandardArray, setUsingStandardArray] = useState(!hasInitial);
   const showStandardArrayInputs = canUseStandardArray && usingStandardArray;
 
-  const [statValues, setStatValues] = useState<Record<string, number | undefined>>({});
-  const [statsRemainingTracker, setStatsRemainingTracker] = useState<number[]>([
-    ...STANDARD_ARRAY,
-  ]);
+  const [statValues, setStatValues] = useState<Record<string, number | undefined>>(
+    () => initialStats ?? {}
+  );
+  const [statsRemainingTracker, setStatsRemainingTracker] = useState<number[]>(() => {
+    if (!hasInitial) return [...STANDARD_ARRAY];
+    // All values were used from initial stats
+    return [];
+  });
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);

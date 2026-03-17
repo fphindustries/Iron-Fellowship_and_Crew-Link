@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import OpenAI from "openai";
@@ -7,37 +7,13 @@ import { buildPrompt } from "./promptTemplates";
 import { BOOKKEEPER_JSON_SCHEMA } from "./schemas";
 import {
   AiCampaignContext,
-  AiCopilotRequest,
-  AiCopilotResponse,
+  AiGuideRequest,
+  AiGuideResponse,
   BookkeeperOutput,
 } from "./_ai.type";
 
 // Models: use gpt-4o for heavy analytical modes, gpt-4o-mini for generative ones
 const HEAVY_MODES = new Set(["sessionRecap", "bookkeeper"]);
-
-const MAX_DAILY_REQUESTS = 20;
-
-async function checkAndIncrementRateLimit(uid: string): Promise<void> {
-  const db = getFirestore();
-  const ref = db.doc(`/users/${uid}/ai-rate-limit/daily`);
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-
-  await db.runTransaction(async (tx) => {
-    const doc = await tx.get(ref);
-    const data = doc.data();
-    const count: number =
-      data?.date === today ? (data?.count ?? 0) : 0;
-
-    if (count >= MAX_DAILY_REQUESTS) {
-      throw new HttpsError(
-        "resource-exhausted",
-        `Daily AI request limit of ${MAX_DAILY_REQUESTS} reached. Try again tomorrow.`
-      );
-    }
-
-    tx.set(ref, { count: count + 1, date: today });
-  });
-}
 
 function buildContextSnapshot(
   context: AiCampaignContext
@@ -60,28 +36,26 @@ function buildContextSnapshot(
   return JSON.parse(JSON.stringify(snapshot));
 }
 
-export const callAiCopilot = onCall<
-  AiCopilotRequest,
-  Promise<AiCopilotResponse | null>
+export const callAiGuide = onCall<
+  AiGuideRequest,
+  Promise<AiGuideResponse | null>
 >(
   { secrets: [openaiApiKey] },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
-      logger.warn("callAiCopilot: unauthenticated request");
+      logger.warn("callAiGuide: unauthenticated request");
       return null;
     }
 
     const { mode, context, campaignId } = request.data;
 
     if (!campaignId) {
-      logger.warn("callAiCopilot: campaignId is required");
+      logger.warn("callAiGuide: campaignId is required");
       return null;
     }
 
-    logger.info("callAiCopilot called", { uid, mode, campaignId });
-
-    await checkAndIncrementRateLimit(uid);
+    logger.info("callAiGuide called", { uid, mode, campaignId });
 
     const openai = new OpenAI({ apiKey: openaiApiKey.value() });
     const { systemPrompt, userPrompt, useStructuredOutput } = buildPrompt(
@@ -90,7 +64,7 @@ export const callAiCopilot = onCall<
     );
     const model = HEAVY_MODES.has(mode) ? "gpt-4o" : "gpt-4o-mini";
 
-    let responseData: Omit<AiCopilotResponse, "eventId">;
+    let responseData: Omit<AiGuideResponse, "eventId">;
 
     if (useStructuredOutput) {
       const completion = await openai.responses.create({
@@ -131,7 +105,7 @@ export const callAiCopilot = onCall<
         createdBy: uid,
       });
 
-    logger.info("callAiCopilot: event saved", { eventId: eventRef.id });
+    logger.info("callAiGuide: event saved", { eventId: eventRef.id });
 
     return { ...responseData, eventId: eventRef.id };
   }

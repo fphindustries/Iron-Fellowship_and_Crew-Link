@@ -58,7 +58,7 @@ export interface AiCampaignContext {
   freeformInput?: string;
 }
 
-export interface AiCopilotRequest {
+export interface AiGuideRequest {
   mode: AiMode;
   context: AiCampaignContext;
   campaignId: string;
@@ -130,7 +130,7 @@ export interface SessionRecapOutput {
 
 // --- Response ---
 
-export interface AiCopilotResponse {
+export interface AiGuideResponse {
   eventId: string;
   mode: AiMode;
   text?: string;
@@ -177,6 +177,7 @@ export interface AssetRecommendationRequest {
   paths: string[];
   backstory: string;
   backgroundVow: string;
+  availableAssets: string[];
 }
 
 export interface AssetRecommendation {
@@ -242,6 +243,23 @@ export interface PortraitGenerationOutput {
   images: string[];
 }
 
+// --- Character summary (character creation) ---
+
+export interface CharacterSummaryRequest {
+  name: string;
+  paths: string[];
+  backstory: string;
+  backgroundVow: string;
+  look: string;
+  act: string;
+  wear: string;
+  pronouns: string;
+}
+
+export interface CharacterSummaryOutput {
+  summary: string;
+}
+
 // --- Firestore event document ---
 
 export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";
@@ -249,7 +267,7 @@ export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";
 export interface AiEventDocument {
   type: AiMode;
   contextSnapshot: Partial<AiCampaignContext>;
-  response: AiCopilotResponse;
+  response: AiGuideResponse;
   status: AiEventStatus;
   canonized: boolean;
   createdAt: Date;

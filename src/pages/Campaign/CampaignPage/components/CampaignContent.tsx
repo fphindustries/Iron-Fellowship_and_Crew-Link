@@ -17,8 +17,8 @@ import { NPCSection } from "components/features/worlds/NPCSection";
 import { LoreSection } from "components/features/worlds/Lore";
 import { LocationsSection } from "components/features/worlds/Locations";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
-import { useAiCopilot } from "hooks/featureFlags/useAiCopilot";
-import { AiCopilotPanel } from "components/features/aiCopilot/AiCopilotPanel";
+import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
+import { AiGuidePanel } from "components/features/aiCopilot/AiCopilotPanel";
 
 enum CampaignTabs {
   Characters = "characters",
@@ -29,7 +29,7 @@ enum CampaignTabs {
   Sectors = "sectors",
   NPCs = "ncps",
   Lore = "lore",
-  AiCopilot = "ai-copilot",
+  AiGuide = "ai-guide",
 }
 
 export interface CampaignContentProps {
@@ -56,7 +56,7 @@ export function CampaignContent(props: CampaignContentProps) {
   const hasWorld = useStore(
     (store) => !!store.campaigns.currentCampaign.currentCampaign?.worldId
   );
-  const showAiCopilot = useAiCopilot();
+  const showAiGuide = useAiGuide();
 
   return (
     <Card
@@ -92,8 +92,8 @@ export function CampaignContent(props: CampaignContentProps) {
         )}
         <StyledTab label="NPCs" value={CampaignTabs.NPCs} />
         <StyledTab label="Lore" value={CampaignTabs.Lore} />
-        {showAiCopilot && (
-          <StyledTab label="AI" value={CampaignTabs.AiCopilot} />
+        {showAiGuide && (
+          <StyledTab label="AI" value={CampaignTabs.AiGuide} />
         )}
       </StyledTabs>
       <ContainedTabPanel isVisible={selectedTab === CampaignTabs.Characters}>
@@ -141,9 +141,9 @@ export function CampaignContent(props: CampaignContentProps) {
       >
         <LoreSection showHiddenTag={showGuideTips} />
       </ContainedTabPanel>
-      {showAiCopilot && (
-        <ContainedTabPanel isVisible={selectedTab === CampaignTabs.AiCopilot}>
-          <AiCopilotPanel />
+      {showAiGuide && (
+        <ContainedTabPanel isVisible={selectedTab === CampaignTabs.AiGuide}>
+          <AiGuidePanel />
         </ContainedTabPanel>
       )}
     </Card>

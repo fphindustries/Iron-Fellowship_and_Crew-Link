@@ -152,7 +152,7 @@ export function Notes(props: NotesProps) {
               >
                 <AiTriggerButton
                   mode="sessionRecap"
-                  tooltip="Generate session recap with AI Copilot"
+                  tooltip="Generate session recap with AI Guide"
                 />
               </Box>
               <GameLog />
@@ -174,7 +174,7 @@ export function Notes(props: NotesProps) {
                   <>
                     <AiTriggerButton
                       mode="sessionRecap"
-                      tooltip="Generate session recap with AI Copilot"
+                      tooltip="Generate session recap with AI Guide"
                     />
                     {selectedNote.source === NoteSource.Campaign &&
                     campaignType === CampaignType.Guided &&

@@ -14,7 +14,7 @@ import * as logger from "firebase-functions/logger";
 
 admin.initializeApp();
 
-export { callAiCopilot } from "./ai/aiCopilot";
+export { callAiGuide } from "./ai/aiCopilot";
 export { recommendCharacterPaths } from "./ai/recommendCharacterPaths";
 export { generateCharacterBackstory } from "./ai/generateCharacterBackstory";
 export { generateCharacterVow } from "./ai/generateCharacterVow";
@@ -22,6 +22,7 @@ export { recommendFinalAsset } from "./ai/recommendFinalAsset";
 export { recommendStatAllocation } from "./ai/recommendStatAllocation";
 export { randomizeCharacterAppearance } from "./ai/randomizeCharacterAppearance";
 export { generateCharacterPortraits } from "./ai/generateCharacterPortraits";
+export { generateCharacterSummary } from "./ai/generateCharacterSummary";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript

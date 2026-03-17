@@ -11,8 +11,8 @@ export const activeFeatureFlags: {
     label: "New Character Sheet Layout",
   },
   {
-    testId: "ai-copilot",
-    label: "AI Game Copilot",
+    testId: "ai-guide",
+    label: "AI Game Guide",
     warning:
       "Requires an active campaign. Sends campaign context to an AI model to generate story suggestions.",
   },

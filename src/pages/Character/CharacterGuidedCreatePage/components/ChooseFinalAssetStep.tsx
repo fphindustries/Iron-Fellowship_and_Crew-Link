@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Card,
-  CardActionArea,
   CardContent,
   CircularProgress,
   Grid,
@@ -14,7 +13,7 @@ import AddIcon from "@mui/icons-material/Add";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useState } from "react";
 import { useStore } from "stores/store";
-import { useAiCopilot } from "hooks/featureFlags/useAiCopilot";
+import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { AssetDocument } from "api-calls/assets/_asset.type";
 import { AssetCard } from "components/features/assets/AssetCard";
 import { AssetCardDialog } from "components/features/assets/AssetCardDialog";
@@ -50,7 +49,7 @@ export function ChooseFinalAssetStep({
   backstory,
   backgroundVow,
 }: ChooseFinalAssetStepProps) {
-  const showAi = useAiCopilot();
+  const showAi = useAiGuide();
   const assetMap = useStore((s) => s.rules.assetMaps.assetMap);
 
   const [selectedAsset, setSelectedAsset] = useState<AssetDocument | null>(null);
@@ -78,10 +77,15 @@ export function ChooseFinalAssetStep({
     setAiError(null);
     setRecommendations(null);
     try {
+      const availableAssets = Object.values(assetMap)
+        .filter((a) => !a._id.includes("/path/"))
+        .map((a) => a.name)
+        .sort();
       const result = await recommendFinalAsset({
         paths: pathNames,
         backstory,
         backgroundVow,
+        availableAssets,
       });
       setRecommendations(result?.recommendations ?? []);
     } catch {
@@ -146,16 +150,16 @@ export function ChooseFinalAssetStep({
               const resolved = resolveAssetByName(rec.assetName, assetMap);
               return (
                 <Grid item xs={12} md={4} key={rec.assetName}>
-                  <Card variant="outlined">
-                    <CardActionArea
-                      onClick={() => handleRecommendationSelect(rec)}
-                      sx={{ p: 0 }}
-                    >
+                  <Card
+                    variant="outlined"
+                    onClick={() => handleRecommendationSelect(rec)}
+                    sx={{ cursor: "pointer" }}
+                  >
+                    <Box sx={{ pointerEvents: "none" }}>
                       {resolved ? (
                         <AssetCard
                           assetId={resolved.id}
                           storedAsset={resolved}
-                          sx={{ pointerEvents: "none" }}
                         />
                       ) : (
                         <CardContent>
@@ -169,7 +173,7 @@ export function ChooseFinalAssetStep({
                           {rec.reasoning}
                         </Typography>
                       </CardContent>
-                    </CardActionArea>
+                    </Box>
                   </Card>
                 </Grid>
               );

@@ -1,6 +1,5 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import { getFirestore } from "firebase-admin/firestore";
 import OpenAI from "openai";
 import { openaiApiKey } from "./openai.client";
 import {
@@ -8,29 +7,6 @@ import {
   StatAllocationOutput,
 } from "./_ai.type";
 
-const MAX_DAILY_REQUESTS = 20;
-
-async function checkRateLimit(uid: string): Promise<void> {
-  const db = getFirestore();
-  const ref = db.doc(`/users/${uid}/ai-rate-limit/daily`);
-  const today = new Date().toISOString().slice(0, 10);
-
-  await db.runTransaction(async (tx) => {
-    const doc = await tx.get(ref);
-    const data = doc.data();
-    const count: number =
-      data?.date === today ? (data?.count ?? 0) : 0;
-
-    if (count >= MAX_DAILY_REQUESTS) {
-      throw new HttpsError(
-        "resource-exhausted",
-        `Daily AI request limit of ${MAX_DAILY_REQUESTS} reached. Try again tomorrow.`
-      );
-    }
-
-    tx.set(ref, { count: count + 1, date: today });
-  });
-}
 
 const STAT_ALLOCATION_SCHEMA = {
   type: "object",
@@ -68,8 +44,6 @@ export const recommendStatAllocation = onCall<
     const { paths, backstory, backgroundVow, stats } = request.data;
 
     logger.info("recommendStatAllocation called", { uid });
-
-    await checkRateLimit(uid);
 
     const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 

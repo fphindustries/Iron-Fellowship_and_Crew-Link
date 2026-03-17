@@ -1,16 +1,18 @@
 import { functions } from "config/firebase.config";
 import { httpsCallable } from "firebase/functions";
 import { createApiFunction } from "api-calls/createApiFunction";
-import { AiCopilotRequest, AiCopilotResponse } from "./_ai.type";
+import { AiGuideRequest, AiGuideResponse } from "./_ai.type";
+import { recordAiCall } from "stores/aiDebug";
 
-export const callAiCopilot = createApiFunction<
-  AiCopilotRequest,
-  AiCopilotResponse
+export const callAiGuide = createApiFunction<
+  AiGuideRequest,
+  AiGuideResponse
 >(
   async (params) => {
-    const fn = httpsCallable<AiCopilotRequest, AiCopilotResponse>(
+    recordAiCall("callAiGuide", params);
+    const fn = httpsCallable<AiGuideRequest, AiGuideResponse>(
       functions,
-      "callAiCopilot"
+      "callAiGuide"
     );
     const result = await fn(params);
     return result.data;

@@ -1,33 +1,33 @@
 import { Box, Card } from "@mui/material";
 import { MovesSection } from "components/features/charactersAndCampaigns/MovesSection";
 import { OracleSection } from "components/features/charactersAndCampaigns/OracleSection";
-import { AiCopilotPanel } from "components/features/aiCopilot/AiCopilotPanel";
+import { AiGuidePanel } from "components/features/aiCopilot/AiCopilotPanel";
 import { DarkStyledTabs, DarkStyledTab } from "components/shared/StyledTabs";
 import { useCampaignType } from "hooks/useCampaignType";
-import { useAiCopilot } from "hooks/featureFlags/useAiCopilot";
+import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
 
 enum SIDEBAR_TABS {
   MOVES = "moves",
   ORACLES = "oracles",
-  COPILOT = "copilot",
+  GUIDE = "guide",
 }
 
 export function Sidebar() {
   const [currentTab, setCurrentTab] = useState(SIDEBAR_TABS.MOVES);
 
   const shouldShowOracles = !useCampaignType().showGuidedPlayerView;
-  const showAiCopilot = useAiCopilot();
+  const showAiGuide = useAiGuide();
   const isPanelOpen = useStore((store) => store.ai.isPanelOpen);
   const setIsPanelOpen = useStore((store) => store.ai.setIsPanelOpen);
 
   useEffect(() => {
-    if (isPanelOpen && showAiCopilot) {
-      setCurrentTab(SIDEBAR_TABS.COPILOT);
+    if (isPanelOpen && showAiGuide) {
+      setCurrentTab(SIDEBAR_TABS.GUIDE);
       setIsPanelOpen(false);
     }
-  }, [isPanelOpen, showAiCopilot, setIsPanelOpen]);
+  }, [isPanelOpen, showAiGuide, setIsPanelOpen]);
 
   return (
     <>
@@ -40,7 +40,7 @@ export function Sidebar() {
           flexDirection: "column",
         }}
       >
-        {(shouldShowOracles || showAiCopilot) && (
+        {(shouldShowOracles || showAiGuide) && (
           <div>
             <DarkStyledTabs
               value={currentTab}
@@ -50,8 +50,8 @@ export function Sidebar() {
               {shouldShowOracles && (
                 <DarkStyledTab label={"Oracles"} value={SIDEBAR_TABS.ORACLES} />
               )}
-              {showAiCopilot && (
-                <DarkStyledTab label={"Copilot"} value={SIDEBAR_TABS.COPILOT} />
+              {showAiGuide && (
+                <DarkStyledTab label={"Guide"} value={SIDEBAR_TABS.GUIDE} />
               )}
             </DarkStyledTabs>
           </div>
@@ -74,15 +74,15 @@ export function Sidebar() {
         >
           <OracleSection />
         </Box>
-        {showAiCopilot && (
+        {showAiGuide && (
           <Box
             sx={
-              currentTab === SIDEBAR_TABS.COPILOT
+              currentTab === SIDEBAR_TABS.GUIDE
                 ? { overflow: "hidden", display: "flex", flexDirection: "column", flex: 1 }
                 : { display: "none" }
             }
           >
-            <AiCopilotPanel />
+            <AiGuidePanel />
           </Box>
         )}
       </Card>

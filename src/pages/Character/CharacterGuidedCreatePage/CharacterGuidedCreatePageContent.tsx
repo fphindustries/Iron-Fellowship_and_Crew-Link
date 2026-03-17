@@ -1,10 +1,12 @@
 import {
   Box,
+  Button,
   Step,
   StepLabel,
   Stepper,
   Paper,
 } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { PageContent, PageHeader } from "components/shared/Layout";
 import { useAppName } from "hooks/useAppName";
 import { Head } from "providers/HeadProvider/Head";
@@ -20,6 +22,10 @@ import {
 } from "pages/Campaign/routes";
 import { constructCharacterSheetPath } from "pages/Character/routes";
 import { ignoreApiError } from "api-calls/createApiFunction";
+import { addNote } from "api-calls/notes/addNote";
+import { updateNote } from "api-calls/notes/updateNote";
+import * as Y from "yjs";
+import { TiptapTransformer } from "@hocuspocus/transformer";
 import { ChoosePathsStep } from "pages/Character/CharacterCreatePage/components/guided/ChoosePathsStep";
 import { CreateBackstoryStep } from "pages/Character/CharacterCreatePage/components/guided/CreateBackstoryStep";
 import { CreateBackgroundVowStep } from "pages/Character/CharacterCreatePage/components/guided/CreateBackgroundVowStep";
@@ -27,6 +33,7 @@ import { ChooseFinalAssetStep } from "./components/ChooseFinalAssetStep";
 import { SetStatsStep } from "./components/SetStatsStep";
 import { EnvisionCharacterStep } from "./components/EnvisionCharacterStep";
 import { NameCharacterStep } from "./components/NameCharacterStep";
+import { ReviewStep } from "./components/ReviewStep";
 
 interface GuidedForm {
   enabledExpansionMap: Record<string, boolean>;
@@ -44,6 +51,7 @@ const STEPS = [
   "Set Your Stats",
   "Envision Your Character",
   "Name Your Character",
+  "Review",
 ];
 
 export function CharacterGuidedCreatePageContent() {
@@ -77,14 +85,27 @@ export function CharacterGuidedCreatePageContent() {
     backgroundVow: string;
     stats: Record<string, number>;
     portrait?: { image: File; scale: number; position: { x: number; y: number } };
+    look: string;
+    act: string;
+    wear: string;
+    pronouns: string;
+    name: string;
+    aiSummary: string;
   }>({
     assets: [],
     backstory: "",
     backgroundVow: "",
     stats: {},
+    look: "",
+    act: "",
+    wear: "",
+    pronouns: "they/them",
+    name: "",
+    aiSummary: "",
   });
 
   const advance = () => setActiveStep((s) => s + 1);
+  const goBack = () => setActiveStep((s) => s - 1);
 
   const handlePathsComplete = (assets: AssetDocument[]) => {
     assets.forEach((a) => append(a));
@@ -117,19 +138,65 @@ export function CharacterGuidedCreatePageContent() {
     advance();
   };
 
-  const handleEnvisionComplete = (portrait?: {
-    image: File;
-    scale: number;
-    position: { x: number; y: number };
+  const handleEnvisionComplete = (data: {
+    portrait?: { image: File; scale: number; position: { x: number; y: number } };
+    look: string;
+    act: string;
+    wear: string;
+    pronouns: string;
   }) => {
-    setFormData((prev) => ({ ...prev, portrait }));
+    setFormData((prev) => ({
+      ...prev,
+      portrait: data.portrait,
+      look: data.look,
+      act: data.act,
+      wear: data.wear,
+      pronouns: data.pronouns,
+    }));
     advance();
   };
 
-  const handleNameComplete = (name: string) => {
+  const handleNameComplete = (name: string, aiSummary: string) => {
+    setFormData((prev) => ({ ...prev, name, aiSummary }));
+    advance();
+  };
+
+  const saveSummaryNote = (characterId: string, summary: string) => {
+    const paragraphs = summary
+      .split(/\n\n+/)
+      .filter(Boolean)
+      .map((text) => ({
+        type: "paragraph",
+        content: [{ type: "text", text }],
+      }));
+    const tiptapJson = {
+      type: "doc",
+      content: [
+        {
+          type: "heading",
+          attrs: { level: 1 },
+          content: [{ type: "text", text: "Character Summary" }],
+        },
+        ...paragraphs,
+      ],
+    };
+    const ydoc = TiptapTransformer.toYdoc(tiptapJson, "default");
+    const content = Y.encodeStateAsUpdate(ydoc);
+    return addNote({ characterId, order: 0 }).then((noteId) =>
+      updateNote({
+        characterId,
+        campaignId: undefined,
+        noteId,
+        title: "Character Summary",
+        content,
+      })
+    );
+  };
+
+  const handleAccept = () => {
     setLoading(true);
     createCharacter(
-      name,
+      formData.name,
       formData.stats,
       formData.assets,
       formData.portrait,
@@ -138,21 +205,34 @@ export function CharacterGuidedCreatePageContent() {
       formData.backgroundVow || undefined
     )
       .then((characterId) => {
-        if (campaignId) {
-          addCharacterToCampaign({ uid, campaignId, characterId }).finally(
-            () => {
-              navigate(
-                constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
-              );
-            }
-          );
+        const afterSummary = () => {
+          if (campaignId) {
+            addCharacterToCampaign({ uid, campaignId, characterId }).finally(
+              () => {
+                navigate(
+                  constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
+                );
+              }
+            );
+          } else {
+            navigate(constructCharacterSheetPath(characterId));
+          }
+        };
+
+        if (formData.aiSummary) {
+          saveSummaryNote(characterId, formData.aiSummary)
+            .catch(ignoreApiError)
+            .finally(afterSummary);
         } else {
-          navigate(constructCharacterSheetPath(characterId));
+          afterSummary();
         }
       })
       .catch(ignoreApiError)
       .finally(() => setLoading(false));
   };
+
+  // The review step (last) has its own Back button
+  const showBackButton = activeStep > 0 && activeStep < STEPS.length - 1;
 
   return (
     <>
@@ -203,6 +283,11 @@ export function CharacterGuidedCreatePageContent() {
                 pathNames={completedPathNames}
                 backstory={completedBackstory}
                 backgroundVow={completedBackgroundVow}
+                initialStats={
+                  Object.keys(formData.stats).length > 0
+                    ? formData.stats
+                    : undefined
+                }
               />
             )}
             {activeStep === 5 && (
@@ -211,16 +296,47 @@ export function CharacterGuidedCreatePageContent() {
                 pathNames={completedPathNames}
                 backstory={completedBackstory}
                 backgroundVow={completedBackgroundVow}
+                initialLook={formData.look || undefined}
+                initialAct={formData.act || undefined}
+                initialWear={formData.wear || undefined}
+                initialPronouns={formData.pronouns || undefined}
               />
             )}
             {activeStep === 6 && (
               <NameCharacterStep
                 onComplete={handleNameComplete}
+                initialName={formData.name || undefined}
+                pathNames={completedPathNames}
+                backstory={completedBackstory}
+                backgroundVow={completedBackgroundVow}
+                look={formData.look}
+                act={formData.act}
+                wear={formData.wear}
+                pronouns={formData.pronouns}
+              />
+            )}
+            {activeStep === 7 && (
+              <ReviewStep
+                formData={formData}
+                onAccept={handleAccept}
+                onBack={goBack}
                 loading={loading}
               />
             )}
           </Box>
         </Paper>
+
+        {showBackButton && (
+          <Box mt={2}>
+            <Button
+              variant="text"
+              startIcon={<ArrowBackIcon />}
+              onClick={goBack}
+            >
+              Back
+            </Button>
+          </Box>
+        )}
       </PageContent>
     </>
   );

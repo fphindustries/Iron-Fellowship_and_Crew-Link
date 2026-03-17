@@ -14,6 +14,7 @@ import { TopNav } from "./nav/TopNav";
 import { LayoutPathListener } from "./LayoutPathListener";
 import { UpdateDialog } from "./UpdateDialog";
 import { useThemeValue } from "providers/ThemeProvider/useThemeValue";
+import { AiDebugOverlay } from "components/shared/AiDebugOverlay";
 
 export function Layout() {
   useSyncFeatureFlags();
@@ -86,6 +87,7 @@ export function Layout() {
       <UpdateDialog />
       <LinkedDialog />
       <RollSnackbarSection />
+      <AiDebugOverlay />
     </Box>
   );
 }

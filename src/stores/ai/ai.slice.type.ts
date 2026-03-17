@@ -1,7 +1,7 @@
 import { Unsubscribe } from "firebase/firestore";
 import {
   AiCampaignContext,
-  AiCopilotResponse,
+  AiGuideResponse,
   AiEventDocument,
   AiEventStatus,
   AiMode,
@@ -35,7 +35,7 @@ export interface AiSliceActions {
     mode: AiMode;
     campaignId: string;
     context: AiCampaignContext;
-  }) => Promise<AiCopilotResponse>;
+  }) => Promise<AiGuideResponse>;
 
   updateEventStatus: (params: {
     eventId: string;
