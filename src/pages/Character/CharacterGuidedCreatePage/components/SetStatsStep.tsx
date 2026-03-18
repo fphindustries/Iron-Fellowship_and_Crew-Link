@@ -12,6 +12,7 @@ import { useStore } from "stores/store";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { StatInput } from "pages/Character/CharacterCreatePage/components/StatInput";
 import { recommendStatAllocation } from "api-calls/ai/recommendStatAllocation";
+import { WorldContext } from "api-calls/ai/_ai.type";
 
 const STANDARD_ARRAY = [3, 2, 2, 1, 1];
 
@@ -21,6 +22,7 @@ export interface SetStatsStepProps {
   backstory: string;
   backgroundVow: string;
   initialStats?: Record<string, number>;
+  worldContext?: WorldContext;
 }
 
 export function SetStatsStep({
@@ -29,6 +31,7 @@ export function SetStatsStep({
   backstory,
   backgroundVow,
   initialStats,
+  worldContext,
 }: SetStatsStepProps) {
   const showAi = useAiGuide();
   const stats = useStore((store) => store.rules.stats);
@@ -96,6 +99,7 @@ export function SetStatsStep({
         backstory,
         backgroundVow,
         stats: statEntries,
+        worldContext,
       });
       if (result?.allocations) {
         const newValues: Record<string, number | undefined> = {};

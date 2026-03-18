@@ -18,7 +18,7 @@ import { AssetDocument } from "api-calls/assets/_asset.type";
 import { AssetCard } from "components/features/assets/AssetCard";
 import { AssetCardDialog } from "components/features/assets/AssetCardDialog";
 import { recommendFinalAsset } from "api-calls/ai/recommendFinalAsset";
-import { AssetRecommendation } from "api-calls/ai/_ai.type";
+import { AssetRecommendation, WorldContext } from "api-calls/ai/_ai.type";
 import { Datasworn } from "@datasworn/core";
 
 export interface ChooseFinalAssetStepProps {
@@ -26,6 +26,7 @@ export interface ChooseFinalAssetStepProps {
   pathNames: string[];
   backstory: string;
   backgroundVow: string;
+  worldContext?: WorldContext;
 }
 
 function resolveAssetByName(
@@ -48,6 +49,7 @@ export function ChooseFinalAssetStep({
   pathNames,
   backstory,
   backgroundVow,
+  worldContext,
 }: ChooseFinalAssetStepProps) {
   const showAi = useAiGuide();
   const assetMap = useStore((s) => s.rules.assetMaps.assetMap);
@@ -86,6 +88,7 @@ export function ChooseFinalAssetStep({
         backstory,
         backgroundVow,
         availableAssets,
+        worldContext,
       });
       setRecommendations(result?.recommendations ?? []);
     } catch {

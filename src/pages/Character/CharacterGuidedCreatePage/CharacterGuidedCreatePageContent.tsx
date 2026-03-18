@@ -1,6 +1,11 @@
 import {
   Box,
   Button,
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
+  Select,
   Step,
   StepLabel,
   Stepper,
@@ -34,6 +39,9 @@ import { SetStatsStep } from "./components/SetStatsStep";
 import { EnvisionCharacterStep } from "./components/EnvisionCharacterStep";
 import { NameCharacterStep } from "./components/NameCharacterStep";
 import { ReviewStep } from "./components/ReviewStep";
+import { WorldContext } from "api-calls/ai/_ai.type";
+import { CUSTOM_TRUTH_INDEX } from "components/features/worlds/WorldTruths/customTruthIndex";
+import { getWorldAiSettings } from "api-calls/world/settings/getWorldAiSettings";
 
 interface GuidedForm {
   enabledExpansionMap: Record<string, boolean>;
@@ -69,6 +77,8 @@ export function CharacterGuidedCreatePageContent() {
   const [completedBackgroundVow, setCompletedBackgroundVow] = useState("");
 
   const assetMap = useStore((s) => s.rules.assetMaps.assetMap);
+  const worldMap = useStore((s) => s.worlds.worldMap);
+  const worldTruthDefs = useStore((s) => s.rules.worldTruths);
   const createCharacter = useStore((store) => store.characters.createCharacter);
 
   const { control } = useForm<GuidedForm>();
@@ -77,6 +87,40 @@ export function CharacterGuidedCreatePageContent() {
     name: "assets",
     keyName: "hook-form-id",
   });
+
+  // World selection state
+  const [selectedWorldId, setSelectedWorldId] = useState<string | null>(null);
+  const [worldContext, setWorldContext] = useState<WorldContext | undefined>(undefined);
+
+  const handleWorldChange = async (worldId: string | null) => {
+    setSelectedWorldId(worldId);
+    if (!worldId) {
+      setWorldContext(undefined);
+      return;
+    }
+    const world = worldMap[worldId];
+    const newTruths = world?.newTruths ?? {};
+
+    const truths = Object.keys(worldTruthDefs)
+      .map((key) => {
+        const truthDef = worldTruthDefs[key];
+        const selection = newTruths[key];
+        if (!selection) return null;
+        let description: string;
+        if (selection.selectedTruthOptionIndex === CUSTOM_TRUTH_INDEX) {
+          description = selection.customTruth?.description ?? "";
+        } else {
+          description =
+            truthDef.options[selection.selectedTruthOptionIndex ?? 0]
+              ?.description ?? "";
+        }
+        return description ? { name: truthDef.name, description } : null;
+      })
+      .filter((t): t is { name: string; description: string } => t !== null);
+
+    const aiSettings = await getWorldAiSettings(worldId).catch(() => undefined);
+    setWorldContext({ truths, assumptions: aiSettings?.assumptions });
+  };
 
   // Accumulated form data built up across steps
   const [formData, setFormData] = useState<{
@@ -234,6 +278,8 @@ export function CharacterGuidedCreatePageContent() {
   // The review step (last) has its own Back button
   const showBackButton = activeStep > 0 && activeStep < STEPS.length - 1;
 
+  const worldOptions = Object.entries(worldMap);
+
   return (
     <>
       <Head
@@ -242,6 +288,27 @@ export function CharacterGuidedCreatePageContent() {
       />
       <PageHeader label={"Guided Character Creation"} />
       <PageContent isPaper>
+        {worldOptions.length > 0 && (
+          <FormControl size="small" sx={{ mb: 3, minWidth: 280 }}>
+            <InputLabel>World (optional)</InputLabel>
+            <Select
+              value={selectedWorldId ?? ""}
+              onChange={(e) => handleWorldChange(e.target.value || null)}
+              label="World (optional)"
+            >
+              <MenuItem value="">None</MenuItem>
+              {worldOptions.map(([id, world]) => (
+                <MenuItem key={id} value={id}>
+                  {world.name}
+                </MenuItem>
+              ))}
+            </Select>
+            <FormHelperText>
+              World truths and assumptions will guide AI suggestions
+            </FormHelperText>
+          </FormControl>
+        )}
+
         <Stepper
           activeStep={activeStep}
           alternativeLabel
@@ -260,13 +327,17 @@ export function CharacterGuidedCreatePageContent() {
               <ChoosePathsStep onComplete={handlePathsComplete} />
             )}
             {activeStep === 1 && (
-              <CreateBackstoryStep onComplete={handleBackstoryComplete} />
+              <CreateBackstoryStep
+                onComplete={handleBackstoryComplete}
+                worldContext={worldContext}
+              />
             )}
             {activeStep === 2 && (
               <CreateBackgroundVowStep
                 onComplete={handleVowComplete}
                 pathNames={completedPathNames}
                 backstory={completedBackstory}
+                worldContext={worldContext}
               />
             )}
             {activeStep === 3 && (
@@ -275,6 +346,7 @@ export function CharacterGuidedCreatePageContent() {
                 pathNames={completedPathNames}
                 backstory={completedBackstory}
                 backgroundVow={completedBackgroundVow}
+                worldContext={worldContext}
               />
             )}
             {activeStep === 4 && (
@@ -288,6 +360,7 @@ export function CharacterGuidedCreatePageContent() {
                     ? formData.stats
                     : undefined
                 }
+                worldContext={worldContext}
               />
             )}
             {activeStep === 5 && (
@@ -300,6 +373,7 @@ export function CharacterGuidedCreatePageContent() {
                 initialAct={formData.act || undefined}
                 initialWear={formData.wear || undefined}
                 initialPronouns={formData.pronouns || undefined}
+                worldContext={worldContext}
               />
             )}
             {activeStep === 6 && (
@@ -313,6 +387,7 @@ export function CharacterGuidedCreatePageContent() {
                 act={formData.act}
                 wear={formData.wear}
                 pronouns={formData.pronouns}
+                worldContext={worldContext}
               />
             )}
             {activeStep === 7 && (

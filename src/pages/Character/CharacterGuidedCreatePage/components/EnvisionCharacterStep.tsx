@@ -18,6 +18,7 @@ import { useState } from "react";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { randomizeCharacterAppearance } from "api-calls/ai/randomizeCharacterAppearance";
 import { generateCharacterPortraits } from "api-calls/ai/generateCharacterPortraits";
+import { WorldContext } from "api-calls/ai/_ai.type";
 
 const PRONOUN_OPTIONS = ["he/him", "she/her", "they/them", "xe/xem"];
 const CUSTOM_PRONOUNS_VALUE = "custom";
@@ -37,6 +38,7 @@ export interface EnvisionCharacterStepProps {
   initialAct?: string;
   initialWear?: string;
   initialPronouns?: string;
+  worldContext?: WorldContext;
 }
 
 export function EnvisionCharacterStep({
@@ -48,6 +50,7 @@ export function EnvisionCharacterStep({
   initialAct,
   initialWear,
   initialPronouns,
+  worldContext,
 }: EnvisionCharacterStepProps) {
   const showAi = useAiGuide();
 
@@ -94,6 +97,7 @@ export function EnvisionCharacterStep({
         paths: pathNames,
         backstory,
         backgroundVow,
+        worldContext,
       });
       if (result) {
         setLook(result.look);

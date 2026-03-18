@@ -102,6 +102,7 @@ export const callAiGuide = onCall<
     const { systemPromptStatic, systemPromptDynamic, userPrompt, useStructuredOutput } =
       buildPrompt(mode, context, {
         worldTonePrompt: worldSettings?.worldTonePrompt,
+        assumptions: worldSettings?.assumptions,
         modeCustomInstructions: modeConfig?.customInstructions,
       });
 

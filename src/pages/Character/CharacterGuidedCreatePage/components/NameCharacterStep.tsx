@@ -14,6 +14,7 @@ import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { TextFieldWithOracle } from "components/shared/TextFieldWithOracle/TextFieldWithOracle";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { generateCharacterSummary } from "api-calls/ai/generateCharacterSummary";
+import { WorldContext } from "api-calls/ai/_ai.type";
 
 const nameOraclesIronsworn = [
   "classic/oracles/name/ironlander/a",
@@ -34,6 +35,7 @@ export interface NameCharacterStepProps {
   act: string;
   wear: string;
   pronouns: string;
+  worldContext?: WorldContext;
 }
 
 export function NameCharacterStep({
@@ -46,6 +48,7 @@ export function NameCharacterStep({
   act,
   wear,
   pronouns,
+  worldContext,
 }: NameCharacterStepProps) {
   const showAi = useAiGuide();
   const { rollOracleTable } = useRoller();
@@ -87,6 +90,7 @@ export function NameCharacterStep({
         act,
         wear,
         pronouns,
+        worldContext,
       });
       if (result?.summary) {
         setAiSummary(result.summary);

@@ -23,6 +23,7 @@ export { recommendStatAllocation } from "./ai/recommendStatAllocation";
 export { randomizeCharacterAppearance } from "./ai/randomizeCharacterAppearance";
 export { generateCharacterPortraits } from "./ai/generateCharacterPortraits";
 export { generateCharacterSummary } from "./ai/generateCharacterSummary";
+export { generateWorldDescription } from "./ai/generateWorldDescription";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript

@@ -17,6 +17,7 @@ import { useState } from "react";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { useStore } from "stores/store";
 import { generateCharacterVow } from "api-calls/ai/generateCharacterVow";
+import { WorldContext } from "api-calls/ai/_ai.type";
 import { Datasworn } from "@datasworn/core";
 
 const ACTION_ORACLE_ID = "starforged/oracles/core/action";
@@ -29,6 +30,7 @@ export interface CreateBackgroundVowStepProps {
   onComplete: (vow: string) => void;
   pathNames: string[];
   backstory: string;
+  worldContext?: WorldContext;
 }
 
 function rollOracleText(
@@ -46,6 +48,7 @@ export function CreateBackgroundVowStep({
   onComplete,
   pathNames,
   backstory,
+  worldContext,
 }: CreateBackgroundVowStepProps) {
   const showAi = useAiGuide();
   const oracleRollableMap = useStore(
@@ -76,6 +79,7 @@ export function CreateBackgroundVowStep({
         paths: pathNames,
         backstory,
         prompt,
+        worldContext,
       });
       setVowText(result?.vow ?? "");
     } catch {

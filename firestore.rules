@@ -55,7 +55,8 @@ service cloud.firestore {
 
       function checkIsOwner() {
       	let world = get(/databases/$(database)/documents/worlds/$(worldId)).data;
-        return request.auth.uid in world.ownerIds || request.auth.uid in world.campaignGuides;
+        return request.auth.uid in world.ownerIds
+          || (world.campaignGuides != null && request.auth.uid in world.campaignGuides);
       }
 
       match /settings/{settingId} {

@@ -7,6 +7,7 @@ import {
   RandomizeAppearanceRequest,
   RandomizeAppearanceOutput,
 } from "./_ai.type";
+import { appendWorldContextLines } from "./worldContext";
 
 
 const APPEARANCE_SCHEMA = {
@@ -32,7 +33,7 @@ export const randomizeCharacterAppearance = onCall<
       return null;
     }
 
-    const { paths, backstory, backgroundVow } = request.data;
+    const { paths, backstory, backgroundVow, worldContext } = request.data;
 
     logger.info("randomizeCharacterAppearance called", { uid });
 
@@ -49,13 +50,12 @@ export const randomizeCharacterAppearance = onCall<
     const backstoryLine = backstory ? `Backstory: ${backstory}` : "";
     const vowLine = backgroundVow ? `Background vow: ${backgroundVow}` : "";
 
-    const userPrompt = [pathsLine, backstoryLine, vowLine]
-      .filter(Boolean)
-      .join("\n") || "Generate appearance for a new Starforged character.";
+    const userParts = [pathsLine, backstoryLine, vowLine].filter(Boolean);
+    appendWorldContextLines(userParts, worldContext);
 
     const resultText = await callStructuredGeneration({
       systemPrompt,
-      userPrompt,
+      userPrompt: userParts.join("\n") || "Generate appearance for a new Starforged character.",
       schema: APPEARANCE_SCHEMA,
       schemaName: "appearance_output",
     });

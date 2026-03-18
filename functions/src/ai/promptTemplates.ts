@@ -142,6 +142,7 @@ function buildContextBlock(context: AiCampaignContext): string {
 
 export interface BuildPromptOptions {
   worldTonePrompt?: string;
+  assumptions?: string;
   modeCustomInstructions?: string;
 }
 
@@ -413,13 +414,14 @@ export function buildPrompt(
   }
   }
 
-  // Static: role block (with world tone) + mode instructions (with custom instructions)
+  // Static: role block (with world tone) + assumptions + mode instructions
   // This content is stable across requests for the same world/mode and benefits from caching.
-  const systemPromptStatic = [
-    buildRoleBlock(context, options?.worldTonePrompt),
-    "",
-    modeResult.modeInstructions,
-  ].join("\n");
+  const staticParts = [buildRoleBlock(context, options?.worldTonePrompt)];
+  if (options?.assumptions) {
+    staticParts.push("", "World assumptions:", options.assumptions);
+  }
+  staticParts.push("", modeResult.modeInstructions);
+  const systemPromptStatic = staticParts.join("\n");
 
   // Dynamic: context block (characters, vows, rolls, NPCs — changes every request)
   const systemPromptDynamic = buildContextBlock(context);

@@ -16,6 +16,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useState } from "react";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { generateCharacterBackstory } from "api-calls/ai/generateCharacterBackstory";
+import { WorldContext } from "api-calls/ai/_ai.type";
 import {
   BACKSTORY_PROMPTS,
   BackstoryPrompt,
@@ -26,9 +27,10 @@ type Method = "write" | "table" | "random" | "custom";
 
 export interface CreateBackstoryStepProps {
   onComplete: (backstory: string) => void;
+  worldContext?: WorldContext;
 }
 
-export function CreateBackstoryStep({ onComplete }: CreateBackstoryStepProps) {
+export function CreateBackstoryStep({ onComplete, worldContext }: CreateBackstoryStepProps) {
   const showAi = useAiGuide();
 
   const [method, setMethod] = useState<Method>("write");
@@ -54,7 +56,7 @@ export function CreateBackstoryStep({ onComplete }: CreateBackstoryStepProps) {
     setAiError(null);
     setBackstory("");
     try {
-      const result = await generateCharacterBackstory({ prompt });
+      const result = await generateCharacterBackstory({ prompt, worldContext });
       setBackstory(result?.backstory ?? "");
     } catch {
       setAiError("Failed to generate backstory. Please try again.");

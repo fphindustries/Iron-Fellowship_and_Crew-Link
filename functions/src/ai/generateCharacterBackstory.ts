@@ -4,6 +4,7 @@ import { openaiApiKey } from "./openai.client";
 import { anthropicApiKey } from "./anthropic.client";
 import { callTextGeneration } from "./callProvider";
 import { BackstoryRequest, BackstoryOutput } from "./_ai.type";
+import { appendWorldContextLines } from "./worldContext";
 
 
 export const generateCharacterBackstory = onCall<
@@ -18,7 +19,7 @@ export const generateCharacterBackstory = onCall<
       return null;
     }
 
-    const { prompt } = request.data;
+    const { prompt, worldContext } = request.data;
     if (!prompt?.trim()) {
       logger.warn("generateCharacterBackstory: empty prompt");
       return null;
@@ -35,9 +36,12 @@ export const generateCharacterBackstory = onCall<
       "Write in second person (\"you\").",
     ].join("\n");
 
+    const userParts = [prompt];
+    appendWorldContextLines(userParts, worldContext);
+
     const backstory = await callTextGeneration({
       systemPrompt,
-      userPrompt: prompt,
+      userPrompt: userParts.join("\n"),
     });
 
     logger.info("generateCharacterBackstory: completed", { uid });

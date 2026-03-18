@@ -4,6 +4,7 @@ import { openaiApiKey } from "./openai.client";
 import { anthropicApiKey } from "./anthropic.client";
 import { callTextGeneration } from "./callProvider";
 import { CharacterSummaryRequest, CharacterSummaryOutput } from "./_ai.type";
+import { appendWorldContextLines } from "./worldContext";
 
 
 export const generateCharacterSummary = onCall<
@@ -18,7 +19,7 @@ export const generateCharacterSummary = onCall<
       return null;
     }
 
-    const { name, paths, backstory, backgroundVow, look, act, wear, pronouns } =
+    const { name, paths, backstory, backgroundVow, look, act, wear, pronouns, worldContext } =
       request.data;
 
     logger.info("generateCharacterSummary called", { uid });
@@ -39,7 +40,7 @@ export const generateCharacterSummary = onCall<
     const actLine = act ? `Act: ${act}` : "";
     const wearLine = wear ? `Wear: ${wear}` : "";
 
-    const userPrompt = [
+    const userParts = [
       `Character name: ${name}`,
       pathsLine,
       backstoryLine,
@@ -47,13 +48,12 @@ export const generateCharacterSummary = onCall<
       lookLine,
       actLine,
       wearLine,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    ].filter(Boolean);
+    appendWorldContextLines(userParts, worldContext);
 
     const summary = await callTextGeneration({
       systemPrompt,
-      userPrompt,
+      userPrompt: userParts.join("\n"),
     });
 
     logger.info("generateCharacterSummary: completed", { uid });

@@ -7,6 +7,7 @@ import {
   AssetRecommendationRequest,
   AssetRecommendationOutput,
 } from "./_ai.type";
+import { appendWorldContextLines } from "./worldContext";
 
 
 const ASSET_RECOMMENDATION_SCHEMA = {
@@ -41,7 +42,7 @@ export const recommendFinalAsset = onCall<
       return null;
     }
 
-    const { paths, backstory, backgroundVow, availableAssets } = request.data;
+    const { paths, backstory, backgroundVow, availableAssets, worldContext } = request.data;
 
     logger.info("recommendFinalAsset called", { uid });
 
@@ -63,9 +64,9 @@ export const recommendFinalAsset = onCall<
         ? `Available assets: ${availableAssets.join(", ")}`
         : "";
 
-    const userPrompt = [pathsLine, backstoryLine, vowLine, assetsLine]
-      .filter(Boolean)
-      .join("\n");
+    const userParts = [pathsLine, backstoryLine, vowLine, assetsLine].filter(Boolean);
+    appendWorldContextLines(userParts, worldContext);
+    const userPrompt = userParts.join("\n");
 
     const resultText = await callStructuredGeneration({
       systemPrompt,

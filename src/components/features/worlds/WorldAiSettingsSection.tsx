@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ignoreApiError } from "api-calls/createApiFunction";
 import { useStore } from "stores/store";
 import {
   AiMode,
@@ -64,25 +65,37 @@ export function WorldAiSettingsSection() {
     Partial<Record<AiMode, WorldAiModeConfig>>
   >(settings?.modeConfigs ?? {});
 
-  // Sync from store when settings load
+  // Only sync from store on initial load; ignore subsequent subscription updates
+  // so in-progress edits are not overwritten by Firestore round-trips.
+  const isInitializedRef = useRef(false);
   useEffect(() => {
-    if (settings) {
+    if (settings && !isInitializedRef.current) {
+      isInitializedRef.current = true;
       setProvider(settings.provider ?? "openai");
       setWorldTone(settings.worldTonePrompt ?? "");
       setModeConfigs(settings.modeConfigs ?? {});
     }
   }, [settings]);
 
-  // Debounced save
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Separate debounce timers so concurrent edits to different fields don't cancel each other
+  const worldToneTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const modeConfigTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const debouncedSave = useCallback(
-    (partial: Partial<WorldAiSettings>) => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      saveTimeoutRef.current = setTimeout(() => {
-        updateSettings(partial).catch(console.error);
+  const debouncedSaveWorldTone = useCallback(
+    (value: string) => {
+      if (worldToneTimeoutRef.current) clearTimeout(worldToneTimeoutRef.current);
+      worldToneTimeoutRef.current = setTimeout(() => {
+        updateSettings({ worldTonePrompt: value }).catch(ignoreApiError);
+      }, 800);
+    },
+    [updateSettings]
+  );
+
+  const debouncedSaveModeConfigs = useCallback(
+    (configs: Partial<Record<AiMode, WorldAiModeConfig>>) => {
+      if (modeConfigTimeoutRef.current) clearTimeout(modeConfigTimeoutRef.current);
+      modeConfigTimeoutRef.current = setTimeout(() => {
+        updateSettings({ modeConfigs: configs }).catch(ignoreApiError);
       }, 800);
     },
     [updateSettings]
@@ -90,18 +103,19 @@ export function WorldAiSettingsSection() {
 
   useEffect(() => {
     return () => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (worldToneTimeoutRef.current) clearTimeout(worldToneTimeoutRef.current);
+      if (modeConfigTimeoutRef.current) clearTimeout(modeConfigTimeoutRef.current);
     };
   }, []);
 
   const handleProviderChange = (newProvider: AiProviderName) => {
     setProvider(newProvider);
-    updateSettings({ provider: newProvider }).catch(console.error);
+    updateSettings({ provider: newProvider }).catch(ignoreApiError);
   };
 
   const handleWorldToneChange = (value: string) => {
     setWorldTone(value);
-    debouncedSave({ worldTonePrompt: value });
+    debouncedSaveWorldTone(value);
   };
 
   const handleModeConfigChange = (
@@ -117,7 +131,7 @@ export function WorldAiSettingsSection() {
       },
     };
     setModeConfigs(updated);
-    debouncedSave({ modeConfigs: updated });
+    debouncedSaveModeConfigs(updated);
   };
 
   return (

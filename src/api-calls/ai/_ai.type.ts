@@ -28,6 +28,7 @@ export interface WorldAiModeConfig {
 export interface WorldAiSettings {
   provider: AiProviderName;
   worldTonePrompt?: string;
+  assumptions?: string;
   modeConfigs?: Partial<Record<AiMode, WorldAiModeConfig>>;
 }
 
@@ -162,6 +163,7 @@ export interface PathRecommendationRequest {
 
 export interface BackstoryRequest {
   prompt: string;
+  worldContext?: WorldContext;
 }
 
 export interface BackstoryOutput {
@@ -172,6 +174,7 @@ export interface VowRequest {
   paths: string[];
   backstory: string;
   prompt: string;
+  worldContext?: WorldContext;
 }
 
 export interface VowOutput {
@@ -183,6 +186,7 @@ export interface AssetRecommendationRequest {
   backstory: string;
   backgroundVow: string;
   availableAssets: string[];
+  worldContext?: WorldContext;
 }
 
 export interface AssetRecommendation {
@@ -207,6 +211,7 @@ export interface StatAllocationRequest {
   backstory: string;
   backgroundVow: string;
   stats: StatAllocationEntry[];
+  worldContext?: WorldContext;
 }
 
 export interface StatAllocation {
@@ -225,6 +230,7 @@ export interface RandomizeAppearanceRequest {
   paths: string[];
   backstory: string;
   backgroundVow: string;
+  worldContext?: WorldContext;
 }
 
 export interface RandomizeAppearanceOutput {
@@ -248,6 +254,31 @@ export interface PortraitGenerationOutput {
   images: string[];
 }
 
+// --- World context (shared across character creation AI calls) ---
+
+export interface WorldContext {
+  truths?: WorldDescriptionTruth[];
+  assumptions?: string;
+}
+
+// --- World description generation ---
+
+export interface WorldDescriptionTruth {
+  name: string;
+  description: string;
+}
+
+export interface WorldDescriptionRequest {
+  worldName: string;
+  truths: WorldDescriptionTruth[];
+  assumptions?: string;
+  worldTonePrompt?: string;
+}
+
+export interface WorldDescriptionOutput {
+  description: string;
+}
+
 // --- Character summary (character creation) ---
 
 export interface CharacterSummaryRequest {
@@ -259,6 +290,7 @@ export interface CharacterSummaryRequest {
   act: string;
   wear: string;
   pronouns: string;
+  worldContext?: WorldContext;
 }
 
 export interface CharacterSummaryOutput {

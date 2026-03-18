@@ -4,6 +4,7 @@ import { openaiApiKey } from "./openai.client";
 import { anthropicApiKey } from "./anthropic.client";
 import { callTextGeneration } from "./callProvider";
 import { VowRequest, VowOutput } from "./_ai.type";
+import { appendWorldContextLines } from "./worldContext";
 
 
 export const generateCharacterVow = onCall<
@@ -18,7 +19,7 @@ export const generateCharacterVow = onCall<
       return null;
     }
 
-    const { paths, backstory, prompt } = request.data;
+    const { paths, backstory, prompt, worldContext } = request.data;
 
     logger.info("generateCharacterVow called", { uid });
 
@@ -34,20 +35,15 @@ export const generateCharacterVow = onCall<
 
     const pathsLine =
       paths.length > 0 ? `Character paths: ${paths.join(", ")}.` : "";
-    const backstoryLine = backstory
-      ? `Character backstory: ${backstory}`
-      : "";
-    const promptLine = prompt
-      ? `Additional context: ${prompt}`
-      : "";
+    const backstoryLine = backstory ? `Character backstory: ${backstory}` : "";
+    const promptLine = prompt ? `Additional context: ${prompt}` : "";
 
-    const userInput = [pathsLine, backstoryLine, promptLine]
-      .filter(Boolean)
-      .join("\n");
+    const userParts = [pathsLine, backstoryLine, promptLine].filter(Boolean);
+    appendWorldContextLines(userParts, worldContext);
 
     const vow = await callTextGeneration({
       systemPrompt,
-      userPrompt: userInput || "Generate a fitting background vow.",
+      userPrompt: userParts.join("\n") || "Generate a fitting background vow.",
     });
 
     logger.info("generateCharacterVow: completed", { uid });

@@ -7,6 +7,7 @@ import {
   StatAllocationRequest,
   StatAllocationOutput,
 } from "./_ai.type";
+import { appendWorldContextLines } from "./worldContext";
 
 
 const STAT_ALLOCATION_SCHEMA = {
@@ -42,7 +43,7 @@ export const recommendStatAllocation = onCall<
       return null;
     }
 
-    const { paths, backstory, backgroundVow, stats } = request.data;
+    const { paths, backstory, backgroundVow, stats, worldContext } = request.data;
 
     logger.info("recommendStatAllocation called", { uid });
 
@@ -66,13 +67,12 @@ export const recommendStatAllocation = onCall<
     const backstoryLine = backstory ? `Backstory: ${backstory}` : "";
     const vowLine = backgroundVow ? `Background vow: ${backgroundVow}` : "";
 
-    const userPrompt = [pathsLine, backstoryLine, vowLine]
-      .filter(Boolean)
-      .join("\n");
+    const userParts = [pathsLine, backstoryLine, vowLine].filter(Boolean);
+    appendWorldContextLines(userParts, worldContext);
 
     const resultText = await callStructuredGeneration({
       systemPrompt,
-      userPrompt: userPrompt || "Recommend stat allocations for a new Starforged character.",
+      userPrompt: userParts.join("\n") || "Recommend stat allocations for a new Starforged character.",
       schema: STAT_ALLOCATION_SCHEMA,
       schemaName: "stat_allocation_output",
     });

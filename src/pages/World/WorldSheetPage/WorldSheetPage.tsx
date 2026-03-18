@@ -24,6 +24,7 @@ import { LocationsSection } from "components/features/worlds/Locations";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
 import { ignoreApiError } from "api-calls/createApiFunction";
 import { WorldAiSettingsSection } from "components/features/worlds/WorldAiSettingsSection";
+import { WorldAssumptionsSection } from "components/features/worlds/WorldAssumptionsSection";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 
 enum TABS {
@@ -32,6 +33,7 @@ enum TABS {
   LOCATIONS = "locations",
   NPCS = "npcs",
   LORE = "lore",
+  ASSUMPTIONS = "assumptions",
   AI_SETTINGS = "ai-settings",
 }
 
@@ -171,6 +173,9 @@ export function WorldSheetPage() {
             )}
             <StyledTab value={TABS.NPCS} label={"NPCs"} />
             <StyledTab value={TABS.LORE} label={"Lore"} />
+            {showGMFields && (
+              <StyledTab value={TABS.ASSUMPTIONS} label={"Assumptions"} />
+            )}
             {showAiSettings && (
               <StyledTab value={TABS.AI_SETTINGS} label={"AI Settings"} />
             )}
@@ -222,6 +227,9 @@ export function WorldSheetPage() {
           >
             <LoreSection showHiddenTag />
           </BreakContainer>
+        )}
+        {selectedTab === TABS.ASSUMPTIONS && showGMFields && (
+          <WorldAssumptionsSection />
         )}
         {selectedTab === TABS.AI_SETTINGS && showAiSettings && (
           <WorldAiSettingsSection />
