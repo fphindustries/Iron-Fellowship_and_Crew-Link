@@ -108,17 +108,16 @@ export function CampaignContent(props: CampaignContentProps) {
       <ContainedTabPanel isVisible={selectedTab === CampaignTabs.World}>
         <WorldTab />
       </ContainedTabPanel>
-      {shouldShowSectors ? (
-        <ContainedTabPanel
-          isVisible={selectedTab === CampaignTabs.Sectors}
-          greyBackground={hasWorld}
-        >
-          <SectorSection
-            showHiddenTag={showGuideTips}
-            openNPCTab={() => setSelectedTab(CampaignTabs.NPCs)}
-          />
-        </ContainedTabPanel>
-      ) : (
+      <ContainedTabPanel
+        isVisible={selectedTab === CampaignTabs.Sectors}
+        greyBackground={hasWorld}
+      >
+        <SectorSection
+          showHiddenTag={showGuideTips}
+          openNPCTab={() => setSelectedTab(CampaignTabs.NPCs)}
+        />
+      </ContainedTabPanel>
+      {!shouldShowSectors && (
         <ContainedTabPanel
           isVisible={selectedTab === CampaignTabs.Locations}
           greyBackground={hasWorld}

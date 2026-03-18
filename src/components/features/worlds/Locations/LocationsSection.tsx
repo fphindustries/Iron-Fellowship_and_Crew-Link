@@ -2,6 +2,7 @@ import { useStore } from "stores/store";
 import { FilterBar } from "../FilterBar";
 import { Box, Button, Grid } from "@mui/material";
 import AddLocationIcon from "@mui/icons-material/AddLocation";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useState } from "react";
 import { useFilterLocations } from "./useFilterLocations";
 import { WorldEmptyState } from "../WorldEmptyState";
@@ -10,6 +11,10 @@ import { LocationsSidebar } from "./LocationsSidebar";
 import { useWorldPermissions } from "../useWorldPermissions";
 import { OpenLocation } from "./OpenLocation";
 import { ignoreApiError } from "api-calls/createApiFunction";
+import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
+import { useGameSystem } from "hooks/useGameSystem";
+import { GAME_SYSTEMS } from "types/GameSystems.type";
+import { GenerateSectorDialog } from "components/features/worlds/SectorSection/GenerateSectorDialog";
 
 export interface LocationsSectionProps {
   showHiddenTag?: boolean;
@@ -45,6 +50,11 @@ export function LocationsSection(props: LocationsSectionProps) {
   const closeLocation = useStore(
     (store) => store.worlds.currentWorld.currentWorldLocations.closeLocation
   );
+
+  const showAi = useAiGuide();
+  const isStarforged =
+    useGameSystem().gameSystem === GAME_SYSTEMS.STARFORGED;
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
 
   const [createLocationLoading, setCreateLocationLoading] = useState(false);
   const createLocation = useStore(
@@ -104,19 +114,37 @@ export function LocationsSection(props: LocationsSectionProps) {
 
   return (
     <>
+      {showAi && isStarforged && (
+        <GenerateSectorDialog
+          open={generateDialogOpen}
+          onClose={() => setGenerateDialogOpen(false)}
+        />
+      )}
       <FilterBar
         search={search}
         setSearch={setSearch}
         action={
-          <Button
-            variant={"contained"}
-            endIcon={<AddLocationIcon />}
-            onClick={handleCreateLocation}
-            disabled={createLocationLoading}
-            sx={{ flexShrink: 0 }}
-          >
-            Add Location
-          </Button>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            {showAi && isStarforged && (
+              <Button
+                variant={"outlined"}
+                startIcon={<AutoAwesomeIcon />}
+                onClick={() => setGenerateDialogOpen(true)}
+                sx={{ flexShrink: 0 }}
+              >
+                Generate Sector
+              </Button>
+            )}
+            <Button
+              variant={"contained"}
+              endIcon={<AddLocationIcon />}
+              onClick={handleCreateLocation}
+              disabled={createLocationLoading}
+              sx={{ flexShrink: 0 }}
+            >
+              Add Location
+            </Button>
+          </Box>
         }
         searchPlaceholder={"Search by name or type"}
       />

@@ -195,7 +195,7 @@ export function WorldSheetPage() {
             />
           </BreakContainer>
         )}
-        {selectedTab === TABS.SECTORS && shouldShowSectors && (
+        {selectedTab === TABS.SECTORS && (
           <BreakContainer
             sx={(theme) => ({
               backgroundColor: theme.palette.background.paperInlay,

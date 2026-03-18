@@ -22,7 +22,6 @@ import {
   AiMode,
   AiProviderName,
   AnthropicModelId,
-  WorldAiSettings,
   WorldAiModeConfig,
 } from "api-calls/ai/_ai.type";
 

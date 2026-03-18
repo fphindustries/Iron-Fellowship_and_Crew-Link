@@ -122,17 +122,16 @@ export function TabsSection() {
       <ContainedTabPanel isVisible={selectedTab === TABS.WORLD}>
         <WorldSection />
       </ContainedTabPanel>
-      {shouldShowSectors ? (
-        <ContainedTabPanel
-          greyBackground={worldExists}
-          isVisible={selectedTab === TABS.SECTORS}
-        >
-          <SectorSection
-            showHiddenTag={showGuideTips}
-            openNPCTab={() => setSelectedTab(TABS.NPCS)}
-          />
-        </ContainedTabPanel>
-      ) : (
+      <ContainedTabPanel
+        greyBackground={worldExists}
+        isVisible={selectedTab === TABS.SECTORS}
+      >
+        <SectorSection
+          showHiddenTag={showGuideTips}
+          openNPCTab={() => setSelectedTab(TABS.NPCS)}
+        />
+      </ContainedTabPanel>
+      {!shouldShowSectors && (
         <ContainedTabPanel
           isVisible={selectedTab === TABS.LOCATIONS}
           greyBackground={worldExists}

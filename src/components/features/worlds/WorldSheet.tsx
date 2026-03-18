@@ -1,4 +1,4 @@
-import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
+import { Alert, Button, CircularProgress, Typography } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { SectionHeading } from "components/shared/SectionHeading";
 import { WorldNameSection } from "pages/World/WorldSheetPage/components/WorldNameSection";

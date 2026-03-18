@@ -297,6 +297,36 @@ export interface CharacterSummaryOutput {
   summary: string;
 }
 
+// --- Sector generation ---
+
+export interface SectorGenerationSettlement {
+  name: string;
+  locationType: string;
+  population: string;
+  authority: string;
+  projects: string;
+  trouble: string;
+  planet?: {
+    name: string;
+    className: string;
+    atmosphere?: string;
+  };
+}
+
+export interface SectorGenerationRequest {
+  sectorName: string;
+  region: string;
+  trouble: string;
+  settlements: SectorGenerationSettlement[];
+  npc: { name: string; role: string };
+  worldContext?: WorldContext;
+}
+
+export interface SectorGenerationOutput {
+  settlementDescriptions: string[];
+  npcDescription: string;
+}
+
 export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";
 
 export interface AiEventDocument {
