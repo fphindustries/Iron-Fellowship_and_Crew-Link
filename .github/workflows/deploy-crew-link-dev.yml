@@ -57,7 +57,7 @@ jobs:
       - name: Deploy Firebase resources
         run: |
           echo "$GCP_SA_KEY" > /tmp/gcp-sa-key.json
-          GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-sa-key.json firebase deploy --only hosting,firestore,storage,functions --project "$PROJECT_ID"
+          GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-sa-key.json firebase deploy --only hosting,firestore,storage,functions --project "$PROJECT_ID" --force
         env:
           GCP_SA_KEY: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
           PROJECT_ID: "${{ secrets.FIREBASE_PROJECT_ID }}"
