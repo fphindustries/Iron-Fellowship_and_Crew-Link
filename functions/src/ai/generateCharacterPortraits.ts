@@ -8,8 +8,7 @@ import {
   PortraitGenerationOutput,
 } from "./_ai.type";
 
-
-// Portrait generation always uses OpenAI/DALL-E regardless of provider setting.
+// Portrait generation always uses OpenAI image models regardless of provider setting.
 export const generateCharacterPortraits = onCall<
   PortraitGenerationRequest,
   Promise<PortraitGenerationOutput | null>
@@ -22,35 +21,38 @@ export const generateCharacterPortraits = onCall<
       return null;
     }
 
-    const { look, act, wear, paths, backstory, backgroundVow } = request.data;
+    const { look, act, wear, pronouns, paths, portraitStyleAnchor } = request.data;
 
     logger.info("generateCharacterPortraits called", { uid });
 
     const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
-    const pathsLine = paths.length > 0 ? ` Paths: ${paths.join(", ")}.` : "";
-    const backstoryLine = backstory ? ` Background: ${backstory.slice(0, 200)}` : "";
-    const vowLine = backgroundVow ? ` Vow: ${backgroundVow.slice(0, 100)}` : "";
+    const pathsLine =
+      paths.length > 0 ? ` Character roles: ${paths.join(", ")}.` : "";
+    const pronounsLine = pronouns ? ` Pronouns: ${pronouns}.` : "";
+    const styleAnchorLine = portraitStyleAnchor
+      ? ` Art style: ${portraitStyleAnchor}.`
+      : "";
 
     const prompt = [
-      "Ironsworn Starforged sci-fi RPG character portrait, head and shoulders.",
+      "Ironsworn Starforged sci-fi RPG character portrait.",
+      "Close-up portrait, face clearly visible and centered, head and shoulders only.",
       `Appearance: ${look}.`,
       `Personality: ${act}.`,
       `Wearing: ${wear}.`,
       pathsLine,
-      backstoryLine,
-      vowLine,
-      "Digital art, detailed face, dramatic lighting, square composition, no text.",
+      pronounsLine,
+      styleAnchorLine,
+      "Digital art, dramatic lighting, square composition, no text, no watermarks.",
     ]
       .filter(Boolean)
       .join(" ");
 
     const result = await openai.images.generate({
-      model: "dall-e-2",
+      model: "gpt-image-1",
       prompt,
       n: 3,
-      size: "512x512",
-      response_format: "b64_json",
+      size: "1024x1024",
     });
 
     const images = (result.data ?? [])

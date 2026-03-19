@@ -205,25 +205,68 @@ export function CharacterGuidedCreatePageContent() {
     advance();
   };
 
-  const saveSummaryNote = (characterId: string, summary: string) => {
-    const paragraphs = summary
-      .split(/\n\n+/)
-      .filter(Boolean)
-      .map((text) => ({
+  const saveSummaryNote = (
+    characterId: string,
+    data: {
+      aiSummary: string;
+      backstory: string;
+      look: string;
+      act: string;
+      wear: string;
+    }
+  ) => {
+    const nodes: object[] = [];
+
+    if (data.aiSummary) {
+      nodes.push({
+        type: "heading",
+        attrs: { level: 1 },
+        content: [{ type: "text", text: "Character Summary" }],
+      });
+      data.aiSummary
+        .split(/\n\n+/)
+        .filter(Boolean)
+        .forEach((text) =>
+          nodes.push({ type: "paragraph", content: [{ type: "text", text }] })
+        );
+    }
+
+    if (data.backstory) {
+      nodes.push({
+        type: "heading",
+        attrs: { level: 1 },
+        content: [{ type: "text", text: "Backstory" }],
+      });
+      nodes.push({
         type: "paragraph",
-        content: [{ type: "text", text }],
-      }));
-    const tiptapJson = {
-      type: "doc",
-      content: [
-        {
-          type: "heading",
-          attrs: { level: 1 },
-          content: [{ type: "text", text: "Character Summary" }],
-        },
-        ...paragraphs,
-      ],
-    };
+        content: [{ type: "text", text: data.backstory }],
+      });
+    }
+
+    if (data.look || data.act || data.wear) {
+      nodes.push({
+        type: "heading",
+        attrs: { level: 1 },
+        content: [{ type: "text", text: "Appearance" }],
+      });
+      if (data.look)
+        nodes.push({
+          type: "paragraph",
+          content: [{ type: "text", text: `Look: ${data.look}` }],
+        });
+      if (data.act)
+        nodes.push({
+          type: "paragraph",
+          content: [{ type: "text", text: `Act: ${data.act}` }],
+        });
+      if (data.wear)
+        nodes.push({
+          type: "paragraph",
+          content: [{ type: "text", text: `Wear: ${data.wear}` }],
+        });
+    }
+
+    const tiptapJson = { type: "doc", content: nodes };
     const ydoc = TiptapTransformer.toYdoc(tiptapJson, "default");
     const content = Y.encodeStateAsUpdate(ydoc);
     return addNote({ characterId, order: 0 }).then((noteId) =>
@@ -263,8 +306,20 @@ export function CharacterGuidedCreatePageContent() {
           }
         };
 
-        if (formData.aiSummary) {
-          saveSummaryNote(characterId, formData.aiSummary)
+        if (
+          formData.aiSummary ||
+          formData.backstory ||
+          formData.look ||
+          formData.act ||
+          formData.wear
+        ) {
+          saveSummaryNote(characterId, {
+            aiSummary: formData.aiSummary,
+            backstory: formData.backstory,
+            look: formData.look,
+            act: formData.act,
+            wear: formData.wear,
+          })
             .catch(ignoreApiError)
             .finally(afterSummary);
         } else {

@@ -60,6 +60,9 @@ export function WorldAiSettingsSection() {
   const [worldTone, setWorldTone] = useState(
     settings?.worldTonePrompt ?? ""
   );
+  const [portraitStyleAnchor, setPortraitStyleAnchor] = useState(
+    settings?.portraitStyleAnchor ?? ""
+  );
   const [modeConfigs, setModeConfigs] = useState<
     Partial<Record<AiMode, WorldAiModeConfig>>
   >(settings?.modeConfigs ?? {});
@@ -72,12 +75,14 @@ export function WorldAiSettingsSection() {
       isInitializedRef.current = true;
       setProvider(settings.provider ?? "openai");
       setWorldTone(settings.worldTonePrompt ?? "");
+      setPortraitStyleAnchor(settings.portraitStyleAnchor ?? "");
       setModeConfigs(settings.modeConfigs ?? {});
     }
   }, [settings]);
 
   // Separate debounce timers so concurrent edits to different fields don't cancel each other
   const worldToneTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const portraitStyleTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const modeConfigTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const debouncedSaveWorldTone = useCallback(
@@ -85,6 +90,17 @@ export function WorldAiSettingsSection() {
       if (worldToneTimeoutRef.current) clearTimeout(worldToneTimeoutRef.current);
       worldToneTimeoutRef.current = setTimeout(() => {
         updateSettings({ worldTonePrompt: value }).catch(ignoreApiError);
+      }, 800);
+    },
+    [updateSettings]
+  );
+
+  const debouncedSavePortraitStyle = useCallback(
+    (value: string) => {
+      if (portraitStyleTimeoutRef.current)
+        clearTimeout(portraitStyleTimeoutRef.current);
+      portraitStyleTimeoutRef.current = setTimeout(() => {
+        updateSettings({ portraitStyleAnchor: value }).catch(ignoreApiError);
       }, 800);
     },
     [updateSettings]
@@ -103,6 +119,8 @@ export function WorldAiSettingsSection() {
   useEffect(() => {
     return () => {
       if (worldToneTimeoutRef.current) clearTimeout(worldToneTimeoutRef.current);
+      if (portraitStyleTimeoutRef.current)
+        clearTimeout(portraitStyleTimeoutRef.current);
       if (modeConfigTimeoutRef.current) clearTimeout(modeConfigTimeoutRef.current);
     };
   }, []);
@@ -115,6 +133,11 @@ export function WorldAiSettingsSection() {
   const handleWorldToneChange = (value: string) => {
     setWorldTone(value);
     debouncedSaveWorldTone(value);
+  };
+
+  const handlePortraitStyleChange = (value: string) => {
+    setPortraitStyleAnchor(value);
+    debouncedSavePortraitStyle(value);
   };
 
   const handleModeConfigChange = (
@@ -177,6 +200,18 @@ export function WorldAiSettingsSection() {
           value={worldTone}
           onChange={(e) => handleWorldToneChange(e.target.value)}
           helperText="Custom tone injected into all AI prompts for this world."
+        />
+
+        {/* Portrait Art Style */}
+        <TextField
+          label="Portrait Art Style"
+          placeholder='e.g., "Destiny 2 concept art" or "painterly sci-fi illustration, muted tones"'
+          multiline
+          minRows={2}
+          maxRows={4}
+          value={portraitStyleAnchor}
+          onChange={(e) => handlePortraitStyleChange(e.target.value)}
+          helperText="Style anchor injected into AI portrait prompts for characters in this world."
         />
 
         {/* Per-Mode Configuration */}

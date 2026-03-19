@@ -19,6 +19,7 @@ import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { randomizeCharacterAppearance } from "api-calls/ai/randomizeCharacterAppearance";
 import { generateCharacterPortraits } from "api-calls/ai/generateCharacterPortraits";
 import { WorldContext } from "api-calls/ai/_ai.type";
+import { useStore } from "stores/store";
 
 const PRONOUN_OPTIONS = ["he/him", "she/her", "they/them", "xe/xem"];
 const CUSTOM_PRONOUNS_VALUE = "custom";
@@ -53,6 +54,9 @@ export function EnvisionCharacterStep({
   worldContext,
 }: EnvisionCharacterStepProps) {
   const showAi = useAiGuide();
+  const portraitStyleAnchor = useStore(
+    (s) => s.worlds.currentWorld.worldAiSettings?.portraitStyleAnchor
+  );
 
   const [look, setLook] = useState(initialLook ?? "");
   const [act, setAct] = useState(initialAct ?? "");
@@ -125,9 +129,9 @@ export function EnvisionCharacterStep({
         look,
         act,
         wear,
+        pronouns: effectivePronouns || undefined,
         paths: pathNames,
-        backstory,
-        backgroundVow,
+        portraitStyleAnchor,
       });
       if (result?.images?.length) {
         setGeneratedImages(result.images);

@@ -26,6 +26,7 @@ export interface WorldAiSettings {
   provider: AiProviderName;
   worldTonePrompt?: string;
   assumptions?: string;
+  portraitStyleAnchor?: string;
   modeConfigs?: Partial<Record<AiMode, WorldAiModeConfig>>;
 }
 
@@ -260,9 +261,9 @@ export interface PortraitGenerationRequest {
   look: string;
   act: string;
   wear: string;
+  pronouns?: string;
   paths: string[];
-  backstory: string;
-  backgroundVow: string;
+  portraitStyleAnchor?: string;
 }
 
 export interface PortraitGenerationOutput {
