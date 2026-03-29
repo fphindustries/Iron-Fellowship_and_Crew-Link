@@ -25,6 +25,7 @@ export { generateCharacterPortraits } from "./ai/generateCharacterPortraits";
 export { generateCharacterSummary } from "./ai/generateCharacterSummary";
 export { generateWorldDescription } from "./ai/generateWorldDescription";
 export { generateSectorContent } from "./ai/generateSectorContent";
+export { generateNarrative } from "./aiGuide";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript

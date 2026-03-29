@@ -148,14 +148,29 @@ export const createCurrentCampaignSlice: CreateSliceType<
       return removeCharacterFromCampaign({ uid, campaignId, characterId });
     },
     updateCampaignConditionMeter: (conditionMeterKey, value) => {
-      const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
+      const state = getState();
+      const campaignId = state.campaigns.currentCampaign.currentCampaignId;
       if (!campaignId) {
         return new Promise((res, reject) => reject("No campaign found."));
       }
-      return updateCampaign({
+
+      const previousValue =
+        state.campaigns.currentCampaign.currentCampaign?.conditionMeters?.[
+          conditionMeterKey
+        ] ?? 0;
+
+      const result = updateCampaign({
         campaignId,
         campaign: { [`conditionMeters.${conditionMeterKey}`]: value },
       });
+
+      state.sessionLog.logStatChangeEvent({
+        stat: conditionMeterKey,
+        previousValue,
+        newValue: value,
+      });
+
+      return result;
     },
     updateCampaign: (campaign) => {
       const campaignId = getState().campaigns.currentCampaign.currentCampaignId;

@@ -60,7 +60,11 @@
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(/dev/null:*)",
       "mcp__plugin_firebase_firebase__firebase_get_security_rules",
-      "Bash(npm show:*)"
+      "Bash(npm show:*)",
+      "Bash(grep -l stream c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@firebase/functions/dist/*.d.ts)",
+      "Bash(grep -r streamb c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@firebase/functions/dist/ --include=*.d.ts)",
+      "Bash(grep -r \"stream\\\\b\\\\|StreamableCallable\" c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/firebase/functions/ --include=*.d.ts)",
+      "Bash(grep -r \"cloudfunctions\\\\|customDomain\\\\|functionURL\\\\|emulatorURL\\\\|resolveURL\" c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@firebase/functions/dist/esm-node/src/ --include=*.ts)"
     ]
   }
 }

@@ -33,6 +33,8 @@ export function useRoller() {
   const addRollToScreen = useStore((store) => store.appState.addRoll);
   const addRollToLog = useStore((store) => store.gameLog.addRoll);
 
+  const logMoveEvent = useStore((store) => store.sessionLog.logMoveEvent);
+
   const newOracles = useStore((store) => store.rules.oracleMaps.allOraclesMap);
   const momentum = useStore(
     (store) => store.characters.currentCharacter.currentCharacter?.momentum ?? 0
@@ -44,7 +46,8 @@ export function useRoller() {
       modifier: number,
       move?: { name: string; id: string },
       adds?: number,
-      showSnackbar = true
+      showSnackbar = true,
+      playerContext?: string
     ) => {
       const challenge1 = getRoll(10);
       const challenge2 = getRoll(10);
@@ -100,6 +103,20 @@ export function useRoller() {
         })
         .catch(ignoreApiError);
 
+      if (move) {
+        logMoveEvent({
+          moveName: move.name,
+          moveId: move.id,
+          stat: label,
+          statValue: modifier,
+          playerContext: playerContext ?? "",
+          action,
+          challengeDice: [challenge1, challenge2],
+          score: actionTotal,
+          outcome: result,
+        });
+      }
+
       if (showSnackbar) {
         let announcement = `Rolled ${
           move ? move.name + " using stat " + label : label
@@ -143,6 +160,7 @@ export function useRoller() {
       uid,
       verboseScreenReaderRolls,
       momentum,
+      logMoveEvent,
     ]
   );
 

@@ -6,6 +6,7 @@ import { useListenToCurrentCharacterAssets } from "stores/character/currentChara
 import { useListenToCharacterTracks } from "stores/character/currentCharacter/tracks/useListenToCharacterTracks";
 import { useListenToSettings } from "stores/settings/useListenToSettings";
 import { useListenToLogs } from "stores/gameLog/useListenToLogs";
+import { useListenToSessionLog } from "stores/sessionLog/useListenToSessionLog";
 import { useListenToNotes } from "stores/notes/useListenToNotes";
 import { useStore } from "stores/store";
 import { useListenToLocations } from "stores/world/currentWorld/locations/useListenToLocations";
@@ -93,6 +94,7 @@ export function useSyncStore() {
   useListenToSectorLocations();
 
   useListenToLogs();
+  useListenToSessionLog();
   useListenToCurrentCampaignCharacters();
 
   useListenToHomebrewContent(

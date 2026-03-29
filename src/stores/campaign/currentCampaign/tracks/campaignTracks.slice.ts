@@ -2,7 +2,7 @@ import { CreateSliceType } from "stores/store.type";
 import { CampaignTracksSlice } from "./campaignTracks.slice.type";
 import { defaultCampaignTracksSlice } from "./campaignTracks.slice.default";
 import { listenToProgressTracks } from "api-calls/tracks/listenToProgressTracks";
-import { TrackStatus } from "types/Track.type";
+import { TrackStatus, TrackTypes } from "types/Track.type";
 import { addProgressTrack } from "api-calls/tracks/addProgressTrack";
 import { updateProgressTrack } from "api-calls/tracks/updateProgressTrack";
 import { removeProgressTrack } from "api-calls/tracks/removeProgressTrack";
@@ -51,7 +51,37 @@ export const createCampaignTracksSlice: CreateSliceType<CampaignTracksSlice> = (
     return addProgressTrack({ campaignId, track });
   },
   updateTrack: (trackId, track) => {
-    const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
+    const state = getState();
+    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
+
+    if (track.value !== undefined) {
+      const activeTrackMap =
+        state.campaigns.currentCampaign.tracks.trackMap[TrackStatus.Active];
+      const trackTypes = [
+        TrackTypes.Fray,
+        TrackTypes.Journey,
+        TrackTypes.Vow,
+        TrackTypes.SceneChallenge,
+        TrackTypes.Clock,
+      ] as const;
+      let foundTrack: { label: string; value: number; type: string } | undefined;
+      for (const type of trackTypes) {
+        const t = activeTrackMap[type][trackId];
+        if (t) {
+          foundTrack = t;
+          break;
+        }
+      }
+      if (foundTrack) {
+        state.sessionLog.logProgressEvent({
+          trackName: foundTrack.label,
+          trackType: foundTrack.type,
+          previousValue: foundTrack.value,
+          newValue: track.value,
+        });
+      }
+    }
+
     return updateProgressTrack({ campaignId, trackId, track });
   },
   deleteTrack: (trackId) => {

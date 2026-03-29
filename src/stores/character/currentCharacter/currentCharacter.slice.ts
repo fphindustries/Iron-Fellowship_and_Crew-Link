@@ -39,20 +39,33 @@ export const createCurrentCharacterSlice: CreateSliceType<
       return updateCharacter({ characterId, character });
     },
     updateCharacterConditionMeter: (conditionMeterKey, value) => {
-      const characterId =
-        getState().characters.currentCharacter.currentCharacterId;
+      const state = getState();
+      const characterId = state.characters.currentCharacter.currentCharacterId;
       if (!characterId) {
         return new Promise((res, reject) =>
           reject("Character ID must be defined")
         );
       }
 
-      return updateCharacter({
+      const previousValue =
+        state.characters.currentCharacter.currentCharacter?.conditionMeters?.[
+          conditionMeterKey
+        ] ?? 0;
+
+      const result = updateCharacter({
         characterId,
         character: {
           [`conditionMeters.${conditionMeterKey}`]: value,
         },
       });
+
+      state.sessionLog.logStatChangeEvent({
+        stat: conditionMeterKey,
+        previousValue,
+        newValue: value,
+      });
+
+      return result;
     },
 
     updateCurrentCharacterPortrait: (portrait, scale, position) => {

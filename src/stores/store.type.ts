@@ -12,6 +12,7 @@ import { AppStateSlice } from "./appState/appState.slice.type";
 import { HomebrewSlice } from "./homebrew/homebrew.slice.type";
 import { RulesSlice } from "./rules/rules.slice.type";
 import { AiSlice } from "./ai/ai.slice.type";
+import { SessionLogSlice } from "./sessionLog/sessionLog.slice.type";
 
 export type IStore = {
   appState: AppStateSlice;
@@ -23,6 +24,7 @@ export type IStore = {
   settings: SettingsSlice;
   notes: NotesSlice;
   gameLog: GameLogSlice;
+  sessionLog: SessionLogSlice;
   accessibilitySettings: AccessibilitySettingsSlice;
   homebrew: HomebrewSlice;
   rules: RulesSlice;
