@@ -10,7 +10,7 @@ import { useUpdateQueryStringValueWithoutNavigation } from "hooks/useUpdateQuery
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
-import { CharacterTab, NotesTab, TracksTab, WorldTab } from "./Tabs";
+import { CharacterTab, NotesTab, SessionsTab, TracksTab, WorldTab } from "./Tabs";
 import { SectorSection } from "components/features/worlds/SectorSection";
 import { useStore } from "stores/store";
 import { NPCSection } from "components/features/worlds/NPCSection";
@@ -29,6 +29,7 @@ enum CampaignTabs {
   Sectors = "sectors",
   NPCs = "ncps",
   Lore = "lore",
+  Sessions = "sessions",
   AiGuide = "ai-guide",
 }
 
@@ -92,6 +93,7 @@ export function CampaignContent(props: CampaignContentProps) {
         )}
         <StyledTab label="NPCs" value={CampaignTabs.NPCs} />
         <StyledTab label="Lore" value={CampaignTabs.Lore} />
+        <StyledTab label="Sessions" value={CampaignTabs.Sessions} />
         {showAiGuide && (
           <StyledTab label="AI" value={CampaignTabs.AiGuide} />
         )}
@@ -139,6 +141,9 @@ export function CampaignContent(props: CampaignContentProps) {
         greyBackground={hasWorld}
       >
         <LoreSection showHiddenTag={showGuideTips} />
+      </ContainedTabPanel>
+      <ContainedTabPanel isVisible={selectedTab === CampaignTabs.Sessions}>
+        <SessionsTab />
       </ContainedTabPanel>
       {showAiGuide && (
         <ContainedTabPanel isVisible={selectedTab === CampaignTabs.AiGuide}>

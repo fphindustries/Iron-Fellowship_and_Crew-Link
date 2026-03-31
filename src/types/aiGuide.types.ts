@@ -13,6 +13,10 @@ export interface NarrativeGameContext {
   characterAssets: string[];
   campaignCharacterNames?: string[];
   recentEvents: string[];
+  previousSessionSummary?: string;
+  characterPronouns?: string;
+  callsign?: string;
+  characteristics?: string;
 }
 
 export interface NarrativeRequestPayload {

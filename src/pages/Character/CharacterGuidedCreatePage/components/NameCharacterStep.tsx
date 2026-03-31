@@ -3,7 +3,7 @@ import {
   Box,
   Button,
   CircularProgress,
-  Paper,
+  TextField,
   Typography,
 } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
@@ -26,7 +26,7 @@ const nameOraclesStarforged = [
 ];
 
 export interface NameCharacterStepProps {
-  onComplete: (name: string, summary: string) => void;
+  onComplete: (name: string, callsign: string, characteristics: string) => void;
   initialName?: string;
   pathNames: string[];
   backstory: string;
@@ -54,9 +54,10 @@ export function NameCharacterStep({
   const { rollOracleTable } = useRoller();
 
   const [name, setName] = useState(initialName ?? "");
-  const [aiSummary, setAiSummary] = useState("");
-  const [summaryLoading, setSummaryLoading] = useState(false);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [callsign, setCallsign] = useState("");
+  const [characteristics, setCharacteristics] = useState("");
+  const [characteristicsLoading, setCharacteristicsLoading] = useState(false);
+  const [characteristicsError, setCharacteristicsError] = useState<string | null>(null);
 
   const nameOracles = useGameSystemValue({
     [GAME_SYSTEMS.IRONSWORN]: nameOraclesIronsworn,
@@ -77,9 +78,9 @@ export function NameCharacterStep({
     return rollOracleTable(nameOracles[idx], false)?.result ?? "";
   }, [rollOracleTable, nameOracles, joinOracles]);
 
-  const handleGenerateSummary = async () => {
-    setSummaryLoading(true);
-    setSummaryError(null);
+  const handleGenerateCharacteristics = async () => {
+    setCharacteristicsLoading(true);
+    setCharacteristicsError(null);
     try {
       const result = await generateCharacterSummary({
         name: name.trim() || "Unknown",
@@ -93,12 +94,12 @@ export function NameCharacterStep({
         worldContext,
       });
       if (result?.summary) {
-        setAiSummary(result.summary);
+        setCharacteristics(result.summary);
       }
     } catch {
-      setSummaryError("Failed to generate summary. Please try again.");
+      setCharacteristicsError("Failed to generate characteristics. Please try again.");
     } finally {
-      setSummaryLoading(false);
+      setCharacteristicsLoading(false);
     }
   };
 
@@ -120,45 +121,57 @@ export function NameCharacterStep({
         sx={{ maxWidth: 350, mb: 3 }}
       />
 
+      <TextField
+        label="Callsign"
+        size="small"
+        value={callsign}
+        onChange={(e) => setCallsign(e.target.value)}
+        placeholder="e.g. Ghost, Ember"
+        sx={{ maxWidth: 220, mb: 3, display: "block" }}
+      />
+
+      <Typography variant="body2" color="text.secondary" mb={1}>
+        Characteristics
+      </Typography>
+      <TextField
+        label="Characteristics"
+        value={characteristics}
+        onChange={(e) => setCharacteristics(e.target.value)}
+        placeholder="e.g. Ace pilot with a grudge, Cybernetic eye, wears a bright red flight suit"
+        fullWidth
+        multiline
+        minRows={2}
+        sx={{ maxWidth: 540, mb: 2 }}
+      />
+
       {showAi && (
         <Box mb={2}>
           <Button
             variant="outlined"
             startIcon={
-              summaryLoading ? (
+              characteristicsLoading ? (
                 <CircularProgress size={16} />
               ) : (
                 <AutoAwesomeIcon />
               )
             }
-            onClick={handleGenerateSummary}
-            disabled={summaryLoading}
+            onClick={handleGenerateCharacteristics}
+            disabled={characteristicsLoading}
           >
-            {summaryLoading ? "Generating…" : "Generate Summary"}
+            {characteristicsLoading ? "Generating…" : "Generate Characteristics"}
           </Button>
         </Box>
       )}
 
-      {summaryError && (
+      {characteristicsError && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {summaryError}
+          {characteristicsError}
         </Alert>
-      )}
-
-      {aiSummary && (
-        <Paper
-          variant="outlined"
-          sx={{ p: 2, mb: 3, bgcolor: "background.paperInlay" }}
-        >
-          <Typography variant="body2" sx={{ fontStyle: "italic" }}>
-            {aiSummary}
-          </Typography>
-        </Paper>
       )}
 
       <Button
         variant="contained"
-        onClick={() => onComplete(name.trim(), aiSummary)}
+        onClick={() => onComplete(name.trim(), callsign.trim(), characteristics.trim())}
         disabled={!name.trim()}
       >
         Continue

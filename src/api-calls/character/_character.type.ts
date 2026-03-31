@@ -59,4 +59,7 @@ export interface CharacterDocument {
 
   theme?: Themes;
   backstory?: string;
+  pronouns?: string;
+  callsign?: string;
+  characteristics?: string;
 }

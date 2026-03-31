@@ -10,10 +10,11 @@ export const endSession = createApiFunction<
     sessionId: string;
     characterId?: string;
     campaignId?: string;
+    summary?: string;
   },
   void
 >((params) => {
-  const { sessionId, characterId, campaignId } = params;
+  const { sessionId, characterId, campaignId, summary } = params;
 
   return new Promise((resolve, reject) => {
     if (!characterId && !campaignId) {
@@ -28,6 +29,7 @@ export const endSession = createApiFunction<
     updateDoc(sessionDocRef, {
       isActive: false,
       endedAt: Timestamp.now(),
+      ...(summary ? { summary } : {}),
     })
       .then(() => resolve())
       .catch((e) => reject(e));

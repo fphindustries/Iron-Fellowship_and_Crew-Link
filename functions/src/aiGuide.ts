@@ -6,9 +6,9 @@ import { NarrativeRequest, NarrativeResponse } from "./types/aiGuide.types";
 const ROLE_BLOCK = `You are the Guide — the narrative voice of a solo or co-op tabletop RPG session in the Ironsworn or Starforged universe. Your role is to respond to player moves and dice outcomes with vivid, immersive story beats that honour the mechanical result while breathing life into the fiction.
 
 Rules you must follow:
-- Write in second person ("You...", "Your blade...", "The stars around you...")
+- Write in third person ("She...", "He...", "They...", or use the character's name)
 - Always honour the outcome: Strong Hit = genuine success, Weak Hit = success with cost/complication, Miss = failure or danger
-- Keep responses to 3-5 sentences — tight and evocative
+- Write 5–8 evocative sentences — paint a vivid picture with sensory detail, emotional resonance, and narrative consequence
 - Avoid clichés; favour specific sensory details over vague descriptions
 - Never introduce new plot elements the player hasn't established
 - Do not repeat the move name or outcome label verbatim
@@ -18,7 +18,13 @@ function buildGameContextBlock(req: NarrativeRequest): string {
   const { gameContext } = req;
   const lines: string[] = [];
 
-  lines.push(`Character: ${gameContext.characterName}`);
+  const callsignPart = gameContext.callsign ? ` — "${gameContext.callsign}"` : "";
+  const pronounsPart = gameContext.characterPronouns ? ` (${gameContext.characterPronouns})` : "";
+  lines.push(`Character: ${gameContext.characterName}${callsignPart}${pronounsPart}`);
+
+  if (gameContext.characteristics) {
+    lines.push(`Characteristics: ${gameContext.characteristics}`);
+  }
 
   if (gameContext.worldTruths.length > 0) {
     lines.push("\nWorld Truths:");
@@ -63,13 +69,17 @@ function buildMoveUserMessage(req: NarrativeRequest): string {
     lines.push(`Player's intent: "${moveEvent.playerContext}"`);
   }
 
+  if (gameContext.previousSessionSummary) {
+    lines.push(`\nPrevious session (now concluded):\n${gameContext.previousSessionSummary}`);
+  }
+
   if (gameContext.recentEvents.length > 0) {
-    lines.push("\nRecent session events:");
-    gameContext.recentEvents.slice(0, 5).forEach((e) => lines.push(`  - ${e}`));
+    lines.push("\nCurrent session events so far (chronological):");
+    gameContext.recentEvents.forEach((e) => lines.push(`  - ${e}`));
   }
 
   lines.push(
-    "\nWrite a vivid 3–5 sentence story beat in second person that honours this outcome."
+    "\nWrite a vivid 5–8 sentence story beat in third person that honours this outcome. Ground the narrative in the current session events above. The previous session is backstory only — do not treat it as the current scene."
   );
 
   return lines.join("\n");
@@ -79,14 +89,19 @@ function buildPromptUserMessage(req: NarrativeRequest): string {
   const { prompt, gameContext } = req;
   const lines: string[] = [];
 
+  if (gameContext.previousSessionSummary) {
+    lines.push(`Previous session (now concluded):\n${gameContext.previousSessionSummary}`);
+    lines.push("");
+  }
+
   if (gameContext.recentEvents.length > 0) {
-    lines.push("Recent session events:");
-    gameContext.recentEvents.slice(0, 5).forEach((e) => lines.push(`  - ${e}`));
+    lines.push("Current session events so far (chronological):");
+    gameContext.recentEvents.forEach((e) => lines.push(`  - ${e}`));
     lines.push("");
   }
 
   lines.push(
-    `Player prompt: "${prompt}"\n\nWrite a vivid 3–5 sentence story beat in second person inspired by this prompt.`
+    `Player prompt: "${prompt}"\n\nWrite a vivid 5–8 sentence story beat in third person inspired by this prompt. Ground the narrative in the current session events above. The previous session is backstory only — do not treat it as the current scene.`
   );
 
   return lines.join("\n");
@@ -125,7 +140,7 @@ export const generateNarrative = onCall<
 
     const stream = client.messages.stream({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 300,
+      max_tokens: 700,
       system: [
         {
           type: "text",

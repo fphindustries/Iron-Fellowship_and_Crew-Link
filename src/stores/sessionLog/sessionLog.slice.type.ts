@@ -3,6 +3,7 @@ import {
   SessionDocument,
   SessionLogEvent,
   MoveSessionEvent,
+  OracleSessionEvent,
   StatChangeSessionEvent,
   ProgressSessionEvent,
   BaseSessionEvent,
@@ -24,11 +25,11 @@ export interface SessionLogSliceActions {
     campaignId?: string;
     title?: string;
   }) => Promise<string>;
-  endSession: () => Promise<void>;
+  endSession: (summary?: string) => Promise<void>;
 
   logMoveEvent: (
     event: Omit<MoveSessionEvent, keyof BaseSessionEvent | "type">
-  ) => void;
+  ) => Promise<string>;
   logStatChangeEvent: (
     event: Omit<StatChangeSessionEvent, keyof BaseSessionEvent | "type">
   ) => void;
@@ -36,6 +37,9 @@ export interface SessionLogSliceActions {
     event: Omit<ProgressSessionEvent, keyof BaseSessionEvent | "type">
   ) => void;
   logJournalEvent: (text: string, isAiGenerated?: boolean) => void;
+  logOracleEvent: (
+    event: Omit<OracleSessionEvent, keyof BaseSessionEvent | "type">
+  ) => void;
   updateMoveEventNarrative: (eventId: string, narrative: string) => void;
   deleteEvent: (eventId: string) => void;
 

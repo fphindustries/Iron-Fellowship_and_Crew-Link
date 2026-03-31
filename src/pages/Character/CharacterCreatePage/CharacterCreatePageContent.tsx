@@ -35,6 +35,9 @@ export interface Form {
   assets: AssetDocument[];
   backstory?: string;
   backgroundVow?: string;
+  pronouns?: string;
+  callsign?: string;
+  characteristics?: string;
 }
 
 export function CharacterCreatePageContent() {
@@ -72,7 +75,12 @@ export function CharacterCreatePageContent() {
       parsedStats,
       values.assets,
       values.portrait,
-      expansionIds
+      expansionIds,
+      undefined,
+      undefined,
+      values.pronouns,
+      values.callsign,
+      values.characteristics
     )
       .then((characterId) => {
         if (campaignId) {

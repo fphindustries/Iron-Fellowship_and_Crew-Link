@@ -99,7 +99,7 @@ export function TabsSection() {
         value={selectedTab}
         onChange={(evt, value) => handleTabChange(value)}
       >
-        <StyledTab label="Assets" value={TABS.ASSETS} />
+        <StyledTab label="General" value={TABS.ASSETS} />
         <StyledTab label="Tracks" value={TABS.TRACKS} />
         <StyledTab label="Notes" value={TABS.NOTES} />
         <StyledTab label={"World"} value={TABS.WORLD} />

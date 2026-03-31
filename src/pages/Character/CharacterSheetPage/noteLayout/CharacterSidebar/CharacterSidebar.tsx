@@ -36,7 +36,7 @@ export function CharacterSidebar() {
       >
         <StyledTab label="Character" value={Tabs.Character} />
         <StyledTab label="Tracks" value={Tabs.Tracks} />
-        <StyledTab label="Assets" value={Tabs.Assets} />
+        <StyledTab label="General" value={Tabs.Assets} />
       </StyledTabs>
 
       <ContainedTabPanel

@@ -1,5 +1,5 @@
-import { Box, Button, Grid, Typography, LinearProgress } from "@mui/material";
-import { useState } from "react";
+import { Box, Button, Grid, Typography, LinearProgress, TextField } from "@mui/material";
+import { useEffect, useState } from "react";
 import { AssetCard } from "components/features/assets/AssetCard";
 import { AssetCardDialog } from "components/features/assets/AssetCardDialog";
 import { AssetDocument } from "api-calls/assets/_asset.type";
@@ -16,6 +16,38 @@ export function AssetsSection() {
   const isInCampaign = useStore(
     (store) => !!store.characters.currentCharacter.currentCharacter?.campaignId
   );
+
+  // Identity fields
+  const storedPronouns = useStore(
+    (store) => store.characters.currentCharacter.currentCharacter?.pronouns ?? ""
+  );
+  const storedCallsign = useStore(
+    (store) => store.characters.currentCharacter.currentCharacter?.callsign ?? ""
+  );
+  const storedCharacteristics = useStore(
+    (store) => store.characters.currentCharacter.currentCharacter?.characteristics ?? ""
+  );
+  const updateCurrentCharacter = useStore(
+    (store) => store.characters.currentCharacter.updateCurrentCharacter
+  );
+
+  const [pronouns, setPronouns] = useState(storedPronouns);
+  const [callsign, setCallsign] = useState(storedCallsign);
+  const [characteristics, setCharacteristics] = useState(storedCharacteristics);
+  const [identitySaving, setIdentitySaving] = useState(false);
+
+  useEffect(() => {
+    setPronouns(storedPronouns);
+    setCallsign(storedCallsign);
+    setCharacteristics(storedCharacteristics);
+  }, [storedPronouns, storedCallsign, storedCharacteristics]);
+
+  const handleIdentitySave = () => {
+    setIdentitySaving(true);
+    updateCurrentCharacter({ pronouns, callsign, characteristics })
+      .catch(ignoreApiError)
+      .finally(() => setIdentitySaving(false));
+  };
 
   const assets = useStore(
     (store) => store.characters.currentCharacter.assets.assets ?? {}
@@ -124,6 +156,48 @@ export function AssetsSection() {
 
   return (
     <>
+      <Box px={2} pt={2} pb={1}>
+        <Box display="flex" gap={2} flexWrap="wrap" mb={1.5}>
+          <TextField
+            label="Pronouns"
+            size="small"
+            value={pronouns}
+            onChange={(e) => setPronouns(e.target.value)}
+            placeholder="they/them"
+            sx={{ maxWidth: 180 }}
+          />
+          <TextField
+            label="Callsign"
+            size="small"
+            value={callsign}
+            onChange={(e) => setCallsign(e.target.value)}
+            placeholder="e.g. Ghost, Ember"
+            sx={{ maxWidth: 180 }}
+          />
+        </Box>
+        <TextField
+          label="Characteristics"
+          size="small"
+          value={characteristics}
+          onChange={(e) => setCharacteristics(e.target.value)}
+          placeholder="e.g. Ace pilot with a grudge, Cybernetic eye, wears a bright red flight suit"
+          fullWidth
+          multiline
+          minRows={2}
+          sx={{ maxWidth: 540, mb: 1.5 }}
+        />
+        <Box display="flex" justifyContent="flex-end" sx={{ maxWidth: 540 }}>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={handleIdentitySave}
+            disabled={identitySaving}
+          >
+            {identitySaving ? "Saving…" : "Save"}
+          </Button>
+        </Box>
+      </Box>
+
       {isInCampaign && isStarforged && (
         <>
           <SectionHeading

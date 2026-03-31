@@ -134,7 +134,8 @@ export function CharacterGuidedCreatePageContent() {
     wear: string;
     pronouns: string;
     name: string;
-    aiSummary: string;
+    callsign: string;
+    characteristics: string;
   }>({
     assets: [],
     backstory: "",
@@ -145,7 +146,8 @@ export function CharacterGuidedCreatePageContent() {
     wear: "",
     pronouns: "they/them",
     name: "",
-    aiSummary: "",
+    callsign: "",
+    characteristics: "",
   });
 
   const advance = () => setActiveStep((s) => s + 1);
@@ -200,15 +202,14 @@ export function CharacterGuidedCreatePageContent() {
     advance();
   };
 
-  const handleNameComplete = (name: string, aiSummary: string) => {
-    setFormData((prev) => ({ ...prev, name, aiSummary }));
+  const handleNameComplete = (name: string, callsign: string, characteristics: string) => {
+    setFormData((prev) => ({ ...prev, name, callsign, characteristics }));
     advance();
   };
 
   const saveSummaryNote = (
     characterId: string,
     data: {
-      aiSummary: string;
       backstory: string;
       look: string;
       act: string;
@@ -216,20 +217,6 @@ export function CharacterGuidedCreatePageContent() {
     }
   ) => {
     const nodes: object[] = [];
-
-    if (data.aiSummary) {
-      nodes.push({
-        type: "heading",
-        attrs: { level: 1 },
-        content: [{ type: "text", text: "Character Summary" }],
-      });
-      data.aiSummary
-        .split(/\n\n+/)
-        .filter(Boolean)
-        .forEach((text) =>
-          nodes.push({ type: "paragraph", content: [{ type: "text", text }] })
-        );
-    }
 
     if (data.backstory) {
       nodes.push({
@@ -289,7 +276,10 @@ export function CharacterGuidedCreatePageContent() {
       formData.portrait,
       undefined,
       formData.backstory || undefined,
-      formData.backgroundVow || undefined
+      formData.backgroundVow || undefined,
+      formData.pronouns || undefined,
+      formData.callsign || undefined,
+      formData.characteristics || undefined
     )
       .then((characterId) => {
         const afterSummary = () => {
@@ -307,14 +297,12 @@ export function CharacterGuidedCreatePageContent() {
         };
 
         if (
-          formData.aiSummary ||
           formData.backstory ||
           formData.look ||
           formData.act ||
           formData.wear
         ) {
           saveSummaryNote(characterId, {
-            aiSummary: formData.aiSummary,
             backstory: formData.backstory,
             look: formData.look,
             act: formData.act,

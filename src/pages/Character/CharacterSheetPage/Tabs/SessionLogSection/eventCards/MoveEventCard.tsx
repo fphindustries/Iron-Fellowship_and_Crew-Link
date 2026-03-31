@@ -3,6 +3,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { MoveSessionEvent } from "types/SessionLog.type";
 import { ROLL_RESULT } from "types/DieRolls.type";
 import { useStore } from "stores/store";
+import { MarkdownContent } from "components/shared/MarkdownContent";
 
 export interface MoveEventCardProps {
   event: MoveSessionEvent;
@@ -62,12 +63,14 @@ export function MoveEventCard({
         <Typography variant="body2" fontWeight="bold" sx={{ flexGrow: 1 }}>
           {event.moveName}
         </Typography>
-        <Chip
-          label={getOutcomeLabel(event.outcome)}
-          size="small"
-          color={getOutcomeColor(event.outcome)}
-          sx={{ height: 20, fontSize: "0.7rem" }}
-        />
+        {event.outcome !== undefined && (
+          <Chip
+            label={getOutcomeLabel(event.outcome)}
+            size="small"
+            color={getOutcomeColor(event.outcome)}
+            sx={{ height: 20, fontSize: "0.7rem" }}
+          />
+        )}
         {showGuideButton && (
           <Tooltip title="Ask the Guide">
             <IconButton
@@ -90,10 +93,12 @@ export function MoveEventCard({
           &ldquo;{event.playerContext}&rdquo;
         </Typography>
       )}
-      <Typography variant="caption" color="textSecondary">
-        Action: {event.action} + {event.stat} {event.statValue} ={" "}
-        {event.score} vs [{event.challengeDice[0]}] [{event.challengeDice[1]}]
-      </Typography>
+      {event.outcome !== undefined && event.challengeDice && (
+        <Typography variant="caption" color="textSecondary">
+          Action: {event.action} + {event.stat} {event.statValue} ={" "}
+          {event.score} vs [{event.challengeDice[0]}] [{event.challengeDice[1]}]
+        </Typography>
+      )}
       {narrativeToShow && (
         <>
           <Divider sx={{ my: 1 }} />
@@ -107,12 +112,12 @@ export function MoveEventCard({
               })}
             />
             <Box flexGrow={1}>
-              <Typography
-                variant="body2"
-                sx={{ fontStyle: "italic", whiteSpace: "pre-wrap" }}
-              >
-                {narrativeToShow}
-                {isStreaming && (
+              {isStreaming ? (
+                <Typography
+                  variant="body2"
+                  sx={{ fontStyle: "italic", whiteSpace: "pre-wrap" }}
+                >
+                  {narrativeToShow}
                   <Box
                     component="span"
                     sx={{
@@ -129,8 +134,12 @@ export function MoveEventCard({
                       },
                     }}
                   />
-                )}
-              </Typography>
+                </Typography>
+              ) : (
+                <MarkdownContent sx={{ fontStyle: "italic" }}>
+                  {narrativeToShow}
+                </MarkdownContent>
+              )}
             </Box>
             {isStreaming && (
               <CircularProgress size={14} sx={{ mt: 0.25, flexShrink: 0 }} />

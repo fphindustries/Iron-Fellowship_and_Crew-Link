@@ -9,7 +9,7 @@ import { deleteSessionEvent } from "api-calls/session-log/deleteSessionEvent";
 import { listenToActiveSession } from "api-calls/session-log/listenToActiveSession";
 import { listenToSessionEvents } from "api-calls/session-log/listenToSessionEvents";
 import { getMostRecentSession } from "api-calls/session-log/getMostRecentSession";
-import { SESSION_EVENT_TYPE, SessionLogEvent } from "types/SessionLog.type";
+import { OracleSessionEvent, SESSION_EVENT_TYPE, SessionLogEvent } from "types/SessionLog.type";
 import { ignoreApiError } from "api-calls/createApiFunction";
 
 export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
@@ -39,7 +39,7 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
     });
   },
 
-  endSession: () => {
+  endSession: (summary) => {
     const state = getState();
     const sessionId = state.sessionLog.activeSessionId;
     const campaignId = state.campaigns.currentCampaign.currentCampaignId;
@@ -50,7 +50,7 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
       return Promise.reject("No active session to end.");
     }
 
-    return endSessionApi({ sessionId, characterId, campaignId }).then(() => {
+    return endSessionApi({ sessionId, characterId, campaignId, summary }).then(() => {
       set((store) => {
         store.sessionLog.activeSessionId = undefined;
         store.sessionLog.activeSession = undefined;
@@ -61,7 +61,7 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
   logMoveEvent: (eventData) => {
     const state = getState();
     const sessionId = state.sessionLog.activeSessionId;
-    if (!sessionId) return;
+    if (!sessionId) return Promise.resolve("");
 
     const campaignId = state.campaigns.currentCampaign.currentCampaignId;
     const characterId =
@@ -80,12 +80,15 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
       uid,
     };
 
-    addSessionEvent({
+    return addSessionEvent({
       sessionId,
       event,
       characterId: characterId ?? undefined,
       campaignId,
-    }).catch(ignoreApiError);
+    }).catch((e) => {
+      ignoreApiError(e);
+      return "";
+    });
   },
 
   logStatChangeEvent: (eventData) => {
@@ -164,6 +167,36 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
       type: SESSION_EVENT_TYPE.JOURNAL,
       text,
       isAiGenerated,
+      sessionId,
+      timestamp: new Date(),
+      characterId,
+      characterName,
+      uid,
+    };
+
+    addSessionEvent({
+      sessionId,
+      event,
+      characterId: characterId ?? undefined,
+      campaignId,
+    }).catch(ignoreApiError);
+  },
+
+  logOracleEvent: (eventData) => {
+    const state = getState();
+    const sessionId = state.sessionLog.activeSessionId;
+    if (!sessionId) return;
+
+    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
+    const characterId =
+      state.characters.currentCharacter.currentCharacterId ?? null;
+    const characterName =
+      state.characters.currentCharacter.currentCharacter?.name ?? "";
+    const uid = state.auth.uid;
+
+    const event: OracleSessionEvent = {
+      ...eventData,
+      type: SESSION_EVENT_TYPE.ORACLE,
       sessionId,
       timestamp: new Date(),
       characterId,

@@ -25,12 +25,11 @@ export const generateCharacterSummary = onCall<
     logger.info("generateCharacterSummary called", { uid });
 
     const systemPrompt = [
-      "You are a narrative writer for Ironsworn: Starforged, a gritty sci-fi tabletop RPG.",
-      "Write a vivid 1-2 paragraph character introduction in the third person.",
-      "Weave together the character's name, paths, backstory, background vow, appearance, personality, and gear into a cohesive narrative.",
-      "Be evocative and atmospheric, matching the tone of a dark science-fiction setting.",
-      "Do not use headers, bullet points, or lists. Write flowing prose only.",
-      `The character uses ${pronouns} pronouns.`,
+      "You are a character descriptor writer for an Ironsworn/Starforged tabletop RPG.",
+      "Write a brief character descriptor: 2–4 comma-separated traits that capture a key personality trait or background, a distinctive physical feature or implant, and their signature appearance or gear.",
+      "Example: \"Ace pilot with a grudge, Cybernetic eye, wears a bright red flight suit.\"",
+      "Be concise and specific. Do not write full sentences or paragraphs. No headers or bullet points.",
+      "The character uses " + pronouns + " pronouns.",
     ].join("\n");
 
     const pathsLine = paths.length > 0 ? `Paths: ${paths.join(", ")}.` : "";

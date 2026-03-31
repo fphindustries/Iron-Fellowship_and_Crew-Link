@@ -4,6 +4,7 @@ import { firebaseAuth, projectId, functions } from "config/firebase.config";
 import { AIGuideState, NarrativeRequestPayload } from "types/aiGuide.types";
 import { MoveSessionEvent } from "types/SessionLog.type";
 import { useAIGuideContext } from "./useAIGuideContext";
+import { recordAiCall } from "stores/aiDebug";
 
 const FUNCTION_NAME = "generateNarrative";
 const DEFAULT_REGION = "us-central1";
@@ -123,6 +124,7 @@ export function useAIGuide() {
           gameContext: context,
         };
 
+        recordAiCall("Guide — Move Narrative", payload);
         const fullText = await streamNarrative(payload, (text) => {
           setState((s) => ({ ...s, narrativeText: text }));
         });
@@ -158,6 +160,7 @@ export function useAIGuide() {
           gameContext: context,
         };
 
+        recordAiCall("Guide — Freeform Narrative", payload);
         const fullText = await streamNarrative(payload, (text) => {
           setState((s) => ({ ...s, narrativeText: text }));
         });
@@ -173,10 +176,76 @@ export function useAIGuide() {
     [activeSessionId, state.isStreaming, context, characterId, campaignId, logJournalEvent]
   );
 
+  // Like requestFreeformNarrative but attaches the result to a specific move event
+  // card (via updateMoveEventNarrative) instead of creating a new journal entry.
+  const requestNarrativeWithPrompt = useCallback(
+    async (eventId: string, prompt: string) => {
+      if (!activeSessionId || state.isStreaming) return;
+
+      setState({ isStreaming: true, narrativeText: "", narratingEventId: eventId });
+
+      try {
+        const payload: NarrativeRequestPayload = {
+          sessionId: activeSessionId,
+          characterId: characterId ?? undefined,
+          campaignId: campaignId ?? undefined,
+          prompt,
+          gameContext: context,
+        };
+
+        recordAiCall("Guide — Move Narrative (with Prompt)", payload);
+        const fullText = await streamNarrative(payload, (text) => {
+          setState((s) => ({ ...s, narrativeText: text }));
+        });
+
+        if (fullText) {
+          updateMoveEventNarrative(eventId, fullText);
+        }
+        setState({ isStreaming: false, narrativeText: "", narratingEventId: undefined });
+      } catch (e) {
+        setState({
+          isStreaming: false,
+          narrativeText: "",
+          narratingEventId: undefined,
+          error: String(e),
+        });
+      }
+    },
+    [activeSessionId, state.isStreaming, context, characterId, campaignId, updateMoveEventNarrative]
+  );
+
+  const generateSummary = useCallback(
+    async (eventsText: string): Promise<string> => {
+      if (!activeSessionId) return "";
+
+      const prompt = `Here are the events from this session:\n\n${eventsText}\n\nWrite a 3–5 sentence summary of this session in third person, as a narrator would describe it. Focus on the key decisions, outcomes, and dramatic moments.`;
+
+      const payload: NarrativeRequestPayload = {
+        sessionId: activeSessionId,
+        characterId: characterId ?? undefined,
+        campaignId: campaignId ?? undefined,
+        prompt,
+        gameContext: { ...context, recentEvents: [] },
+      };
+
+      recordAiCall("Guide — Session Summary", payload);
+      return streamNarrative(payload, () => {});
+    },
+    [activeSessionId, context, characterId, campaignId]
+  );
+
   const setAutoNarrate = useCallback((val: boolean) => {
     localStorage.setItem(AUTO_NARRATE_KEY, String(val));
     setAutoNarrateState(val);
   }, []);
 
-  return { state, autoNarrate, setAutoNarrate, requestNarrative, requestFreeformNarrative };
+  return {
+    state,
+    autoNarrate,
+    setAutoNarrate,
+    requestNarrative,
+    requestFreeformNarrative,
+    requestNarrativeWithPrompt,
+    generateSummary,
+  };
 }

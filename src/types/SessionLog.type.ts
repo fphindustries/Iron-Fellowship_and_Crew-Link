@@ -21,13 +21,13 @@ export interface MoveSessionEvent extends BaseSessionEvent {
   type: SESSION_EVENT_TYPE.MOVE;
   moveName: string;
   moveId: string;
-  stat: string;
-  statValue: number;
-  playerContext: string;
-  action: number;
-  challengeDice: [number, number];
-  score: number;
-  outcome: ROLL_RESULT;
+  stat?: string;
+  statValue?: number;
+  playerContext?: string;
+  action?: number;
+  challengeDice?: [number, number];
+  score?: number;
+  outcome?: ROLL_RESULT;
   playerNote?: string;
   narrative?: string;
 }
@@ -77,4 +77,5 @@ export interface SessionDocument {
   endedAt?: Date;
   title?: string;
   isActive: boolean;
+  summary?: string;
 }

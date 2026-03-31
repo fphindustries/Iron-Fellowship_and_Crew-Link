@@ -64,7 +64,13 @@
       "Bash(grep -l stream c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@firebase/functions/dist/*.d.ts)",
       "Bash(grep -r streamb c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@firebase/functions/dist/ --include=*.d.ts)",
       "Bash(grep -r \"stream\\\\b\\\\|StreamableCallable\" c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/firebase/functions/ --include=*.d.ts)",
-      "Bash(grep -r \"cloudfunctions\\\\|customDomain\\\\|functionURL\\\\|emulatorURL\\\\|resolveURL\" c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@firebase/functions/dist/esm-node/src/ --include=*.ts)"
+      "Bash(grep -r \"cloudfunctions\\\\|customDomain\\\\|functionURL\\\\|emulatorURL\\\\|resolveURL\" c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@firebase/functions/dist/esm-node/src/ --include=*.ts)",
+      "Bash(grep -E \"\\\\.ts$|\\\\.tsx$\")",
+      "Bash(xargs ls:*)",
+      "Bash(grep -r \"markdown\\\\|react-markdown\\\\|ReactMarkdown\\\\|remark\\\\|rehype\" c:ReposIron-Fellowship_and_Crew-Linksrc --include=*.ts --include=*.tsx -l)",
+      "Bash(node -e \":*)",
+      "Bash(grep -r compel c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@datasworn --include=*.json -l)",
+      "Bash(ls c:/Repos/Iron-Fellowship_and_Crew-Link/src/pages/Character/CharacterSheetPage/Tabs/SessionLogSection/*.tsx)"
     ]
   }
 }

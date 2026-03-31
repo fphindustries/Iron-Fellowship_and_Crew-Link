@@ -17,11 +17,14 @@ export const createCharacter = createApiFunction<
     assets: AssetDocument[];
     expansionIds?: string[];
     backstory?: string;
+    pronouns?: string;
+    callsign?: string;
+    characteristics?: string;
   },
   string
 >((params) => {
   return new Promise((resolve, reject) => {
-    const { uid, name, stats, assets, expansionIds, backstory } = params;
+    const { uid, name, stats, assets, expansionIds, backstory, pronouns, callsign, characteristics } = params;
     const character: CharacterDocument = {
       uid: uid,
       name: name,
@@ -35,6 +38,15 @@ export const createCharacter = createApiFunction<
     }
     if (backstory) {
       character.backstory = backstory;
+    }
+    if (pronouns) {
+      character.pronouns = pronouns;
+    }
+    if (callsign) {
+      character.callsign = callsign;
+    }
+    if (characteristics) {
+      character.characteristics = characteristics;
     }
 
     addDoc(getCharacterCollection(), character)

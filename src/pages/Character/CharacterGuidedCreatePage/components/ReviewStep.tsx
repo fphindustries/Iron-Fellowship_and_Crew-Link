@@ -28,7 +28,8 @@ export interface ReviewFormData {
   wear: string;
   pronouns: string;
   name: string;
-  aiSummary: string;
+  callsign: string;
+  characteristics: string;
 }
 
 export interface ReviewStepProps {
@@ -103,10 +104,20 @@ export function ReviewStep({
         <Box flex={1}>
           <Typography variant="h5" gutterBottom>
             {formData.name}
+            {formData.callsign && (
+              <Typography component="span" variant="h6" color="text.secondary" sx={{ ml: 1 }}>
+                — &ldquo;{formData.callsign}&rdquo;
+              </Typography>
+            )}
           </Typography>
           {formData.pronouns && (
             <Typography variant="body2" color="text.secondary">
               {formData.pronouns}
+            </Typography>
+          )}
+          {formData.characteristics && (
+            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic", mt: 0.5 }}>
+              {formData.characteristics}
             </Typography>
           )}
         </Box>
@@ -201,21 +212,6 @@ export function ReviewStep({
         </Box>
       )}
 
-      {formData.aiSummary && (
-        <Box mb={3}>
-          <Typography variant="subtitle2" gutterBottom>
-            Character Summary
-          </Typography>
-          <Paper
-            variant="outlined"
-            sx={{ p: 2, bgcolor: "background.paperInlay" }}
-          >
-            <Typography variant="body2" sx={{ fontStyle: "italic" }}>
-              {formData.aiSummary}
-            </Typography>
-          </Paper>
-        </Box>
-      )}
 
       <Stack direction="row" spacing={2}>
         <Button

@@ -116,7 +116,7 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
       }
     },
 
-    createCharacter: (name, stats, assets, portrait, expansionIds, backstory, backgroundVow) => {
+    createCharacter: (name, stats, assets, portrait, expansionIds, backstory, backgroundVow, pronouns, callsign, characteristics) => {
       const uid = getState().auth.user?.uid;
       if (!uid) {
         return new Promise((res, reject) =>
@@ -131,6 +131,9 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
           assets,
           expansionIds,
           backstory,
+          pronouns,
+          callsign,
+          characteristics,
         }).then((characterId) => {
           const afterPortrait = () => {
             if (backgroundVow) {
