@@ -7,6 +7,8 @@ import {
   StatChangeSessionEvent,
   ProgressSessionEvent,
   BaseSessionEvent,
+  CombatStartSessionEvent,
+  CombatEndSessionEvent,
 } from "types/SessionLog.type";
 
 export interface SessionLogSliceData {
@@ -39,6 +41,12 @@ export interface SessionLogSliceActions {
   logJournalEvent: (text: string, isAiGenerated?: boolean) => void;
   logOracleEvent: (
     event: Omit<OracleSessionEvent, keyof BaseSessionEvent | "type">
+  ) => void;
+  logCombatStartEvent: (
+    event: Omit<CombatStartSessionEvent, keyof BaseSessionEvent | "type">
+  ) => void;
+  logCombatEndEvent: (
+    event: Omit<CombatEndSessionEvent, keyof BaseSessionEvent | "type">
   ) => void;
   updateMoveEventNarrative: (eventId: string, narrative: string) => void;
   deleteEvent: (eventId: string) => void;

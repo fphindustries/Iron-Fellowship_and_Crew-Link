@@ -25,7 +25,17 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import FlagIcon from "@mui/icons-material/Flag";
 import RouteIcon from "@mui/icons-material/Route";
+import SportsMartialArtsIcon from "@mui/icons-material/SportsMartialArts";
 import { useStore } from "stores/store";
+import { useCombatTracker } from "hooks/useCombatTracker";
+import { CombatTracker } from "./CombatTracker";
+import { EnterTheFrayDialog } from "./EnterTheFrayDialog";
+import { GainGroundDialog } from "./GainGroundDialog";
+import { StrikeDialog } from "./StrikeDialog";
+import { ClashDialog } from "./ClashDialog";
+import { ReactUnderFireDialog } from "./ReactUnderFireDialog";
+import { TakeDecisiveActionDialog } from "./TakeDecisiveActionDialog";
+import { BattleDialog } from "./BattleDialog";
 import { Virtuoso } from "react-virtuoso";
 import { EmptyState } from "components/shared/EmptyState";
 import { SessionLogEventCard } from "./SessionLogEventCard";
@@ -104,11 +114,19 @@ export function SessionLogSection() {
   const [setACourseOpen, setSetACourseOpen] = useState(false);
   const [undertakeJourneyOpen, setUndertakeJourneyOpen] = useState(false);
   const [reachDestinationOpen, setReachDestinationOpen] = useState(false);
+  const [enterFrayOpen, setEnterFrayOpen] = useState(false);
+  const [gainGroundOpen, setGainGroundOpen] = useState(false);
+  const [strikeOpen, setStrikeOpen] = useState(false);
+  const [clashOpen, setClashOpen] = useState(false);
+  const [reactUnderFireOpen, setReactUnderFireOpen] = useState(false);
+  const [takeDecisiveActionOpen, setTakeDecisiveActionOpen] = useState(false);
+  const [battleOpen, setBattleOpen] = useState(false);
   const [pendingNarration, setPendingNarration] = useState<
     { eventId: string; prompt: string } | undefined
   >(undefined);
 
   const isSessionActive = !!activeSessionId;
+  const { activeCombat } = useCombatTracker();
 
   const displayEvents = isSessionActive
     ? events
@@ -137,30 +155,35 @@ export function SessionLogSection() {
     setFirstItemIndex(MAX_ITEMS - eventCount);
   }, [eventCount]);
 
-  // Auto-narrate: fire requestNarrative when a new MOVE event from current user appears
-  const prevEventCountRef = useRef(0);
+  // Auto-narrate: fire requestNarrative when a new MOVE event from current user appears.
+  // We search for the latest MOVE event rather than the absolute latest event, because
+  // combat dialogs append PROGRESS/COMBAT_START/COMBAT_END events after the MOVE.
+  const prevLatestMoveKeyRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!autoNarrate || !isSessionActive || guideState.isStreaming) return;
-    if (eventCount <= prevEventCountRef.current) {
-      prevEventCountRef.current = eventCount;
-      return;
-    }
-    prevEventCountRef.current = eventCount;
 
-    const latestKey = orderedEventKeys[orderedEventKeys.length - 1];
-    if (!latestKey) return;
-    const latestEvent = displayEvents[latestKey];
-    if (
-      latestEvent.type === SESSION_EVENT_TYPE.MOVE &&
-      latestEvent.uid === currentUid &&
-      latestEvent.outcome !== undefined
-    ) {
-      requestNarrative(latestKey, latestEvent as MoveSessionEvent).catch(
-        console.error
-      );
+    let latestMoveKey: string | undefined;
+    for (let i = orderedEventKeys.length - 1; i >= 0; i--) {
+      const key = orderedEventKeys[i];
+      const event = displayEvents[key];
+      if (
+        event.type === SESSION_EVENT_TYPE.MOVE &&
+        event.uid === currentUid &&
+        event.outcome !== undefined
+      ) {
+        latestMoveKey = key;
+        break;
+      }
     }
+
+    if (!latestMoveKey || latestMoveKey === prevLatestMoveKeyRef.current) return;
+    prevLatestMoveKeyRef.current = latestMoveKey;
+
+    requestNarrative(
+      latestMoveKey,
+      displayEvents[latestMoveKey] as MoveSessionEvent
+    ).catch(console.error);
   }, [
-    eventCount,
     orderedEventKeys,
     displayEvents,
     autoNarrate,
@@ -339,6 +362,9 @@ export function SessionLogSection() {
           </Button>
         )}
       </Box>
+
+      {/* Combat tracker panel */}
+      {isSessionActive && activeCombat && <CombatTracker />}
 
       {/* Feed */}
       <Box sx={{ flexGrow: 1, overflow: "hidden" }}>
@@ -544,6 +570,83 @@ export function SessionLogSection() {
             </Button>
           </Box>
 
+          {/* Combat moves */}
+          <Box
+            display="flex"
+            alignItems="center"
+            gap={1}
+            px={2}
+            pt={0.5}
+            pb={0.5}
+            flexWrap="wrap"
+          >
+            <Typography variant="caption" color="text.secondary">
+              Combat:
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<SportsMartialArtsIcon sx={{ fontSize: 14 }} />}
+              onClick={() => setEnterFrayOpen(true)}
+              sx={{ fontSize: "0.75rem", py: 0.25 }}
+            >
+              Enter the Fray
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={!activeCombat}
+              onClick={() => setGainGroundOpen(true)}
+              sx={{ fontSize: "0.75rem", py: 0.25 }}
+            >
+              Gain Ground
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={!activeCombat}
+              onClick={() => setStrikeOpen(true)}
+              sx={{ fontSize: "0.75rem", py: 0.25 }}
+            >
+              Strike
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={!activeCombat}
+              onClick={() => setClashOpen(true)}
+              sx={{ fontSize: "0.75rem", py: 0.25 }}
+            >
+              Clash
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={!activeCombat}
+              onClick={() => setReactUnderFireOpen(true)}
+              sx={{ fontSize: "0.75rem", py: 0.25 }}
+            >
+              React Under Fire
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={!activeCombat}
+              onClick={() => setTakeDecisiveActionOpen(true)}
+              sx={{ fontSize: "0.75rem", py: 0.25 }}
+            >
+              Take Decisive Action
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setBattleOpen(true)}
+              sx={{ fontSize: "0.75rem", py: 0.25 }}
+            >
+              Battle
+            </Button>
+          </Box>
+
           <JournalInput
             onRequestGuide={requestFreeformNarrative}
             guideIsStreaming={guideState.isStreaming}
@@ -626,6 +729,35 @@ export function SessionLogSection() {
       <ReachYourDestinationDialog
         open={reachDestinationOpen}
         onClose={() => setReachDestinationOpen(false)}
+      />
+
+      <EnterTheFrayDialog
+        open={enterFrayOpen}
+        onClose={() => setEnterFrayOpen(false)}
+      />
+      <GainGroundDialog
+        open={gainGroundOpen}
+        onClose={() => setGainGroundOpen(false)}
+      />
+      <StrikeDialog
+        open={strikeOpen}
+        onClose={() => setStrikeOpen(false)}
+      />
+      <ClashDialog
+        open={clashOpen}
+        onClose={() => setClashOpen(false)}
+      />
+      <ReactUnderFireDialog
+        open={reactUnderFireOpen}
+        onClose={() => setReactUnderFireOpen(false)}
+      />
+      <TakeDecisiveActionDialog
+        open={takeDecisiveActionOpen}
+        onClose={() => setTakeDecisiveActionOpen(false)}
+      />
+      <BattleDialog
+        open={battleOpen}
+        onClose={() => setBattleOpen(false)}
       />
 
       {/* End session confirmation dialog */}

@@ -1,6 +1,7 @@
 import { useStore } from "stores/store";
 import { NarrativeGameContext } from "types/aiGuide.types";
 import { SESSION_EVENT_TYPE, SessionLogEvent } from "types/SessionLog.type";
+import { useCombatTracker } from "./useCombatTracker";
 
 const CUSTOM_TRUTH_INDEX = -1;
 const MAX_RECENT_EVENTS = 10;
@@ -38,6 +39,7 @@ function formatEvent(event: SessionLogEvent): string {
 }
 
 export function useAIGuideContext(): NarrativeGameContext {
+  const { activeCombat } = useCombatTracker();
   const characterName = useStore(
     (store) =>
       store.characters.currentCharacter.currentCharacter?.name ?? "Unknown"
@@ -129,5 +131,12 @@ export function useAIGuideContext(): NarrativeGameContext {
     characterPronouns,
     callsign,
     characteristics,
+    activeCombat: activeCombat
+      ? {
+          objective: activeCombat.objective,
+          enemies: activeCombat.enemies.map((e) => e.name),
+          position: activeCombat.position,
+        }
+      : null,
   };
 }

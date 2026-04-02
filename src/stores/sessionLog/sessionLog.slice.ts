@@ -9,7 +9,7 @@ import { deleteSessionEvent } from "api-calls/session-log/deleteSessionEvent";
 import { listenToActiveSession } from "api-calls/session-log/listenToActiveSession";
 import { listenToSessionEvents } from "api-calls/session-log/listenToSessionEvents";
 import { getMostRecentSession } from "api-calls/session-log/getMostRecentSession";
-import { OracleSessionEvent, SESSION_EVENT_TYPE, SessionLogEvent } from "types/SessionLog.type";
+import { OracleSessionEvent, SESSION_EVENT_TYPE, SessionLogEvent, CombatStartSessionEvent, CombatEndSessionEvent } from "types/SessionLog.type";
 import { ignoreApiError } from "api-calls/createApiFunction";
 
 export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
@@ -197,6 +197,66 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
     const event: OracleSessionEvent = {
       ...eventData,
       type: SESSION_EVENT_TYPE.ORACLE,
+      sessionId,
+      timestamp: new Date(),
+      characterId,
+      characterName,
+      uid,
+    };
+
+    addSessionEvent({
+      sessionId,
+      event,
+      characterId: characterId ?? undefined,
+      campaignId,
+    }).catch(ignoreApiError);
+  },
+
+  logCombatStartEvent: (eventData) => {
+    const state = getState();
+    const sessionId = state.sessionLog.activeSessionId;
+    if (!sessionId) return;
+
+    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
+    const characterId =
+      state.characters.currentCharacter.currentCharacterId ?? null;
+    const characterName =
+      state.characters.currentCharacter.currentCharacter?.name ?? "";
+    const uid = state.auth.uid;
+
+    const event: CombatStartSessionEvent = {
+      ...eventData,
+      type: SESSION_EVENT_TYPE.COMBAT_START,
+      sessionId,
+      timestamp: new Date(),
+      characterId,
+      characterName,
+      uid,
+    };
+
+    addSessionEvent({
+      sessionId,
+      event,
+      characterId: characterId ?? undefined,
+      campaignId,
+    }).catch(ignoreApiError);
+  },
+
+  logCombatEndEvent: (eventData) => {
+    const state = getState();
+    const sessionId = state.sessionLog.activeSessionId;
+    if (!sessionId) return;
+
+    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
+    const characterId =
+      state.characters.currentCharacter.currentCharacterId ?? null;
+    const characterName =
+      state.characters.currentCharacter.currentCharacter?.name ?? "";
+    const uid = state.auth.uid;
+
+    const event: CombatEndSessionEvent = {
+      ...eventData,
+      type: SESSION_EVENT_TYPE.COMBAT_END,
       sessionId,
       timestamp: new Date(),
       characterId,

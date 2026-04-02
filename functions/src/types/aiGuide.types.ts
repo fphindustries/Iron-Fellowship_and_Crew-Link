@@ -20,6 +20,18 @@ export interface NarrativeGameContext {
   characterPronouns?: string;
   callsign?: string;
   characteristics?: string;
+  activeCombat?: {
+    objective: string;
+    enemies: string[];
+    position: "in_control" | "in_a_bad_spot";
+  } | null;
+}
+
+export interface NarrativeDebugOverride {
+  systemPrompt?: string;
+  userMessage?: string;
+  model?: string;
+  maxTokens?: number;
 }
 
 export interface NarrativeRequest {
@@ -29,6 +41,7 @@ export interface NarrativeRequest {
   moveEvent?: NarrativeMoveEvent;
   prompt?: string;
   gameContext: NarrativeGameContext;
+  debugOverride?: NarrativeDebugOverride;
 }
 
 export interface NarrativeChunk {

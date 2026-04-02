@@ -1,4 +1,5 @@
 import { ROLL_RESULT } from "./DieRolls.type";
+import { CombatPosition } from "./combat.types";
 
 export enum SESSION_EVENT_TYPE {
   MOVE = "move",
@@ -6,6 +7,8 @@ export enum SESSION_EVENT_TYPE {
   STAT_CHANGE = "stat_change",
   PROGRESS = "progress",
   JOURNAL = "journal",
+  COMBAT_START = "combat_start",
+  COMBAT_END = "combat_end",
 }
 
 export interface BaseSessionEvent {
@@ -63,12 +66,27 @@ export interface JournalSessionEvent extends BaseSessionEvent {
   isAiGenerated: boolean;
 }
 
+export interface CombatStartSessionEvent extends BaseSessionEvent {
+  type: SESSION_EVENT_TYPE.COMBAT_START;
+  objective: string;
+  enemies: string[];
+  position: CombatPosition;
+}
+
+export interface CombatEndSessionEvent extends BaseSessionEvent {
+  type: SESSION_EVENT_TYPE.COMBAT_END;
+  outcome: ROLL_RESULT;
+  description?: string;
+}
+
 export type SessionLogEvent =
   | MoveSessionEvent
   | OracleSessionEvent
   | StatChangeSessionEvent
   | ProgressSessionEvent
-  | JournalSessionEvent;
+  | JournalSessionEvent
+  | CombatStartSessionEvent
+  | CombatEndSessionEvent;
 
 export interface SessionDocument {
   characterId?: string;

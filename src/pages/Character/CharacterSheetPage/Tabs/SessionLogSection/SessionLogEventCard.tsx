@@ -6,6 +6,8 @@ import { OracleEventCard } from "./eventCards/OracleEventCard";
 import { StatChangeEventCard } from "./eventCards/StatChangeEventCard";
 import { ProgressEventCard } from "./eventCards/ProgressEventCard";
 import { JournalEventCard } from "./eventCards/JournalEventCard";
+import { CombatStartEventCard } from "./eventCards/CombatStartEventCard";
+import { CombatEndEventCard } from "./eventCards/CombatEndEventCard";
 import { PortraitAvatar } from "components/features/characters/PortraitAvatar/PortraitAvatar";
 import { useStore } from "stores/store";
 
@@ -104,6 +106,8 @@ function EventTypeBadge({ type }: { type: SESSION_EVENT_TYPE }) {
     [SESSION_EVENT_TYPE.STAT_CHANGE]: "stat change",
     [SESSION_EVENT_TYPE.PROGRESS]: "progress",
     [SESSION_EVENT_TYPE.JOURNAL]: "note",
+    [SESSION_EVENT_TYPE.COMBAT_START]: "combat start",
+    [SESSION_EVENT_TYPE.COMBAT_END]: "combat end",
   };
 
   const colorMap: Record<
@@ -115,6 +119,8 @@ function EventTypeBadge({ type }: { type: SESSION_EVENT_TYPE }) {
     [SESSION_EVENT_TYPE.STAT_CHANGE]: "warning",
     [SESSION_EVENT_TYPE.PROGRESS]: "info",
     [SESSION_EVENT_TYPE.JOURNAL]: "success",
+    [SESSION_EVENT_TYPE.COMBAT_START]: "warning",
+    [SESSION_EVENT_TYPE.COMBAT_END]: "primary",
   };
 
   return (
@@ -164,5 +170,9 @@ function EventContent({
       return <ProgressEventCard event={event} />;
     case SESSION_EVENT_TYPE.JOURNAL:
       return <JournalEventCard event={event} />;
+    case SESSION_EVENT_TYPE.COMBAT_START:
+      return <CombatStartEventCard event={event} />;
+    case SESSION_EVENT_TYPE.COMBAT_END:
+      return <CombatEndEventCard event={event} />;
   }
 }

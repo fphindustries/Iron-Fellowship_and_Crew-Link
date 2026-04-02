@@ -48,6 +48,21 @@ function buildGameContextBlock(req: NarrativeRequest): string {
   return lines.join("\n");
 }
 
+function buildCombatBlock(gameContext: NarrativeRequest["gameContext"]): string {
+  if (!gameContext.activeCombat) return "";
+  const { objective, enemies, position } = gameContext.activeCombat;
+  const positionLabel = position === "in_control" ? "In Control" : "In a Bad Spot";
+  const lines: string[] = [
+    "\n## Active Combat",
+    `Objective: ${objective}`,
+  ];
+  if (enemies.length > 0) {
+    lines.push(`Enemies: ${enemies.join(", ")}`);
+  }
+  lines.push(`Position: ${positionLabel}`);
+  return lines.join("\n");
+}
+
 function buildMoveUserMessage(req: NarrativeRequest): string {
   const { moveEvent, gameContext } = req;
   if (!moveEvent) return "";
@@ -78,6 +93,9 @@ function buildMoveUserMessage(req: NarrativeRequest): string {
     gameContext.recentEvents.forEach((e) => lines.push(`  - ${e}`));
   }
 
+  const combatBlock = buildCombatBlock(gameContext);
+  if (combatBlock) lines.push(combatBlock);
+
   lines.push(
     "\nWrite a vivid 5–8 sentence story beat in third person that honours this outcome. Ground the narrative in the current session events above. The previous session is backstory only — do not treat it as the current scene."
   );
@@ -97,6 +115,12 @@ function buildPromptUserMessage(req: NarrativeRequest): string {
   if (gameContext.recentEvents.length > 0) {
     lines.push("Current session events so far (chronological):");
     gameContext.recentEvents.forEach((e) => lines.push(`  - ${e}`));
+    lines.push("");
+  }
+
+  const combatBlock = buildCombatBlock(gameContext);
+  if (combatBlock) {
+    lines.push(combatBlock);
     lines.push("");
   }
 
@@ -121,7 +145,7 @@ export const generateNarrative = onCall<
 
     const data = request.data;
 
-    if (!data.sessionId || (!data.moveEvent && !data.prompt)) {
+    if (!data.sessionId || (!data.moveEvent && !data.prompt && !data.debugOverride)) {
       logger.warn("generateNarrative: missing required fields");
       return { done: false };
     }
@@ -133,28 +157,36 @@ export const generateNarrative = onCall<
     });
 
     const client = createAnthropicClient();
+    const { debugOverride } = data;
+
+    const model = debugOverride?.model ?? "claude-haiku-4-5-20251001";
+    const maxTokens = debugOverride?.maxTokens ?? 700;
     const gameContextText = buildGameContextBlock(data);
-    const userMessage = data.moveEvent
-      ? buildMoveUserMessage(data)
-      : buildPromptUserMessage(data);
+    const userMessage = debugOverride?.userMessage
+      ?? (data.moveEvent ? buildMoveUserMessage(data) : buildPromptUserMessage(data));
+
+    const systemBlocks: Parameters<typeof client.messages.stream>[0]["system"] =
+      debugOverride?.systemPrompt
+        ? [{ type: "text", text: debugOverride.systemPrompt }]
+        : [
+          {
+            type: "text",
+            text: ROLE_BLOCK,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            cache_control: { type: "ephemeral" } as any,
+          },
+          {
+            type: "text",
+            text: gameContextText,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            cache_control: { type: "ephemeral" } as any,
+          },
+        ];
 
     const stream = client.messages.stream({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 700,
-      system: [
-        {
-          type: "text",
-          text: ROLE_BLOCK,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          cache_control: { type: "ephemeral" } as any,
-        },
-        {
-          type: "text",
-          text: gameContextText,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          cache_control: { type: "ephemeral" } as any,
-        },
-      ],
+      model,
+      max_tokens: maxTokens,
+      system: systemBlocks,
       messages: [
         {
           role: "user",

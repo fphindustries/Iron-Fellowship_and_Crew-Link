@@ -1,80 +1,123 @@
 import { useCallback, useState } from "react";
 import { useStore } from "stores/store";
-import { firebaseAuth, projectId, functions } from "config/firebase.config";
-import { AIGuideState, NarrativeRequestPayload } from "types/aiGuide.types";
+import { AIGuideState, NarrativeGameContext, NarrativeRequestPayload } from "types/aiGuide.types";
 import { MoveSessionEvent } from "types/SessionLog.type";
 import { useAIGuideContext } from "./useAIGuideContext";
-import { recordAiCall } from "stores/aiDebug";
+import { recordAiCall, AiDebugFullPrompt, useAiDebugStore } from "stores/aiDebug";
+import { streamNarrative } from "api-calls/ai/streamNarrative";
 
-const FUNCTION_NAME = "generateNarrative";
-const DEFAULT_REGION = "us-central1";
 const AUTO_NARRATE_KEY = "session-log-auto-narrate";
 
-function getGenerateNarrativeUrl(): string {
-  const emulatorOrigin = (functions as unknown as { emulatorOrigin?: string })
-    .emulatorOrigin;
-  if (emulatorOrigin) {
-    return `${emulatorOrigin}/${projectId}/${DEFAULT_REGION}/${FUNCTION_NAME}`;
+// Mirrors the ROLE_BLOCK constant in functions/src/aiGuide.ts — kept in sync for prompt logging.
+export const GUIDE_ROLE_BLOCK = `You are the Guide — the narrative voice of a solo or co-op tabletop RPG session in the Ironsworn or Starforged universe. Your role is to respond to player moves and dice outcomes with vivid, immersive story beats that honour the mechanical result while breathing life into the fiction.
+
+Rules you must follow:
+- Write in third person ("She...", "He...", "They...", or use the character's name)
+- Always honour the outcome: Strong Hit = genuine success, Weak Hit = success with cost/complication, Miss = failure or danger
+- Write 5–8 evocative sentences — paint a vivid picture with sensory detail, emotional resonance, and narrative consequence
+- Avoid clichés; favour specific sensory details over vague descriptions
+- Never introduce new plot elements the player hasn't established
+- Do not repeat the move name or outcome label verbatim
+- Match the tone of the world: Ironsworn is grim Norse-inspired; Starforged is dark science fiction`;
+
+export const GUIDE_DEFAULT_MODEL = "claude-haiku-4-5-20251001";
+export const GUIDE_DEFAULT_MAX_TOKENS = 700;
+
+function buildGameContextBlock(gameContext: NarrativeGameContext): string {
+  const lines: string[] = [];
+  const callsignPart = gameContext.callsign ? ` — "${gameContext.callsign}"` : "";
+  const pronounsPart = gameContext.characterPronouns ? ` (${gameContext.characterPronouns})` : "";
+  lines.push(`Character: ${gameContext.characterName}${callsignPart}${pronounsPart}`);
+  if (gameContext.characteristics) lines.push(`Characteristics: ${gameContext.characteristics}`);
+  if (gameContext.worldTruths.length > 0) {
+    lines.push("\nWorld Truths:");
+    gameContext.worldTruths.forEach((t) => lines.push(`  - ${t}`));
   }
-  return `https://${DEFAULT_REGION}-${projectId}.cloudfunctions.net/${FUNCTION_NAME}`;
+  if (gameContext.characterAssets.length > 0) {
+    lines.push("\nCharacter Assets:");
+    gameContext.characterAssets.forEach((a) => lines.push(`  - ${a}`));
+  }
+  if (gameContext.campaignCharacterNames && gameContext.campaignCharacterNames.length > 0) {
+    lines.push(`\nCampaign companions: ${gameContext.campaignCharacterNames.join(", ")}`);
+  }
+  return lines.join("\n");
 }
 
-async function streamNarrative(
-  payload: NarrativeRequestPayload,
-  onChunk: (text: string) => void
-): Promise<string> {
-  const idToken = await firebaseAuth.currentUser?.getIdToken();
-  if (!idToken) throw new Error("Not authenticated");
+function buildCombatBlock(gameContext: NarrativeGameContext): string {
+  if (!gameContext.activeCombat) return "";
+  const { objective, enemies, position } = gameContext.activeCombat;
+  const positionLabel = position === "in_control" ? "In Control" : "In a Bad Spot";
+  const lines = ["\n## Active Combat", `Objective: ${objective}`];
+  if (enemies.length > 0) lines.push(`Enemies: ${enemies.join(", ")}`);
+  lines.push(`Position: ${positionLabel}`);
+  return lines.join("\n");
+}
 
-  const response = await fetch(getGenerateNarrativeUrl(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "text/event-stream",
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({ data: payload }),
-  });
-
-  if (!response.ok || !response.body) {
-    throw new Error(`HTTP ${response.status}`);
+function buildMoveUserMessage(
+  moveEvent: NarrativeRequestPayload["moveEvent"],
+  gameContext: NarrativeGameContext
+): string {
+  if (!moveEvent) return "";
+  const lines: string[] = [];
+  const statPart =
+    moveEvent.stat && moveEvent.statValue !== undefined
+      ? ` using ${moveEvent.stat} (${moveEvent.statValue})`
+      : "";
+  const scorePart =
+    moveEvent.score !== undefined && moveEvent.challengeDice
+      ? ` — action score ${moveEvent.score} vs [${moveEvent.challengeDice[0]}, ${moveEvent.challengeDice[1]}]`
+      : "";
+  lines.push(`Move: ${moveEvent.moveName}${statPart}${scorePart}`);
+  lines.push(`Outcome: ${moveEvent.outcome}`);
+  if (moveEvent.playerContext) lines.push(`Player's intent: "${moveEvent.playerContext}"`);
+  if (gameContext.previousSessionSummary) {
+    lines.push(`\nPrevious session (now concluded):\n${gameContext.previousSessionSummary}`);
   }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let fullText = "";
-  let streamDone = false;
-
-  while (!streamDone) {
-    const { done, value } = await reader.read();
-    streamDone = done;
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const json = line.slice(6).trim();
-      if (!json) continue;
-      try {
-        const parsed = JSON.parse(json) as {
-          message?: { text?: string };
-          result?: unknown;
-        };
-        if (parsed.message?.text) {
-          fullText += parsed.message.text;
-          onChunk(fullText);
-        }
-      } catch {
-        // ignore malformed SSE lines
-      }
-    }
+  if (gameContext.recentEvents.length > 0) {
+    lines.push("\nCurrent session events so far (chronological):");
+    gameContext.recentEvents.forEach((e) => lines.push(`  - ${e}`));
   }
+  const combatBlock = buildCombatBlock(gameContext);
+  if (combatBlock) lines.push(combatBlock);
+  lines.push(
+    "\nWrite a vivid 5–8 sentence story beat in third person that honours this outcome. Ground the narrative in the current session events above. The previous session is backstory only — do not treat it as the current scene."
+  );
+  return lines.join("\n");
+}
 
-  return fullText;
+function buildPromptUserMessage(prompt: string, gameContext: NarrativeGameContext): string {
+  const lines: string[] = [];
+  if (gameContext.previousSessionSummary) {
+    lines.push(`Previous session (now concluded):\n${gameContext.previousSessionSummary}`);
+    lines.push("");
+  }
+  if (gameContext.recentEvents.length > 0) {
+    lines.push("Current session events so far (chronological):");
+    gameContext.recentEvents.forEach((e) => lines.push(`  - ${e}`));
+    lines.push("");
+  }
+  const combatBlock = buildCombatBlock(gameContext);
+  if (combatBlock) {
+    lines.push(combatBlock);
+    lines.push("");
+  }
+  lines.push(
+    `Player prompt: "${prompt}"\n\nWrite a vivid 5–8 sentence story beat in third person inspired by this prompt. Ground the narrative in the current session events above. The previous session is backstory only — do not treat it as the current scene.`
+  );
+  return lines.join("\n");
+}
+
+function buildFullPrompt(payload: NarrativeRequestPayload): AiDebugFullPrompt {
+  const contextBlock = buildGameContextBlock(payload.gameContext);
+  const userMessage = payload.moveEvent
+    ? buildMoveUserMessage(payload.moveEvent, payload.gameContext)
+    : buildPromptUserMessage(payload.prompt ?? "", payload.gameContext);
+  return {
+    systemBlocks: [GUIDE_ROLE_BLOCK, contextBlock],
+    userMessage,
+    model: GUIDE_DEFAULT_MODEL,
+    maxTokens: GUIDE_DEFAULT_MAX_TOKENS,
+  };
 }
 
 export function useAIGuide() {
@@ -124,7 +167,12 @@ export function useAIGuide() {
           gameContext: context,
         };
 
-        recordAiCall("Guide — Move Narrative", payload);
+        const logPromptEnabled = useAiDebugStore.getState().logPromptEnabled;
+        recordAiCall(
+          "Guide — Move Narrative",
+          payload,
+          logPromptEnabled ? buildFullPrompt(payload) : undefined
+        );
         const fullText = await streamNarrative(payload, (text) => {
           setState((s) => ({ ...s, narrativeText: text }));
         });
@@ -160,7 +208,12 @@ export function useAIGuide() {
           gameContext: context,
         };
 
-        recordAiCall("Guide — Freeform Narrative", payload);
+        const logPromptEnabled = useAiDebugStore.getState().logPromptEnabled;
+        recordAiCall(
+          "Guide — Freeform Narrative",
+          payload,
+          logPromptEnabled ? buildFullPrompt(payload) : undefined
+        );
         const fullText = await streamNarrative(payload, (text) => {
           setState((s) => ({ ...s, narrativeText: text }));
         });
@@ -176,8 +229,6 @@ export function useAIGuide() {
     [activeSessionId, state.isStreaming, context, characterId, campaignId, logJournalEvent]
   );
 
-  // Like requestFreeformNarrative but attaches the result to a specific move event
-  // card (via updateMoveEventNarrative) instead of creating a new journal entry.
   const requestNarrativeWithPrompt = useCallback(
     async (eventId: string, prompt: string) => {
       if (!activeSessionId || state.isStreaming) return;
@@ -193,7 +244,12 @@ export function useAIGuide() {
           gameContext: context,
         };
 
-        recordAiCall("Guide — Move Narrative (with Prompt)", payload);
+        const logPromptEnabled = useAiDebugStore.getState().logPromptEnabled;
+        recordAiCall(
+          "Guide — Move Narrative (with Prompt)",
+          payload,
+          logPromptEnabled ? buildFullPrompt(payload) : undefined
+        );
         const fullText = await streamNarrative(payload, (text) => {
           setState((s) => ({ ...s, narrativeText: text }));
         });
@@ -228,7 +284,12 @@ export function useAIGuide() {
         gameContext: { ...context, recentEvents: [] },
       };
 
-      recordAiCall("Guide — Session Summary", payload);
+      const logPromptEnabled = useAiDebugStore.getState().logPromptEnabled;
+      recordAiCall(
+        "Guide — Session Summary",
+        payload,
+        logPromptEnabled ? buildFullPrompt(payload) : undefined
+      );
       return streamNarrative(payload, () => {});
     },
     [activeSessionId, context, characterId, campaignId]
