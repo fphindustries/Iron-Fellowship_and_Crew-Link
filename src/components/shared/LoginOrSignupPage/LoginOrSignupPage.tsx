@@ -13,7 +13,6 @@ import AccountIcon from "@mui/icons-material/Person";
 import { GoogleIcon } from "assets/GoogleIcon";
 import { useState } from "react";
 import { loginWithGoogle, sendMagicEmailLink } from "lib/auth.lib";
-import { FirebaseError } from "firebase/app";
 import { Link } from "react-router-dom";
 import { BASE_ROUTES, basePaths } from "routes";
 import { useSnackbar } from "providers/SnackbarProvider/useSnackbar";
@@ -54,7 +53,7 @@ export function LoginOrSignupPage(props: LoginOrSignupPageProps) {
         setLinkSent(true);
         setErrorMessage(undefined);
       })
-      .catch((e: FirebaseError) => {
+      .catch((e: { message?: string }) => {
         setErrorMessage("Error sending email link: " + e.message);
       })
       .finally(() => {

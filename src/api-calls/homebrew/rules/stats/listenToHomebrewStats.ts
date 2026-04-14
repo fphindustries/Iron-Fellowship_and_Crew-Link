@@ -1,6 +1,6 @@
-import { getHomebrewStatsCollection } from "./_getRef";
 import { createHomebrewListenerFunction } from "api-calls/homebrew/homebrewListenerFunction";
+import { HOMEBREW_STATS_TABLE } from "./_getRef";
 
 export const listenToHomebrewStats = createHomebrewListenerFunction(
-  getHomebrewStatsCollection()
+  HOMEBREW_STATS_TABLE
 );

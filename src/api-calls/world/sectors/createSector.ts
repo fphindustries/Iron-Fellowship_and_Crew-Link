@@ -1,24 +1,24 @@
-import { addDoc, Timestamp } from "firebase/firestore";
-import { getSectorCollection } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { SECTORS_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const createSector = createApiFunction<
   { worldId: string; shared?: boolean },
   string
->((params) => {
+>(async (params) => {
   const { worldId } = params;
-  return new Promise((resolve, reject) => {
-    addDoc(getSectorCollection(worldId), {
+
+  const { data, error } = await supabase
+    .from(SECTORS_TABLE)
+    .insert({
+      world_id: worldId,
       name: "New Sector",
       map: {},
-      sharedWithPlayers: true,
-      createdTimestamp: Timestamp.now(),
+      shared_with_players: true,
     })
-      .then((doc) => {
-        resolve(doc.id);
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data.id;
 }, "Failed to create a new sector.");

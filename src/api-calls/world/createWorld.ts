@@ -1,16 +1,24 @@
-import { addDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { World } from "api-calls/world/_world.type";
-import { encodeWorld, getWorldCollection } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
+import { WORLD_TABLE, encodeWorldDescription } from "./_getRef";
 
-export const createWorld = createApiFunction<World, string>((world) => {
-  return new Promise((resolve, reject) => {
-    addDoc(getWorldCollection(), encodeWorld(world))
-      .then((doc) => {
-        resolve(doc.id);
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+export const createWorld = createApiFunction<World, string>(async (world) => {
+  const { worldDescription, ownerIds, campaignGuides, newTruths, settingKey, name } = world;
+
+  const { data, error } = await supabase
+    .from(WORLD_TABLE)
+    .insert({
+      name,
+      setting_key: settingKey,
+      owner_ids: ownerIds,
+      campaign_guides: campaignGuides ?? undefined,
+      new_truths: (newTruths as any) ?? undefined,
+      description: worldDescription ? encodeWorldDescription(worldDescription) : null,
+    })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data.id;
 }, "Failed to create world");

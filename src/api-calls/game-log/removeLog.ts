@@ -1,9 +1,5 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteDoc } from "firebase/firestore";
-import {
-  getCampaignGameLogDocument,
-  getCharacterGameLogDocument,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
 
 export const removeLog = createApiFunction<
   { campaignId?: string; characterId?: string; logId: string },
@@ -14,16 +10,19 @@ export const removeLog = createApiFunction<
   return new Promise((resolve, reject) => {
     if (!characterId && !campaignId) {
       reject(new Error("Either campaign or character ID must be defined."));
+      return;
     }
 
-    const docRef = campaignId
-      ? getCampaignGameLogDocument(campaignId as string, logId)
-      : getCharacterGameLogDocument(characterId as string, logId);
+    const query = campaignId
+      ? supabase.from("campaign_game_log").delete().eq("id", logId)
+      : supabase.from("character_game_log").delete().eq("id", logId);
 
-    deleteDoc(docRef)
-      .then(() => {
+    Promise.resolve(query).then(({ error }) => {
+      if (error) {
+        reject(error);
+      } else {
         resolve();
-      })
-      .catch(reject);
+      }
+    });
   });
 }, "Failed to delete roll.");

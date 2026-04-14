@@ -1,21 +1,17 @@
-import { functions } from "config/firebase.config";
-import { httpsCallable } from "firebase/functions";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { AiGuideRequest, AiGuideResponse } from "./_ai.type";
 import { recordAiCall } from "stores/aiDebug";
 
-export const callAiGuide = createApiFunction<
-  AiGuideRequest,
-  AiGuideResponse
->(
+export const callAiGuide = createApiFunction<AiGuideRequest, AiGuideResponse>(
   async (params) => {
     recordAiCall("callAiGuide", params);
-    const fn = httpsCallable<AiGuideRequest, AiGuideResponse>(
-      functions,
-      "callAiGuide"
+    const { data, error } = await supabase.functions.invoke<AiGuideResponse>(
+      "call-ai-guide",
+      { body: params }
     );
-    const result = await fn(params);
-    return result.data;
+    if (error) throw error;
+    return data as AiGuideResponse;
   },
   "Failed to get AI suggestion. Please try again."
 );

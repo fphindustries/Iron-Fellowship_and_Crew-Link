@@ -70,7 +70,7 @@ export const createCurrentCharacterSlice: CreateSliceType<
 
     updateCurrentCharacterPortrait: (portrait, scale, position) => {
       const state = getState();
-      const uid = state.auth.user?.uid;
+      const uid = state.auth.user?.id;
       const characterId = state.characters.currentCharacter.currentCharacterId;
 
       if (!uid || !characterId) {
@@ -91,7 +91,7 @@ export const createCurrentCharacterSlice: CreateSliceType<
     },
     removeCurrentCharacterPortrait: () => {
       const state = getState();
-      const uid = state.auth.user?.uid;
+      const uid = state.auth.user?.id;
       const characterId = state.characters.currentCharacter.currentCharacterId;
       const oldPortraitFilename =
         state.characters.currentCharacter.currentCharacter?.profileImage

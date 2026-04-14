@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { SectorLocationDocument } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
 
 export interface SectorLocationsSliceData {
@@ -12,11 +11,11 @@ export interface SectorLocationsSliceData {
 export interface SectorLocationsSliceActions {
   setOpenLocationId: (locationId: string | undefined) => void;
 
-  subscribe: (worldId: string, sectorId: string) => Unsubscribe;
+  subscribe: (worldId: string, sectorId: string) => () => void;
   subscribeToLocationNotes: (
     locationId: string,
     isPrivate?: boolean
-  ) => Unsubscribe;
+  ) => () => void;
 
   createLocation: (location: SectorLocationDocument) => Promise<string>;
   updateLocation: (

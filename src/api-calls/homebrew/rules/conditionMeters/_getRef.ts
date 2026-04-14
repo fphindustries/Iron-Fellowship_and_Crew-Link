@@ -1,32 +1,3 @@
-import {
-  CollectionReference,
-  DocumentReference,
-  collection,
-  doc,
-} from "firebase/firestore";
-import { firestore } from "config/firebase.config";
-import { HomebrewConditionMeterDocument } from "api-calls/homebrew/rules/conditionMeters/_homebrewConditionMeters.type";
+// Supabase migration: Firestore refs replaced with table name constants.
 
-export function constructHomebrewConditionMeterCollectionPath() {
-  return `homebrew/homebrew/condition_meters`;
-}
-
-export function constructHomebrewConditionMeterDocPath(
-  conditionMeterId: string
-) {
-  return `${constructHomebrewConditionMeterCollectionPath()}/${conditionMeterId}`;
-}
-
-export function getHomebrewConditionMeterCollection() {
-  return collection(
-    firestore,
-    constructHomebrewConditionMeterCollectionPath()
-  ) as CollectionReference<HomebrewConditionMeterDocument>;
-}
-
-export function getHomebrewConditionMeterDoc(conditionMeterId: string) {
-  return doc(
-    firestore,
-    constructHomebrewConditionMeterDocPath(conditionMeterId)
-  ) as DocumentReference<HomebrewConditionMeterDocument>;
-}
+export const HOMEBREW_CONDITION_METERS_TABLE = "homebrew_condition_meters";

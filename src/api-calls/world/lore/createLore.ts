@@ -1,24 +1,23 @@
-import { addDoc, Timestamp } from "firebase/firestore";
-import { getLoreCollection } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { LORE_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const createLore = createApiFunction<
   { worldId: string; shared?: boolean },
   string
->((params) => {
+>(async (params) => {
   const { worldId } = params;
-  return new Promise((resolve, reject) => {
-    addDoc(getLoreCollection(worldId), {
+
+  const { data, error } = await supabase
+    .from(LORE_TABLE)
+    .insert({
+      world_id: worldId,
       name: "New Lore Document",
-      sharedWithPlayers: true,
-      updatedTimestamp: Timestamp.now(),
-      createdTimestamp: Timestamp.now(),
+      data: { sharedWithPlayers: true },
     })
-      .then((doc) => {
-        resolve(doc.id);
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data.id;
 }, "Failed to create a new lore document.");

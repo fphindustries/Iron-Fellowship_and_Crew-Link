@@ -1,5 +1,4 @@
-import { deleteDoc } from "firebase/firestore";
-import { getCampaignTracksDoc, getCharacterTracksDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const removeProgressTrack = createApiFunction<
@@ -18,16 +17,18 @@ export const removeProgressTrack = createApiFunction<
       return;
     }
 
-    deleteDoc(
-      campaignId
-        ? getCampaignTracksDoc(campaignId, id)
-        : getCharacterTracksDoc(characterId as string, id)
-    )
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
+    const table = campaignId ? "campaign_tracks" : "character_tracks";
+
+    supabase
+      .from(table as any)
+      .delete()
+      .eq("id", id)
+      .then(({ error }: { error: unknown }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       });
   });
 }, "Failed to remove progress track.");

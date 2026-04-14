@@ -1,121 +1,67 @@
-import { firestore } from "config/firebase.config";
-import {
-  collection,
-  CollectionReference,
-  doc,
-  DocumentReference,
-  Timestamp,
-  UpdateData,
-} from "firebase/firestore";
+// Supabase migration: Firestore refs replaced with table name constants.
+
 import { Location } from "types/Locations.type";
-import {
-  LocationNotesDocument,
-  GMLocationDocument,
-  LocationDocument,
-} from "./_locations.type";
 
-export function constructLocationsPath(worldId: string) {
-  return `/worlds/${worldId}/locations`;
-}
-
-export function constructLocationDocPath(worldId: string, locationId: string) {
-  return `/worlds/${worldId}/locations/${locationId}`;
-}
-
-export function constructPrivateDetailsLocationDocPath(
-  worldId: string,
-  locationId: string
-) {
-  return constructLocationDocPath(worldId, locationId) + `/private/details`;
-}
-
-export function constructPublicNotesLocationDocPath(
-  worldId: string,
-  locationId: string
-) {
-  return constructLocationDocPath(worldId, locationId) + `/public/notes`;
-}
+export const LOCATIONS_TABLE = "locations";
+export const LOCATION_PUBLIC_NOTES_TABLE = "location_public_notes";
+export const LOCATION_PRIVATE_NOTES_TABLE = "location_private_notes";
 
 export function constructLocationImagesPath(
   worldId: string,
   locationId: string
 ) {
-  return `/worlds/${worldId}/locations/${locationId}`;
+  return `world-images/${worldId}/locations/${locationId}`;
 }
 
-export function constructLocationImagePath(
-  worldId: string,
-  locationId: string,
-  filename: string
-) {
-  return `/worlds/${worldId}/locations/${locationId}/${filename}`;
-}
-
-export function getLocationCollection(worldId: string) {
-  return collection(
-    firestore,
-    constructLocationsPath(worldId)
-  ) as CollectionReference<LocationDocument>;
-}
-
-export function getLocationDoc(worldId: string, locationId: string) {
-  return doc(
-    firestore,
-    constructLocationDocPath(worldId, locationId)
-  ) as DocumentReference<LocationDocument>;
-}
-
-export function getPrivateDetailsLocationDoc(
-  worldId: string,
-  locationId: string
-) {
-  return doc(
-    firestore,
-    constructPrivateDetailsLocationDocPath(worldId, locationId)
-  ) as DocumentReference<GMLocationDocument>;
-}
-
-export function getPublicNotesLocationDoc(worldId: string, locationId: string) {
-  return doc(
-    firestore,
-    constructPublicNotesLocationDocPath(worldId, locationId)
-  ) as DocumentReference<LocationNotesDocument>;
-}
-
-export function convertUpdateDataToDatabase(
-  location: UpdateData<Location>
-): UpdateData<LocationDocument> {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { updatedDate, createdDate, ...restLocation } = location;
-  const newLocation: UpdateData<LocationDocument> = {
-    updatedTimestamp: Timestamp.now(),
-    ...restLocation,
-  };
-
-  if (createdDate && createdDate instanceof Date) {
-    newLocation.createdTimestamp = Timestamp.fromDate(createdDate);
-  }
-
-  return newLocation;
-}
-
-export function convertToDatabase(location: Location): LocationDocument {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { updatedDate, createdDate, ...restLocation } = location;
-  const newLocation: LocationDocument = {
-    updatedTimestamp: Timestamp.now(),
-    createdTimestamp: Timestamp.fromDate(createdDate),
-    ...restLocation,
-  };
-
-  return newLocation;
-}
-
-export function convertFromDatabase(location: LocationDocument): Location {
-  const { updatedTimestamp, createdTimestamp, ...restLocation } = location;
+/** Convert a Supabase locations row to a domain Location object. */
+export function convertFromDatabase(row: {
+  id: string;
+  world_id: string;
+  name: string;
+  type?: string | null;
+  data?: Record<string, unknown> | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}): Location {
+  const { name, type, data, created_at, updated_at } = row;
   return {
-    updatedDate: updatedTimestamp.toDate(),
-    createdDate: createdTimestamp.toDate(),
-    ...restLocation,
+    name,
+    ...(type ? { type } : {}),
+    ...(data ?? {}),
+    createdDate: created_at ? new Date(created_at) : new Date(),
+    updatedDate: updated_at ? new Date(updated_at) : new Date(),
+  } as unknown as Location;
+}
+
+/** Convert a full Location to Supabase insert format. */
+export function convertToDatabase(location: Location): {
+  name: string;
+  type?: string;
+  data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+} {
+  const { name, type, createdDate, updatedDate, ...rest } = location;
+  return {
+    name,
+    ...(type ? { type } : {}),
+    data: rest,
+    created_at: createdDate?.toISOString() ?? new Date().toISOString(),
+    updated_at: updatedDate?.toISOString() ?? new Date().toISOString(),
   };
+}
+
+/** Convert a partial Location update to Supabase update format. */
+export function convertUpdateDataToDatabase(
+  location: Partial<Location>
+): Record<string, unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { name, type, createdDate, updatedDate, ...rest } = location;
+  const update: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (name !== undefined) update.name = name;
+  if (type !== undefined) update.type = type;
+  if (Object.keys(rest).length > 0) update.data = rest;
+  return update;
 }

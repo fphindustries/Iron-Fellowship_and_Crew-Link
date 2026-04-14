@@ -11,7 +11,6 @@ import { updateNPCNotes } from "api-calls/world/npcs/updateNPCNotes";
 import { uploadNPCImage } from "api-calls/world/npcs/uploadNPCImage";
 import { listenToNPCNotes } from "api-calls/world/npcs/listenToNPCNotes";
 import { reportApiError } from "lib/analytics.lib";
-import { Unsubscribe } from "firebase/firestore";
 import { listenToNPCGMProperties } from "api-calls/world/npcs/listenToNPCGMProperties";
 import { updateNPCCharacterBond } from "api-calls/world/npcs/updateNPCCharacterBond";
 import { updateNPCCharacterConnection } from "api-calls/world/npcs/updateNPCCharacterConnection";
@@ -229,7 +228,7 @@ export const createNPCsSlice: CreateSliceType<NPCsSlice> = (set, getState) => ({
       }
     );
 
-    let gmPropertiesUnsubscribe: Unsubscribe;
+    let gmPropertiesUnsubscribe: () => void;
     if (isWorldOwner) {
       gmPropertiesUnsubscribe = listenToNPCGMProperties(
         worldId,

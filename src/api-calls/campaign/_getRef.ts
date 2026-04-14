@@ -1,29 +1,5 @@
-import { firestore } from "config/firebase.config";
-import {
-  collection,
-  CollectionReference,
-  doc,
-  DocumentReference,
-} from "firebase/firestore";
-import { CampaignDocument } from "api-calls/campaign/_campaign.type";
+// Supabase migration: Firestore refs replaced with table name constants.
 
-export function constructCampaignCollectionPath() {
-  return `/campaigns`;
-}
-export function constructCampaignDocPath(campaignId: string) {
-  return `/campaigns/${campaignId}`;
-}
-
-export function getCampaignCollection() {
-  return collection(
-    firestore,
-    constructCampaignCollectionPath()
-  ) as CollectionReference<CampaignDocument>;
-}
-
-export function getCampaignDoc(campaignId: string) {
-  return doc(
-    firestore,
-    constructCampaignDocPath(campaignId)
-  ) as DocumentReference<CampaignDocument>;
-}
+export const CAMPAIGN_TABLE = "campaigns";
+export const CAMPAIGN_MEMBERS_TABLE = "campaign_members";
+export const CAMPAIGN_CHARACTERS_TABLE = "campaign_characters";

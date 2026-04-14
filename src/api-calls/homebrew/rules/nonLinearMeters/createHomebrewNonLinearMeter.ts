@@ -1,6 +1,6 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { addDoc } from "firebase/firestore";
-import { getHomebrewNonLinearMeterCollection } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_NON_LINEAR_METERS_TABLE } from "./_getRef";
 import { HomebrewNonLinearMeterDocument } from "api-calls/homebrew/rules/nonLinearMeters/_homebrewNonLinearMeter.type";
 
 export const createHomebrewNonLinearMeter = createApiFunction<
@@ -8,13 +8,11 @@ export const createHomebrewNonLinearMeter = createApiFunction<
     meter: HomebrewNonLinearMeterDocument;
   },
   void
->((params) => {
+>(async (params) => {
   const { meter } = params;
-  return new Promise((resolve, reject) => {
-    addDoc(getHomebrewNonLinearMeterCollection(), meter)
-      .then(() => {
-        resolve();
-      })
-      .catch(reject);
-  });
+  const { error } = await supabase.from(HOMEBREW_NON_LINEAR_METERS_TABLE).insert({
+    collection_id: meter.collectionId,
+    data: meter,
+  } as any);
+  if (error) throw error;
 }, "Failed to create meter.");

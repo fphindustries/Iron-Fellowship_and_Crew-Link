@@ -1,61 +1,34 @@
-import { firestore } from "config/firebase.config";
-import {
-  Bytes,
-  collection,
-  CollectionReference,
-  doc,
-  DocumentReference,
-} from "firebase/firestore";
-import { WorldDocument, World } from "./_world.type";
+// Supabase migration: Firestore refs replaced with table name constants.
 
-export function constructWorldsPath() {
-  return `/worlds`;
-}
+export const WORLD_TABLE = "worlds";
 
-export function constructWorldDocPath(worldId: string) {
-  return `/worlds/${worldId}`;
-}
+export function decodeWorld(row: {
+  id: string;
+  name: string;
+  setting_key: string;
+  description?: string | null;
+  new_truths?: Record<string, unknown> | null;
+  owner_ids: string[];
+  campaign_guides?: string[] | null;
+}) {
+  const { owner_ids, campaign_guides, new_truths, description, ...rest } = row;
 
-export function getWorldCollection() {
-  return collection(
-    firestore,
-    constructWorldsPath()
-  ) as CollectionReference<WorldDocument>;
-}
+  // Merge owner_ids and campaign_guides into a single ownerIds array (same as
+  // the previous Firestore decodeWorld), but also preserve campaignGuides.
+  const ownerIds = [...owner_ids, ...(campaign_guides ?? [])];
 
-export function getWorldDoc(worldId: string) {
-  return doc(
-    firestore,
-    constructWorldDocPath(worldId)
-  ) as DocumentReference<WorldDocument>;
-}
-
-export function encodeWorld(world: World): WorldDocument {
-  const { worldDescription, ...remainingWorld } = world;
-
-  const encodedWorld: WorldDocument = {
-    ...remainingWorld,
+  return {
+    ...rest,
+    settingKey: row.setting_key,
+    ownerIds,
+    campaignGuides: campaign_guides ?? undefined,
+    newTruths: new_truths ?? undefined,
+    worldDescription: description
+      ? Uint8Array.from(atob(description), (c) => c.charCodeAt(0))
+      : undefined,
   };
-
-  if (worldDescription) {
-    encodedWorld.worldDescription = Bytes.fromUint8Array(worldDescription);
-  }
-
-  return encodedWorld;
 }
 
-export function decodeWorld(encodedWorld: WorldDocument): World {
-  const { worldDescription, ownerIds, campaignGuides, ...remainingWorld } =
-    encodedWorld;
-
-  const newOwnerIds = [...ownerIds, ...(campaignGuides ?? [])];
-
-  const world: World = {
-    ...remainingWorld,
-    ownerIds: newOwnerIds,
-    worldDescription: worldDescription?.toUint8Array(),
-    campaignGuides,
-  };
-
-  return world;
+export function encodeWorldDescription(description: Uint8Array): string {
+  return btoa(String.fromCharCode(...description));
 }

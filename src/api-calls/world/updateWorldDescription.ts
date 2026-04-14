@@ -1,6 +1,5 @@
-import { Bytes, updateDoc } from "firebase/firestore";
-import { constructWorldDocPath, getWorldDoc } from "./_getRef";
-import { projectId } from "config/firebase.config";
+import { supabase } from "config/supabase.config";
+import { WORLD_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const updateWorldDescription = createApiFunction<
@@ -10,50 +9,34 @@ export const updateWorldDescription = createApiFunction<
     isBeaconRequest?: boolean;
   },
   void
->((params) => {
+>(async (params) => {
   const { worldId, description, isBeaconRequest } = params;
 
-  return new Promise((resolve, reject) => {
-    // If we are making this call when closing the page, we want to use a fetch call with keepalive
-    if (isBeaconRequest) {
-      const worldDocPath = `projects/${projectId}/databases/(default)/documents${constructWorldDocPath(
-        worldId
-      )}`;
+  const encoded = btoa(String.fromCharCode(...description));
 
-      const token = window.sessionStorage.getItem("id-token") ?? "";
-      if (description) {
-        fetch(
-          `https://firestore.googleapis.com/v1/${worldDocPath}?updateMask.fieldPaths=worldDescription`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              name: worldDocPath,
-              fields: {
-                worldDescription: {
-                  bytesValue: Bytes.fromUint8Array(description).toBase64(),
-                },
-              },
-            }),
-            keepalive: true,
-          }
-        ).catch((e) => reject(e));
-      }
-
-      resolve();
-    } else {
-      updateDoc(getWorldDoc(worldId), {
-        worldDescription: Bytes.fromUint8Array(description),
-      })
-        .then(() => {
-          resolve();
-        })
-        .catch((e) => {
-          reject(e);
-        });
+  if (isBeaconRequest) {
+    // Use keepalive fetch for beacon requests (page unload)
+    const supabaseUrl = (supabase as unknown as { supabaseUrl: string }).supabaseUrl;
+    const supabaseKey = (supabase as unknown as { supabaseKey: string }).supabaseKey;
+    if (description && supabaseUrl) {
+      fetch(`${supabaseUrl}/rest/v1/${WORLD_TABLE}?id=eq.${worldId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseKey,
+          Authorization: `Bearer ${window.sessionStorage.getItem("sb-access-token") ?? supabaseKey}`,
+        },
+        body: JSON.stringify({ description: encoded }),
+        keepalive: true,
+      }).catch((e) => console.error(e));
     }
-  });
+    return;
+  }
+
+  const { error } = await supabase
+    .from(WORLD_TABLE)
+    .update({ description: encoded })
+    .eq("id", worldId);
+
+  if (error) throw error;
 }, "Failed to update world description.");

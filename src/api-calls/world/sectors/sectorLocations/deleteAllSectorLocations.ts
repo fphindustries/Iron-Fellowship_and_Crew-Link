@@ -1,7 +1,6 @@
-import { getDocs } from "firebase/firestore";
-import { getSectorLocationsCollection } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { SECTOR_LOCATIONS_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteSectorLocation } from "./deleteSectorLocation";
 
 interface Params {
   worldId: string;
@@ -9,29 +8,16 @@ interface Params {
 }
 
 export const deleteAllSectorLocations = createApiFunction<Params, void>(
-  (params) => {
-    const { worldId, sectorId } = params;
+  async (params) => {
+    const { sectorId } = params;
 
-    return new Promise((resolve, reject) => {
-      const promises: Promise<unknown>[] = [];
-      getDocs(getSectorLocationsCollection(worldId, sectorId))
-        .then((docs) => {
-          docs.forEach((doc) => {
-            promises.push(
-              deleteSectorLocation({ worldId, sectorId, locationId: doc.id })
-            );
-          });
-        })
-        .catch((e) => {
-          reject(e);
-        });
+    // ON DELETE CASCADE handles notes sub-tables automatically.
+    const { error } = await supabase
+      .from(SECTOR_LOCATIONS_TABLE)
+      .delete()
+      .eq("sector_id", sectorId);
 
-      Promise.all(promises)
-        .then(() => resolve())
-        .catch((e) => {
-          reject(e);
-        });
-    });
+    if (error) throw error;
   },
   "Failed to delete locations."
 );

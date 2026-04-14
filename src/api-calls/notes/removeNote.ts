@@ -1,10 +1,4 @@
-import { deleteDoc } from "firebase/firestore";
-import {
-  getCampaignNoteContentDocument,
-  getCampaignNoteDocument,
-  getCharacterNoteContentDocument,
-  getCharacterNoteDocument,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const removeNote = createApiFunction<
@@ -14,31 +8,38 @@ export const removeNote = createApiFunction<
     noteId: string;
   },
   void
->((params) => {
+>(async (params) => {
   const { campaignId, characterId, noteId } = params;
 
-  return new Promise((resolve, reject) => {
-    if (!campaignId && !characterId) {
-      reject(new Error("Either character or campaign ID must be defined."));
-    }
-    const deleteNotePromise = deleteDoc(
-      characterId
-        ? getCharacterNoteDocument(characterId, noteId)
-        : getCampaignNoteDocument(campaignId as string, noteId)
-    );
+  if (!campaignId && !characterId) {
+    throw new Error("Either character or campaign ID must be defined.");
+  }
 
-    const deleteContentPromise = deleteDoc(
-      characterId
-        ? getCharacterNoteContentDocument(characterId, noteId)
-        : getCampaignNoteContentDocument(campaignId as string, noteId)
-    );
+  if (characterId) {
+    // Delete content first (FK constraint), then note
+    await supabase
+      .from("character_note_content")
+      .delete()
+      .eq("note_id", noteId);
 
-    Promise.all([deleteNotePromise, deleteContentPromise])
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+    const { error } = await supabase
+      .from("character_notes")
+      .delete()
+      .eq("id", noteId);
+
+    if (error) throw error;
+  } else {
+    // Delete content first (FK constraint), then note
+    await supabase
+      .from("campaign_note_content")
+      .delete()
+      .eq("note_id", noteId);
+
+    const { error } = await supabase
+      .from("campaign_notes")
+      .delete()
+      .eq("id", noteId);
+
+    if (error) throw error;
+  }
 }, "Failed to remove note.");

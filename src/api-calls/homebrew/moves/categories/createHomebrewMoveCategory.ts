@@ -1,16 +1,16 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { addDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { HomebrewMoveCategoryDocument } from "api-calls/homebrew/moves/categories/_homebrewMoveCategory.type";
-import { getHomebrewMoveCategoryCollection } from "./_getRef";
+import { HOMEBREW_MOVE_CATEGORIES_TABLE } from "./_getRef";
 
 export const createHomebrewMoveCategory = createApiFunction<
   { moveCategory: HomebrewMoveCategoryDocument },
   void
->((params) => {
+>(async (params) => {
   const { moveCategory } = params;
-  return new Promise((resolve, reject) => {
-    addDoc(getHomebrewMoveCategoryCollection(), moveCategory)
-      .then(() => resolve())
-      .catch(reject);
-  });
+  const { error } = await supabase.from(HOMEBREW_MOVE_CATEGORIES_TABLE).insert({
+    collection_id: moveCategory.collectionId,
+    data: moveCategory,
+  } as any);
+  if (error) throw error;
 }, "Failed to create move category.");

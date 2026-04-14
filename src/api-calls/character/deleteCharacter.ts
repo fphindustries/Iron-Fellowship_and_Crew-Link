@@ -1,17 +1,12 @@
 import { createApiFunction } from "api-calls/createApiFunction";
 import { removeCharacterFromCampaign } from "api-calls/campaign/removeCharacterFromCampaign";
-import { firebaseAuth } from "config/firebase.config";
-import { deleteDoc } from "firebase/firestore";
 import { deleteNotes } from "api-calls/notes/deleteNotes";
-import { getCharacterSettingsDoc } from "api-calls/character-campaign-settings/_getRef";
-import {
-  constructCharacterPortraitFolderPath,
-  getCharacterDoc,
-} from "./_getRef";
+import { constructCharacterPortraitFolderPath, CHARACTER_TABLE } from "./_getRef";
 import { deleteAllLogs } from "api-calls/game-log/deleteAllLogs";
 import { deleteAllProgressTracks } from "api-calls/tracks/deleteAllProgressTracks";
 import { deleteAllAssets } from "api-calls/assets/deleteAllAssets";
 import { deleteImage } from "lib/storage.lib";
+import { supabase } from "config/supabase.config";
 
 export const deleteCharacter = createApiFunction<
   {
@@ -21,57 +16,49 @@ export const deleteCharacter = createApiFunction<
     portraitFilename?: string;
   },
   void
->((params) => {
-  return new Promise((resolve, reject) => {
-    const { uid, characterId, campaignId, portraitFilename } = params;
+>(async (params) => {
+  const { uid, characterId, campaignId, portraitFilename } = params;
 
-    let removeCharacterFromCampaignPromise: Promise<void> = Promise.resolve();
-    if (campaignId) {
-      removeCharacterFromCampaignPromise = removeCharacterFromCampaign({
-        uid: firebaseAuth.currentUser?.uid ?? "",
-        campaignId,
-        characterId,
-      });
-    }
+  if (campaignId) {
+    const { data: userData } = await supabase.auth.getUser();
+    await removeCharacterFromCampaign({
+      uid: userData.user?.id ?? "",
+      campaignId,
+      characterId,
+    });
+  }
 
-    removeCharacterFromCampaignPromise
-      .then(() => {
-        const promises: Promise<unknown>[] = [];
+  const cleanupTasks: PromiseLike<unknown>[] = [];
 
-        if (portraitFilename) {
-          promises.push(
-            deleteImage(
-              constructCharacterPortraitFolderPath(uid, characterId),
-              portraitFilename
-            )
-          );
-        }
+  if (portraitFilename) {
+    cleanupTasks.push(
+      deleteImage(
+        constructCharacterPortraitFolderPath(uid, characterId),
+        portraitFilename
+      )
+    );
+  }
 
-        promises.push(deleteNotes({ characterId }));
-        promises.push(deleteDoc(getCharacterSettingsDoc(characterId)));
-        promises.push(deleteAllAssets({ characterId }));
-        promises.push(deleteAllLogs({ characterId }));
-        promises.push(deleteAllProgressTracks({ characterId }));
+  cleanupTasks.push(deleteNotes({ characterId }));
+  cleanupTasks.push(deleteAllAssets({ characterId }));
+  cleanupTasks.push(deleteAllLogs({ characterId }));
+  cleanupTasks.push(deleteAllProgressTracks({ characterId }));
 
-        Promise.all(promises)
-          .then(() => {
-            deleteDoc(getCharacterDoc(characterId))
-              .then(() => {
-                resolve();
-              })
-              .catch((e) => {
-                reject(e);
-                console.error(e);
-              });
-          })
-          .catch((e) => {
-            reject(e);
-            console.error(e);
-          });
-      })
-      .catch((e) => {
-        console.error(e);
-        reject(e);
-      });
-  });
+  // Also delete character settings via supabase (character_settings table)
+  cleanupTasks.push(
+    supabase
+      .from("character_settings")
+      .delete()
+      .eq("character_id", characterId)
+      .then()
+  );
+
+  await Promise.all(cleanupTasks);
+
+  const { error } = await supabase
+    .from(CHARACTER_TABLE)
+    .delete()
+    .eq("id", characterId);
+
+  if (error) throw error;
 }, "Failed to delete character.");

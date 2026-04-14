@@ -5,7 +5,6 @@ import { updateSector } from "api-calls/world/sectors/updateSector";
 import { listenToSectors } from "api-calls/world/sectors/listenToSectors";
 import { createSector } from "api-calls/world/sectors/createSector";
 import { deleteSector } from "api-calls/world/sectors/deleteSector";
-import { deleteField } from "firebase/firestore";
 import { createSectorLocationsSlice } from "./sectorLocations/sectorLocations.slice";
 import { listenToSectorNotes } from "api-calls/world/sectors/listenToSectorNotes";
 import { updateSectorNotes } from "api-calls/world/sectors/updateSectorNotes";
@@ -153,11 +152,12 @@ export const createSectorSlice: CreateSliceType<SectorSlice> = (...params) => {
         }
       });
 
+      // Read the post-mutation map from the store and write the full map to Supabase
       return updateSector({
         worldId,
         sectorId: openSectorId,
         sector: {
-          [`map.${row}.${col}`]: content ? content : deleteField(),
+          map: getState().worlds.currentWorld.currentWorldSectors.sectors[openSectorId].map,
         },
       });
     },
@@ -180,8 +180,7 @@ export const createSectorSlice: CreateSliceType<SectorSlice> = (...params) => {
         worldId,
         sectorId: openSectorId,
         sector: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          region: region ?? (deleteField() as any),
+          region: region ?? undefined,
         },
       });
     },

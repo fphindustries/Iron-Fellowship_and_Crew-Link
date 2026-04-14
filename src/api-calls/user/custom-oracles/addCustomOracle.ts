@@ -1,7 +1,5 @@
-import { arrayUnion, updateDoc } from "firebase/firestore";
-import { encodeDataswornId } from "functions/dataswornIdEncoder";
+import { supabase } from "config/supabase.config";
 import { StoredOracle } from "api-calls/user/custom-oracles/_custom-oracles.type";
-import { getUsersCustomOracleDoc } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const addCustomOracle = createApiFunction<
@@ -14,16 +12,19 @@ export const addCustomOracle = createApiFunction<
   const { uid, customOracle } = params;
 
   return new Promise((resolve, reject) => {
-    const encodedId = encodeDataswornId(customOracle.$id);
-    updateDoc(getUsersCustomOracleDoc(uid), {
-      [`oracles.${encodedId}`]: customOracle,
-      oracleOrder: arrayUnion(encodedId),
-    })
-      .then(() => {
-        resolve();
+    Promise.resolve(
+      supabase.from("user_custom_oracles").insert(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { id: customOracle.$id, user_id: uid, data: customOracle } as any
+      )
+    )
+      .then(({ error }: { error: unknown }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       })
-      .catch((e) => {
-        reject(e);
-      });
+      .catch((error: unknown) => reject(error));
   });
 }, "Failed to create custom oracle.");

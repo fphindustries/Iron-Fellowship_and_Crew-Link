@@ -1,11 +1,14 @@
-import { serverTimestamp, updateDoc } from "firebase/firestore";
-import { getCombatDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
 
 export async function endCombat(
   combatId: string,
-  characterId: string,
-  campaignId?: string
+  _characterId: string,
+  _campaignId?: string
 ): Promise<void> {
-  const ref = getCombatDoc(combatId, characterId, campaignId);
-  await updateDoc(ref, { active: false, endedAt: serverTimestamp() });
+  const { error } = await supabase
+    .from("combats")
+    .update({ ended: true, updated_at: new Date().toISOString() })
+    .eq("id", combatId);
+
+  if (error) throw error;
 }

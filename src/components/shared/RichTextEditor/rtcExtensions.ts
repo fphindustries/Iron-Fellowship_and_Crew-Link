@@ -1,7 +1,7 @@
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import StarterKit from "@tiptap/starter-kit";
-import { User } from "firebase/auth";
+import type { User } from "@supabase/supabase-js";
 import { getHueFromString, hslToHex } from "functions/getHueFromString";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
@@ -28,9 +28,9 @@ export const rtcExtensions = (params: {
     CollaborationCursor.configure({
       provider: params.provider,
       user: {
-        name: params.user?.displayName ?? "Unknown User",
+        name: params.user?.user_metadata?.full_name ?? params.user?.email ?? "Unknown User",
         color: params.user
-          ? hslToHex(getHueFromString(params.user.uid), 70, 80)
+          ? hslToHex(getHueFromString(params.user.id), 70, 80)
           : "#d0d0d0",
       },
     }),

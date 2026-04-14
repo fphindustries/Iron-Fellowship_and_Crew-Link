@@ -3,7 +3,7 @@ import { useStore } from "stores/store";
 
 export function useListenToCampaigns() {
   const subscribe = useStore((store) => store.campaigns.subscribe);
-  const uid = useStore((store) => store.auth.user?.uid);
+  const uid = useStore((store) => store.auth.user?.id);
 
   useEffect(() => {
     const unsubscribe = subscribe(uid);

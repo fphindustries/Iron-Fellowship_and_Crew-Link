@@ -1,25 +1,20 @@
-import { getDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { CampaignDocument } from "api-calls/campaign/_campaign.type";
-import { getCampaignDoc } from "./_getRef";
+import { CAMPAIGN_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const getCampaign = createApiFunction<string, CampaignDocument>(
-  (campaignId) => {
-    return new Promise((resolve, reject) => {
-      getDoc(getCampaignDoc(campaignId))
-        .then((snapshot) => {
-          const campaign = snapshot.data();
+  async (campaignId) => {
+    const { data, error } = await supabase
+      .from(CAMPAIGN_TABLE)
+      .select("*")
+      .eq("id", campaignId)
+      .single();
 
-          if (campaign) {
-            resolve(campaign);
-          } else {
-            reject("Could not find campaign");
-          }
-        })
-        .catch((err) => {
-          reject(err);
-        });
-    });
+    if (error) throw error;
+    if (!data) throw new Error("Could not find campaign");
+
+    return data as unknown as CampaignDocument;
   },
   "Failed to load campaign."
 );

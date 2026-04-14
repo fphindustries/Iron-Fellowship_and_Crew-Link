@@ -1,19 +1,17 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteDoc } from "firebase/firestore";
-import { getHomebrewStatsDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_STATS_TABLE } from "./_getRef";
 
 export const deleteHomebrewStat = createApiFunction<
   {
     statId: string;
   },
   void
->((params) => {
+>(async (params) => {
   const { statId } = params;
-  return new Promise((resolve, reject) => {
-    deleteDoc(getHomebrewStatsDoc(statId))
-      .then(() => {
-        resolve();
-      })
-      .catch(reject);
-  });
+  const { error } = await supabase
+    .from(HOMEBREW_STATS_TABLE)
+    .delete()
+    .eq("id", statId);
+  if (error) throw error;
 }, "Failed to delete stat.");

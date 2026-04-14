@@ -1,35 +1,5 @@
-import { deleteDoc, getDocs } from "firebase/firestore";
-import {
-  getCampaignAssetCollection,
-  getCampaignAssetDoc,
-  getCharacterAssetCollection,
-  getCharacterAssetDoc,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
-
-function getAllAssets(
-  campaignId: string | undefined,
-  characterId: string | undefined
-): Promise<string[]> {
-  return new Promise<string[]>((resolve, reject) => {
-    if (!characterId && !campaignId) {
-      reject(new Error("Either character or campaign ID must be defined."));
-      return;
-    }
-    getDocs(
-      characterId
-        ? getCharacterAssetCollection(characterId)
-        : getCampaignAssetCollection(campaignId as string)
-    )
-      .then((snapshot) => {
-        const ids = snapshot.docs.map((doc) => doc.id);
-        resolve(ids);
-      })
-      .catch(() => {
-        reject("Failed to get assets.");
-      });
-  });
-}
 
 export const deleteAllAssets = createApiFunction<
   { characterId?: string; campaignId?: string },
@@ -40,25 +10,21 @@ export const deleteAllAssets = createApiFunction<
       reject("Either campaign or character ID must be defined.");
       return;
     }
-    getAllAssets(campaignId, characterId)
-      .then((assetIds) => {
-        const promises = assetIds.map((assetId) =>
-          deleteDoc(
-            characterId
-              ? getCharacterAssetDoc(characterId, assetId)
-              : getCampaignAssetDoc(campaignId as string, assetId)
-          )
-        );
-        Promise.all(promises)
-          .then(() => {
-            resolve();
-          })
-          .catch((e) => {
-            reject(e);
-          });
-      })
-      .catch((e) => {
-        reject(e);
+
+    const table = characterId ? "character_assets" : "campaign_assets";
+    const column = characterId ? "character_id" : "campaign_id";
+    const id = (characterId ?? campaignId) as string;
+
+    supabase
+      .from(table as any)
+      .delete()
+      .eq(column, id)
+      .then(({ error }: { error: unknown }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       });
   });
 }, "Failed to delete some or all assets.");

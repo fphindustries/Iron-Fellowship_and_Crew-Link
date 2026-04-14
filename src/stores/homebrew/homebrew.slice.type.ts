@@ -1,5 +1,4 @@
 import { Datasworn } from "@datasworn/core";
-import { PartialWithFieldValue, Unsubscribe } from "firebase/firestore";
 import { HomebrewAssetDocument } from "api-calls/homebrew/assets/assets/_homebrewAssets.type";
 import { HomebrewAssetCollectionDocument } from "api-calls/homebrew/assets/collections/_homebrewAssetCollection.type";
 import {
@@ -53,13 +52,13 @@ export interface HomebrewSliceData {
 }
 
 export interface HomebrewSliceActions {
-  subscribe: (uid: string) => Unsubscribe;
-  subscribeToHomebrewContent: (homebrewIds: string[]) => Unsubscribe;
+  subscribe: (uid: string) => () => void;
+  subscribeToHomebrewContent: (homebrewIds: string[]) => () => void;
 
   createExpansion: (expansion: ExpansionDocument) => Promise<string>;
   updateExpansion: (
     expansionId: string,
-    expansion: PartialWithFieldValue<HomebrewCollectionDocument>
+    expansion: Partial<HomebrewCollectionDocument>
   ) => Promise<void>;
   deleteExpansion: (expansionId: string) => Promise<void>;
 
@@ -113,7 +112,7 @@ export interface HomebrewSliceActions {
   ) => Promise<void>;
   updateOracleCollection: (
     oracleCollectionId: string,
-    oracleCollection: PartialWithFieldValue<HomebrewOracleCollectionDocument>
+    oracleCollection: Partial<HomebrewOracleCollectionDocument>
   ) => Promise<void>;
   deleteOracleCollection: (
     homebrewId: string,
@@ -125,7 +124,7 @@ export interface HomebrewSliceActions {
   ) => Promise<void>;
   updateOracleTable: (
     oracleTableId: string,
-    oracleTable: PartialWithFieldValue<HomebrewOracleTableDocument>
+    oracleTable: Partial<HomebrewOracleTableDocument>
   ) => Promise<void>;
   deleteOracleTable: (oracleTableId: string) => Promise<void>;
 
@@ -146,7 +145,7 @@ export interface HomebrewSliceActions {
   createMove: (move: HomebrewMoveDocument) => Promise<void>;
   updateMove: (
     moveId: string,
-    move: PartialWithFieldValue<HomebrewMoveDocument>
+    move: Partial<HomebrewMoveDocument>
   ) => Promise<void>;
   deleteMove: (moveId: string) => Promise<void>;
 
@@ -167,7 +166,7 @@ export interface HomebrewSliceActions {
   createAsset: (asset: HomebrewAssetDocument) => Promise<void>;
   updateAsset: (
     assetId: string,
-    asset: PartialWithFieldValue<HomebrewAssetDocument>
+    asset: Partial<HomebrewAssetDocument>
   ) => Promise<void>;
   deleteAsset: (assetId: string) => Promise<void>;
 

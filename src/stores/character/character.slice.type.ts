@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { AssetDocument } from "api-calls/assets/_asset.type";
 import { CurrentCharacterSlice } from "./currentCharacter/currentCharacter.slice.type";
 import {
@@ -16,7 +15,7 @@ export interface CharacterSliceData {
 }
 
 export interface CharacterSliceActions {
-  subscribe: (uid?: string) => Unsubscribe | undefined;
+  subscribe: (uid?: string) => ((() => void) | undefined);
 
   createCharacter: (
     name: string,

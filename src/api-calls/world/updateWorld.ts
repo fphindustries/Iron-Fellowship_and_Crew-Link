@@ -1,21 +1,32 @@
-import { updateDoc } from "firebase/firestore";
-import { getWorldDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { World } from "api-calls/world/_world.type";
+import { WORLD_TABLE } from "./_getRef";
 
 export const updateWorld = createApiFunction<
   { worldId: string; partialWorld: Partial<World> },
   void
->((params) => {
+>(async (params) => {
   const { worldId, partialWorld } = params;
 
-  return new Promise((resolve, reject) => {
-    updateDoc(getWorldDoc(worldId), partialWorld)
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+  const { settingKey, ownerIds, campaignGuides, newTruths, worldDescription, name } =
+    partialWorld;
+
+  // Map World fields to Supabase column names
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates.name = name;
+  if (settingKey !== undefined) updates.setting_key = settingKey;
+  if (ownerIds !== undefined) updates.owner_ids = ownerIds;
+  if (campaignGuides !== undefined) updates.campaign_guides = campaignGuides;
+  if (newTruths !== undefined) updates.new_truths = newTruths;
+  if (worldDescription !== undefined) {
+    updates.description = btoa(String.fromCharCode(...worldDescription));
+  }
+
+  const { error } = await supabase
+    .from(WORLD_TABLE)
+    .update(updates as any)
+    .eq("id", worldId);
+
+  if (error) throw error;
 }, "Failed to update world.");

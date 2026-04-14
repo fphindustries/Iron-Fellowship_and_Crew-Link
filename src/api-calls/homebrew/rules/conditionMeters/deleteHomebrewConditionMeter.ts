@@ -1,19 +1,17 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteDoc } from "firebase/firestore";
-import { getHomebrewConditionMeterDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_CONDITION_METERS_TABLE } from "./_getRef";
 
 export const deleteHomebrewConditionMeter = createApiFunction<
   {
     conditionMeterId: string;
   },
   void
->((params) => {
+>(async (params) => {
   const { conditionMeterId } = params;
-  return new Promise((resolve, reject) => {
-    deleteDoc(getHomebrewConditionMeterDoc(conditionMeterId))
-      .then(() => {
-        resolve();
-      })
-      .catch(reject);
-  });
+  const { error } = await supabase
+    .from(HOMEBREW_CONDITION_METERS_TABLE)
+    .delete()
+    .eq("id", conditionMeterId);
+  if (error) throw error;
 }, "Failed to delete condition meter.");

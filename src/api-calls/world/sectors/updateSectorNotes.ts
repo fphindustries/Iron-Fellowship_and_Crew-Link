@@ -1,11 +1,8 @@
-import { Bytes, setDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import {
-  constructPrivateSectorNotesDocPath,
-  constructPublicSectorNotesDocPath,
-  getPrivateSectorNotesDoc,
-  getPublicSectorNotesDoc,
+  SECTOR_PUBLIC_NOTES_TABLE,
+  SECTOR_PRIVATE_NOTES_TABLE,
 } from "./_getRef";
-import { projectId } from "config/firebase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface Params {
@@ -16,55 +13,40 @@ interface Params {
   isBeacon?: boolean;
 }
 
-export const updateSectorNotes = createApiFunction<Params, void>((params) => {
-  const { worldId, sectorId, notes, isBeacon, isPrivate } = params;
+export const updateSectorNotes = createApiFunction<Params, void>(
+  async (params) => {
+    const { sectorId, notes, isBeacon, isPrivate } = params;
 
-  const path = isPrivate
-    ? constructPrivateSectorNotesDocPath(worldId, sectorId)
-    : constructPublicSectorNotesDocPath(worldId, sectorId);
+    const table = isPrivate ? SECTOR_PRIVATE_NOTES_TABLE : SECTOR_PUBLIC_NOTES_TABLE;
+    const encoded = btoa(String.fromCharCode(...notes));
 
-  return new Promise((resolve, reject) => {
     if (isBeacon) {
-      const contentPath = `projects/${projectId}/databases/(default)/documents${path}`;
-
-      const token = window.sessionStorage.getItem("id-token") ?? "";
-      if (notes) {
+      const supabaseUrl = (supabase as unknown as { supabaseUrl: string }).supabaseUrl;
+      const supabaseKey = (supabase as unknown as { supabaseKey: string }).supabaseKey;
+      if (notes && supabaseUrl) {
         fetch(
-          `https://firestore.googleapis.com/v1/${contentPath}?updateMask.fieldPaths=notes`,
+          `${supabaseUrl}/rest/v1/${table}?sector_id=eq.${sectorId}`,
           {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
+              "Prefer": "return=minimal",
+              apikey: supabaseKey,
+              Authorization: `Bearer ${window.sessionStorage.getItem("sb-access-token") ?? supabaseKey}`,
             },
-            body: JSON.stringify({
-              name: contentPath,
-              fields: {
-                notes: {
-                  bytesValue: Bytes.fromUint8Array(notes).toBase64(),
-                },
-              },
-            }),
+            body: JSON.stringify({ notes: encoded }),
             keepalive: true,
           }
         ).catch((e) => console.error(e));
       }
-
-      resolve();
-    } else {
-      setDoc(
-        isPrivate
-          ? getPrivateSectorNotesDoc(worldId, sectorId)
-          : getPublicSectorNotesDoc(worldId, sectorId),
-        { notes: Bytes.fromUint8Array(notes) },
-        { merge: true }
-      )
-        .then(() => {
-          resolve();
-        })
-        .catch((e) => {
-          reject(e);
-        });
+      return;
     }
-  });
-}, "Failed to save changes to notes.");
+
+    const { error } = await supabase
+      .from(table as any)
+      .upsert({ sector_id: sectorId, notes: encoded } as any, { onConflict: "sector_id" });
+
+    if (error) throw error;
+  },
+  "Failed to save changes to notes."
+);

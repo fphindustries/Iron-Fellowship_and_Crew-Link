@@ -1,5 +1,4 @@
-import { deleteDoc } from "firebase/firestore";
-import { getCampaignAssetDoc, getCharacterAssetDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const removeAsset = createApiFunction<
@@ -17,16 +16,19 @@ export const removeAsset = createApiFunction<
       reject(new Error("Either character or campaign ID must be defined"));
       return;
     }
-    deleteDoc(
-      characterId
-        ? getCharacterAssetDoc(characterId, assetId)
-        : getCampaignAssetDoc(campaignId as string, assetId)
-    )
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
+
+    const table = characterId ? "character_assets" : "campaign_assets";
+
+    supabase
+      .from(table as any)
+      .delete()
+      .eq("id", assetId)
+      .then(({ error }: { error: unknown }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       });
   });
 }, "Error removing asset");

@@ -1,33 +1,24 @@
-import { firebaseAuth, projectId, functions } from "config/firebase.config";
+import { supabase } from "config/supabase.config";
 import { NarrativeRequestPayload } from "types/aiGuide.types";
-
-const FUNCTION_NAME = "generateNarrative";
-const DEFAULT_REGION = "us-central1";
-
-export function getGenerateNarrativeUrl(): string {
-  const emulatorOrigin = (functions as unknown as { emulatorOrigin?: string })
-    .emulatorOrigin;
-  if (emulatorOrigin) {
-    return `${emulatorOrigin}/${projectId}/${DEFAULT_REGION}/${FUNCTION_NAME}`;
-  }
-  return `https://${DEFAULT_REGION}-${projectId}.cloudfunctions.net/${FUNCTION_NAME}`;
-}
 
 export async function streamNarrative(
   payload: NarrativeRequestPayload,
   onChunk: (text: string) => void
 ): Promise<string> {
-  const idToken = await firebaseAuth.currentUser?.getIdToken();
-  if (!idToken) throw new Error("Not authenticated");
+  const session = await supabase.auth.getSession();
+  const token = session.data.session?.access_token ?? "";
+  if (!token) throw new Error("Not authenticated");
 
-  const response = await fetch(getGenerateNarrativeUrl(), {
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-narrative`;
+
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "text/event-stream",
-      Authorization: `Bearer ${idToken}`,
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ data: payload }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok || !response.body) {

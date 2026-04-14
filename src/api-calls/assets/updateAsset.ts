@@ -1,5 +1,4 @@
-import { PartialWithFieldValue, updateDoc } from "firebase/firestore";
-import { getCampaignAssetDoc, getCharacterAssetDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { AssetDocument } from "api-calls/assets/_asset.type";
 
@@ -8,7 +7,7 @@ export const updateAsset = createApiFunction<
     characterId?: string;
     campaignId?: string;
     assetId: string;
-    asset: PartialWithFieldValue<AssetDocument>;
+    asset: Partial<AssetDocument>;
   },
   void
 >((params) => {
@@ -19,17 +18,19 @@ export const updateAsset = createApiFunction<
       reject("Either campaign or character ID must be defined.");
       return;
     }
-    updateDoc(
-      characterId
-        ? getCharacterAssetDoc(characterId, assetId)
-        : getCampaignAssetDoc(campaignId as string, assetId),
-      asset
-    )
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
+
+    const table = characterId ? "character_assets" : "campaign_assets";
+
+    supabase
+      .from(table as any)
+      .update({ data: asset })
+      .eq("id", assetId)
+      .then(({ error }: { error: unknown }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       });
   });
 }, "Error updating asset.");

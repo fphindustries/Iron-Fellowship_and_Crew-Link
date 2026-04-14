@@ -1,6 +1,6 @@
-import { updateDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { NPC } from "types/NPCs.type";
-import { convertToDatabase, getNPCDoc } from "./_getRef";
+import { convertToDatabase, NPCS_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface NPCParams {
@@ -9,16 +9,15 @@ interface NPCParams {
   npc: Partial<NPC>;
 }
 
-export const updateNPC = createApiFunction<NPCParams, void>((params) => {
-  const { worldId, npcId, npc } = params;
+export const updateNPC = createApiFunction<NPCParams, void>(async (params) => {
+  const { npcId, npc } = params;
 
-  return new Promise((resolve, reject) => {
-    updateDoc(getNPCDoc(worldId, npcId), convertToDatabase(npc))
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+  const dbUpdate = convertToDatabase(npc);
+
+  const { error } = await supabase
+    .from(NPCS_TABLE)
+    .update(dbUpdate as any)
+    .eq("id", npcId);
+
+  if (error) throw error;
 }, "Failed to update npc.");

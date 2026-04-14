@@ -1,9 +1,5 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { Timestamp, updateDoc } from "firebase/firestore";
-import {
-  getCampaignSessionDoc,
-  getCharacterSessionDoc,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
 
 export const endSession = createApiFunction<
   {
@@ -14,24 +10,28 @@ export const endSession = createApiFunction<
   },
   void
 >((params) => {
-  const { sessionId, characterId, campaignId, summary } = params;
+  const { sessionId, campaignId } = params;
 
   return new Promise((resolve, reject) => {
-    if (!characterId && !campaignId) {
-      reject(new Error("Either campaign or character ID must be defined."));
+    if (!campaignId) {
+      reject(new Error("Campaign ID must be defined to end a session."));
       return;
     }
 
-    const sessionDocRef = campaignId
-      ? getCampaignSessionDoc(campaignId, sessionId)
-      : getCharacterSessionDoc(characterId as string, sessionId);
-
-    updateDoc(sessionDocRef, {
-      isActive: false,
-      endedAt: Timestamp.now(),
-      ...(summary ? { summary } : {}),
-    })
-      .then(() => resolve())
-      .catch((e) => reject(e));
+    Promise.resolve(
+      supabase
+        .from("sessions")
+        .update({
+          ended_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", sessionId)
+    ).then(({ error }) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
   });
 }, "Failed to end session.");

@@ -31,10 +31,10 @@ export function UserNameDialog(props: UserNameDialogProps) {
 
   const user = useStore((store) => store.auth.user);
   const hasHiddenPhotoUrl = useStore((store) =>
-    user?.uid ? store.users.userMap[user.uid]?.doc?.hidePhoto ?? false : false
+    user?.id ? store.users.userMap[user.id]?.doc?.hidePhoto ?? false : false
   );
 
-  const [name, setName] = useState(user?.displayName ?? "");
+  const [name, setName] = useState(user?.user_metadata?.full_name ?? user?.email ?? "");
   const [showProfileImage, setShowProfileImage] = useState(!hasHiddenPhotoUrl);
 
   useEffect(() => {
@@ -49,8 +49,9 @@ export function UserNameDialog(props: UserNameDialogProps) {
         displayName: name,
         hidePhoto: !showProfileImage,
       };
-      if (user?.photoURL) {
-        newUserDoc.photoURL = user.photoURL;
+      const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+      if (avatarUrl) {
+        newUserDoc.photoURL = avatarUrl;
       }
 
       setIsLoading(true);
@@ -92,10 +93,10 @@ export function UserNameDialog(props: UserNameDialogProps) {
             onChange={(evt) => setName(evt.currentTarget.value)}
             sx={{ mt: 4 }}
           />
-          {user?.photoURL && (
+          {(user?.user_metadata?.avatar_url as string | undefined) && (
             <Stack direction={"row"} spacing={1}>
               <UserAvatar
-                uid={user.uid}
+                uid={user?.id ?? ""}
                 forceShowPhoto={showProfileImage}
                 forceName={name}
               />

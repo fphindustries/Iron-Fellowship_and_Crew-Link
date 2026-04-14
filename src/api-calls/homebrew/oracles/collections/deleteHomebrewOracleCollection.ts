@@ -1,17 +1,17 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteDoc } from "firebase/firestore";
-import { getHomebrewOracleCollectionDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_ORACLE_COLLECTIONS_TABLE } from "./_getRef";
 
 export const deleteHomebrewOracleCollection = createApiFunction<
   {
     oracleCollectionId: string;
   },
   void
->((params) => {
+>(async (params) => {
   const { oracleCollectionId } = params;
-  return new Promise((resolve, reject) => {
-    deleteDoc(getHomebrewOracleCollectionDoc(oracleCollectionId))
-      .then(resolve)
-      .catch(reject);
-  });
+  const { error } = await supabase
+    .from(HOMEBREW_ORACLE_COLLECTIONS_TABLE)
+    .delete()
+    .eq("id", oracleCollectionId);
+  if (error) throw error;
 }, "Failed to delete oracle collection.");

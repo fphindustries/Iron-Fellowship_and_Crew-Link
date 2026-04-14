@@ -1,6 +1,5 @@
 import { UserDocument } from "api-calls/user/_user.type";
-import { Unsubscribe, User } from "firebase/auth";
-import { UpdateData } from "firebase/firestore";
+import type { User } from "@supabase/supabase-js";
 
 export enum AUTH_STATE {
   LOADING,
@@ -17,10 +16,10 @@ export interface AuthSliceData {
 }
 
 export interface AuthSliceActions {
-  subscribe: () => Unsubscribe;
-  subscribeToUser: (uid: string) => Unsubscribe;
+  subscribe: () => () => void;
+  subscribeToUser: (uid: string) => () => void;
   closeUserNameDialog: () => void;
-  updateUserDoc: (doc: UpdateData<UserDocument>) => void;
+  updateUserDoc: (doc: Partial<UserDocument>) => void;
 }
 
 export type AuthSlice = AuthSliceData & AuthSliceActions;

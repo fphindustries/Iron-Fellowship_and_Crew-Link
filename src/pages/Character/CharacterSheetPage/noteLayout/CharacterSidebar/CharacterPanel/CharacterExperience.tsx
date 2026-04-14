@@ -34,11 +34,11 @@ export function CharacterExperience() {
           onChange={(newValue) => {
             if (newValue > availableXP) {
               return updateCharacter({
-                "experience.earned": earned + 1,
+                experience: { earned: earned + 1 },
               });
             } else {
               return updateCharacter({
-                "experience.spent": spent + 1,
+                experience: { spent: spent + 1 },
               });
             }
           }}

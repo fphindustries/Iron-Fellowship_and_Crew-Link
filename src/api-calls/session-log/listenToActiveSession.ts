@@ -1,17 +1,35 @@
-import {
-  Unsubscribe,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { SessionDocument } from "types/SessionLog.type";
-import {
-  convertSessionFromDatabase,
-  getCampaignSessionsCollection,
-  getCharacterSessionsCollection,
-} from "./_getRef";
+import { convertSessionFromDatabase, SESSIONS_TABLE } from "./_getRef";
+import { SessionRow } from "lib/database.types";
+
+function fetchActiveSession(
+  campaignId: string,
+  onSession: (sessionId: string, session: SessionDocument) => void,
+  onNoSession: () => void,
+  onError: (error: string) => void
+): void {
+  supabase
+    .from(SESSIONS_TABLE)
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .is("ended_at", null)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .then(({ data, error }) => {
+      if (error) {
+        console.error(error);
+        onError("Error listening to active session.");
+        return;
+      }
+      if (!data || data.length === 0) {
+        onNoSession();
+      } else {
+        const row = data[0] as SessionRow;
+        onSession(row.id, convertSessionFromDatabase(row));
+      }
+    });
+}
 
 export function listenToActiveSession(params: {
   campaignId?: string;
@@ -19,36 +37,32 @@ export function listenToActiveSession(params: {
   onSession: (sessionId: string, session: SessionDocument) => void;
   onNoSession: () => void;
   onError: (error: string) => void;
-}): Unsubscribe {
-  const { campaignId, characterId, onSession, onNoSession, onError } = params;
+}): () => void {
+  const { campaignId, onSession, onNoSession, onError } = params;
 
-  if (!campaignId && !characterId) {
-    onError("Either campaign or character ID must be defined.");
+  if (!campaignId) {
+    onError("Campaign ID must be defined to listen to active session.");
     return () => {};
   }
 
-  const sessionsCollection = campaignId
-    ? getCampaignSessionsCollection(campaignId)
-    : getCharacterSessionsCollection(characterId as string);
-
-  return onSnapshot(
-    query(
-      sessionsCollection,
-      where("isActive", "==", true),
-      orderBy("startedAt", "desc"),
-      limit(1)
-    ),
-    (snapshot) => {
-      if (snapshot.empty) {
-        onNoSession();
-      } else {
-        const docSnap = snapshot.docs[0];
-        onSession(docSnap.id, convertSessionFromDatabase(docSnap.data()));
+  const channel = supabase
+    .channel(`${SESSIONS_TABLE}:active:${campaignId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: SESSIONS_TABLE,
+        filter: `campaign_id=eq.${campaignId}`,
+      },
+      () => {
+        fetchActiveSession(campaignId, onSession, onNoSession, onError);
       }
-    },
-    (error) => {
-      console.error(error);
-      onError("Error listening to active session.");
-    }
-  );
+    )
+    .subscribe();
+
+  // Initial fetch
+  fetchActiveSession(campaignId, onSession, onNoSession, onError);
+
+  return () => supabase.removeChannel(channel);
 }

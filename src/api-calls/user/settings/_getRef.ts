@@ -1,28 +1,6 @@
-import { firestore } from "config/firebase.config";
-import { DocumentReference, doc } from "firebase/firestore";
-import {
-  AccessibilitySettingsDocument,
-  OracleSettingsDocument,
-} from "api-calls/user/settings/_settings.type";
+// Deprecated: Firestore document references are no longer used.
+// This file is kept to avoid breaking any stale imports.
+// Supabase table names for user settings are defined below.
 
-export function constructUserAccessibilitySettingsDocPath(userId: string) {
-  return `/users/${userId}/settings/accessibility`;
-}
-
-export function getUserAccessibilitySettingsDoc(userId: string) {
-  return doc(
-    firestore,
-    constructUserAccessibilitySettingsDocPath(userId)
-  ) as DocumentReference<AccessibilitySettingsDocument>;
-}
-
-export function constructUserOracleSettingsDocPath(userId: string) {
-  return `/users/${userId}/settings/oracle`;
-}
-
-export function getUserOracleSettingsDoc(userId: string) {
-  return doc(
-    firestore,
-    constructUserOracleSettingsDocPath(userId)
-  ) as DocumentReference<OracleSettingsDocument>;
-}
+export const USER_ACCESSIBILITY_SETTINGS_TABLE = "user_accessibility_settings";
+export const USER_ORACLE_SETTINGS_TABLE = "user_oracle_settings";

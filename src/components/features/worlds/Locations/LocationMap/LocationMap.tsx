@@ -19,7 +19,6 @@ import { useStore } from "stores/store";
 import { useState } from "react";
 import { MapTool, MapTools, draggableMapTools } from "./MapTools.enum";
 import { MapToolChooser } from "./MapToolChooser";
-import { arrayUnion } from "firebase/firestore";
 import { LocationItemAvatar } from "./LocationItemAvatar";
 import { checkIsLocationCell, getValidLocations } from "./checkIsLocationCell";
 import { LocationWithGMProperties } from "stores/world/currentWorld/locations/locations.slice.type";
@@ -147,9 +146,12 @@ export function LocationMap(props: LocationMapProps) {
         ...(configCreateLocation ? configCreateLocation(rollOracleTable) : {}),
       })
         .then((id) => {
+          const currentCell = locationMap[locationId]?.map?.[row]?.[col];
+          const existingIds: string[] = (currentCell as { locationIds?: string[] } | undefined)?.locationIds ?? [];
+          const newLocationIds = existingIds.includes(id) ? existingIds : [...existingIds, id];
           updateLocation(locationId, {
             [`map.${row}.${col}.type`]: MapEntryType.Location,
-            [`map.${row}.${col}.locationIds`]: arrayUnion(id),
+            [`map.${row}.${col}.locationIds`]: newLocationIds,
           }).catch(ignoreApiError);
         })
         .catch(ignoreApiError);

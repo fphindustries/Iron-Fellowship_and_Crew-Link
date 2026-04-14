@@ -1,19 +1,17 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteDoc } from "firebase/firestore";
-import { getHomebrewNonLinearMeterDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_NON_LINEAR_METERS_TABLE } from "./_getRef";
 
 export const deleteHomebrewNonLinearMeter = createApiFunction<
   {
     meterId: string;
   },
   void
->((params) => {
+>(async (params) => {
   const { meterId } = params;
-  return new Promise((resolve, reject) => {
-    deleteDoc(getHomebrewNonLinearMeterDoc(meterId))
-      .then(() => {
-        resolve();
-      })
-      .catch(reject);
-  });
+  const { error } = await supabase
+    .from(HOMEBREW_NON_LINEAR_METERS_TABLE)
+    .delete()
+    .eq("id", meterId);
+  if (error) throw error;
 }, "Failed to delete non-linear meter.");

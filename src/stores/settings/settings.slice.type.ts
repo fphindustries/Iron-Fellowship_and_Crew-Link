@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { CustomTrack } from "types/CustomTrackSettings.type";
 import { StoredMove } from "types/Moves.type";
 import { StoredOracle } from "api-calls/user/custom-oracles/_custom-oracles.type";
@@ -25,13 +24,13 @@ export interface SettingsSliceData {
 }
 
 export interface SettingsSliceActions {
-  subscribe: (userIds: string[]) => Unsubscribe;
+  subscribe: (userIds: string[]) => () => void;
   subscribeToSettings: (params: {
     characterId?: string;
     campaignId?: string;
-  }) => Unsubscribe;
+  }) => () => void;
 
-  subscribeToPinnedOracleSettings: (uid: string) => Unsubscribe;
+  subscribeToPinnedOracleSettings: (uid: string) => () => void;
 
   toggleCustomMoveVisibility: (
     moveId: string,

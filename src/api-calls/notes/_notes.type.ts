@@ -1,11 +1,6 @@
-import { Bytes } from "firebase/firestore";
-
-export interface NoteDocument {
-  title: string;
-  order: number;
-  shared?: boolean;
-}
+// Legacy Firestore document types — no longer used in application code.
+// Kept as reference only.
 
 export interface NoteContentDocument {
-  notes?: Bytes; // Can be converted out to JSON or HTML - see DatabaseStructure.md
+  notes?: string; // Base64-encoded Uint8Array
 }

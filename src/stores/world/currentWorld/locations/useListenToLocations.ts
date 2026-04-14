@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { useEffect } from "react";
 import { useStore } from "stores/store";
 
@@ -14,7 +13,7 @@ export function useListenToLocations() {
   );
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe;
+    let unsubscribe: () => void;
 
     if (worldId && worldOwnerIds) {
       unsubscribe = listenToLocations(worldId, worldOwnerIds ?? []);

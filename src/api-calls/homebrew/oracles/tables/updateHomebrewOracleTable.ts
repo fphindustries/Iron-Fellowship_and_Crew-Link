@@ -1,19 +1,37 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { PartialWithFieldValue, updateDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { HomebrewOracleTableDocument } from "api-calls/homebrew/oracles/tables/_homebrewOracleTable.type";
-import { getHomebrewOracleTableDoc } from "./_getRef";
+import { HOMEBREW_ORACLE_TABLES_TABLE } from "./_getRef";
 
 export const updateHomebrewOracleTable = createApiFunction<
   {
     oracleTableId: string;
-    oracleTable: PartialWithFieldValue<HomebrewOracleTableDocument>;
+    oracleTable: Partial<HomebrewOracleTableDocument>;
   },
   void
->((params) => {
+>(async (params) => {
   const { oracleTableId, oracleTable } = params;
-  return new Promise((resolve, reject) => {
-    updateDoc(getHomebrewOracleTableDoc(oracleTableId), oracleTable)
-      .then(resolve)
-      .catch(reject);
-  });
+
+  const updates: Record<string, unknown> = {};
+
+  if (oracleTable.oracleCollectionId !== undefined) {
+    updates.oracle_collection_id = oracleTable.oracleCollectionId;
+  }
+
+  const { data: existing, error: fetchError } = await supabase
+    .from(HOMEBREW_ORACLE_TABLES_TABLE)
+    .select("data")
+    .eq("id", oracleTableId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  updates.data = { ...(existing?.data as object ?? {}), ...oracleTable };
+
+  const { error } = await supabase
+    .from(HOMEBREW_ORACLE_TABLES_TABLE)
+    .update(updates as any)
+    .eq("id", oracleTableId);
+
+  if (error) throw error;
 }, "Failed to update oracle table.");

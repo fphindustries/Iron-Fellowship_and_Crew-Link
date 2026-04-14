@@ -1,9 +1,5 @@
-import { addDoc } from "firebase/firestore";
-import {
-  convertToDatabase,
-  getCampaignTracksCollection,
-  getCharacterTracksCollection,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { convertToRow } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { Track } from "types/Track.type";
 
@@ -17,7 +13,7 @@ export const addProgressTrack = createApiFunction<
 >((params) => {
   const { campaignId, characterId, track } = params;
 
-  const storedTrack = convertToDatabase(track);
+  const row = convertToRow(track);
 
   return new Promise((resolve, reject) => {
     if (!campaignId && !characterId) {
@@ -25,17 +21,20 @@ export const addProgressTrack = createApiFunction<
       return;
     }
 
-    addDoc(
-      campaignId
-        ? getCampaignTracksCollection(campaignId)
-        : getCharacterTracksCollection(characterId as string),
-      storedTrack
-    )
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
+    const table = campaignId ? "campaign_tracks" : "character_tracks";
+    const foreignKey = campaignId
+      ? { campaign_id: campaignId }
+      : { character_id: characterId };
+
+    supabase
+      .from(table as any)
+      .insert({ ...foreignKey, ...row })
+      .then(({ error }: { error: unknown }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       });
   });
 }, "Failed to add progress track.");

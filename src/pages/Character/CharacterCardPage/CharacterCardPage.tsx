@@ -5,7 +5,6 @@ import HealthIcon from "@mui/icons-material/Favorite";
 import SpiritIcon from "@mui/icons-material/Whatshot";
 import { useEffect, useRef, useState } from "react";
 import { Roll } from "types/DieRolls.type";
-import { Unsubscribe } from "firebase/firestore";
 import { listenToMostRecentCharacterLog } from "api-calls/game-log/listenToMostRecentCharacterLog";
 import { RollCard } from "./components/RollCard";
 import { useSearchParams } from "react-router-dom";
@@ -24,7 +23,7 @@ export function CharacterCardPage() {
   const [latestRoll, setLatestRoll] = useState<Roll>();
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe;
+    let unsubscribe: () => void;
 
     if (characterId) {
       unsubscribe = listenToMostRecentCharacterLog({

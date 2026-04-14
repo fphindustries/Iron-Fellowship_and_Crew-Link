@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { useEffect, useRef } from "react";
 import { useStore } from "stores/store";
 
@@ -13,12 +12,12 @@ export function useListenToSessionLog() {
   const subscribeToActiveSession = useStore(
     (store) => store.sessionLog.subscribeToActiveSession
   );
-  const previousSessionUnsubscribe = useRef<Unsubscribe | undefined>(
+  const previousSessionUnsubscribe = useRef<((() => void) | undefined)>(
     undefined
   );
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe | undefined = undefined;
+    let unsubscribe: (() => void) | undefined = undefined;
 
     if (characterId || campaignId) {
       unsubscribe = subscribeToActiveSession({ campaignId, characterId });
@@ -47,10 +46,10 @@ export function useListenToSessionLog() {
   const subscribeToSessionEvents = useStore(
     (store) => store.sessionLog.subscribeToSessionEvents
   );
-  const previousEventsUnsubscribe = useRef<Unsubscribe | undefined>(undefined);
+  const previousEventsUnsubscribe = useRef<((() => void) | undefined)>(undefined);
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe | undefined = undefined;
+    let unsubscribe: (() => void) | undefined = undefined;
 
     if (activeSessionId && (characterId || campaignId)) {
       unsubscribe = subscribeToSessionEvents({

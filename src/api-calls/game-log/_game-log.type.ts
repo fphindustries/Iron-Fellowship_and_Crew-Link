@@ -1,6 +1,11 @@
-import { Timestamp } from "firebase/firestore";
-import { Roll } from "types/DieRolls.type";
+// Legacy Firestore document types — no longer used in application code.
+// Kept as reference only.
 
-export type GameLogDocument = Omit<Roll, "timestamp"> & {
-  timestamp: Timestamp;
-};
+export interface GameLogDocument {
+  uid: string;
+  gmsOnly: boolean;
+  timestamp: string; // ISO date string
+  type: number;
+  rollLabel: string;
+  data: Record<string, unknown>;
+}

@@ -1,59 +1,44 @@
-import { getDocs } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { removeNote } from "./removeNote";
-import {
-  getCampaignNoteCollection,
-  getCharacterNoteCollection,
-} from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
-function getAllNotes(
+async function getAllNoteIds(
   campaignId: string | undefined,
   characterId: string | undefined
 ): Promise<string[]> {
-  return new Promise<string[]>((resolve, reject) => {
-    if (!characterId && !campaignId) {
-      reject(new Error("Either character or campaign ID must be defined."));
-      return;
-    }
-    getDocs(
-      characterId
-        ? getCharacterNoteCollection(characterId)
-        : getCampaignNoteCollection(campaignId as string)
-    )
-      .then((snapshot) => {
-        const ids = snapshot.docs.map((doc) => doc.id);
-        resolve(ids);
-      })
-      .catch(() => {
-        reject("Failed to get notes.");
-      });
-  });
+  if (!characterId && !campaignId) {
+    throw new Error("Either character or campaign ID must be defined.");
+  }
+
+  if (characterId) {
+    const { data, error } = await supabase
+      .from("character_notes")
+      .select("id")
+      .eq("character_id", characterId);
+
+    if (error) throw error;
+    return (data ?? []).map((row: { id: string }) => row.id);
+  } else {
+    const { data, error } = await supabase
+      .from("campaign_notes")
+      .select("id")
+      .eq("campaign_id", campaignId as string);
+
+    if (error) throw error;
+    return (data ?? []).map((row: { id: string }) => row.id);
+  }
 }
 
 export const deleteNotes = createApiFunction<
   { characterId?: string; campaignId?: string },
   void
->(({ campaignId, characterId }) => {
-  return new Promise<void>((resolve, reject) => {
-    if (!campaignId && !characterId) {
-      reject("Either campaign or character ID must be defined.");
-      return;
-    }
-    getAllNotes(campaignId, characterId)
-      .then((noteIds) => {
-        const promises = noteIds.map((noteId) =>
-          removeNote({ campaignId, characterId, noteId })
-        );
-        Promise.all(promises)
-          .then(() => {
-            resolve();
-          })
-          .catch((e) => {
-            reject(e);
-          });
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+>(async ({ campaignId, characterId }) => {
+  if (!campaignId && !characterId) {
+    throw new Error("Either campaign or character ID must be defined.");
+  }
+
+  const noteIds = await getAllNoteIds(campaignId, characterId);
+  await Promise.all(
+    noteIds.map((noteId) => removeNote({ campaignId, characterId, noteId }))
+  );
 }, "Failed to delete some or all notes.");

@@ -1,8 +1,4 @@
-import { addDoc } from "firebase/firestore";
-import {
-  getCampaignNoteCollection,
-  getCharacterNoteCollection,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const addNote = createApiFunction<
@@ -13,30 +9,40 @@ export const addNote = createApiFunction<
     shared?: boolean;
   },
   string
->((params) => {
+>(async (params) => {
   const { campaignId, characterId, order, shared } = params;
 
-  return new Promise((resolve, reject) => {
-    if (!campaignId && !characterId) {
-      reject(new Error("Either character or campaign ID must be defined"));
-      return;
-    }
+  if (!campaignId && !characterId) {
+    throw new Error("Either character or campaign ID must be defined");
+  }
 
-    addDoc(
-      characterId
-        ? getCharacterNoteCollection(characterId)
-        : getCampaignNoteCollection(campaignId as string),
-      {
+  if (characterId) {
+    const { data, error } = await supabase
+      .from("character_notes")
+      .insert({
+        character_id: characterId,
         order,
         title: "New Page",
         shared: shared ?? false,
-      }
-    )
-      .then((doc) => {
-        resolve(doc.id);
       })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data.id;
+  } else {
+    const { data, error } = await supabase
+      .from("campaign_notes")
+      .insert({
+        campaign_id: campaignId as string,
+        order,
+        title: "New Page",
+        shared: shared ?? false,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data.id;
+  }
 }, "Failed to add note.");

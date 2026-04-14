@@ -1,29 +1,54 @@
-import { firebaseAuth } from "config/firebase.config";
-import { onSnapshot, setDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { StoredMove } from "types/Moves.type";
-import { getUserCustomMovesDoc } from "./_getRef";
 
 export function listenToCustomMoves(
   uid: string,
   onCustomMoves: (moves: StoredMove[]) => void,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onError: (error: any) => void
-) {
-  return onSnapshot(
-    getUserCustomMovesDoc(uid),
-    (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        onCustomMoves(data.moveOrder.map((moveId) => data.moves[moveId]));
-      } else if (uid === firebaseAuth.currentUser?.uid) {
-        setDoc(getUserCustomMovesDoc(uid), {
-          moves: {},
-          moveOrder: [],
-        });
-      } else {
-        onCustomMoves([]);
+): () => void {
+  function fetchAll() {
+    Promise.resolve(
+      supabase
+        .from("user_custom_moves")
+        .select("data")
+        .eq("user_id", uid)
+        .order("updated_at", { ascending: true })
+    )
+      .then(({ data, error }: { data: unknown; error: unknown }) => {
+        if (error) {
+          onError(error);
+        } else {
+          onCustomMoves(
+            ((data as { data: unknown }[]) ?? []).map(
+              (row) => row.data as unknown as StoredMove
+            )
+          );
+        }
+      })
+      .catch((error: unknown) => onError(error));
+  }
+
+  const channel = supabase
+    .channel(`user_custom_moves:${uid}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "user_custom_moves",
+        filter: `user_id=eq.${uid}`,
+      },
+      () => {
+        // Re-fetch all on any change to maintain correct order
+        fetchAll();
       }
-    },
-    (error) => onError(error)
-  );
+    )
+    .subscribe();
+
+  fetchAll();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }

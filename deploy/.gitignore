@@ -1,0 +1,10 @@
+# NEVER commit real secrets
+.env
+
+# Backup files
+backups/
+
+# Docker generated files
+volumes/db/data/
+volumes/storage/
+volumes/functions/

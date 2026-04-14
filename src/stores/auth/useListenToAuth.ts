@@ -1,10 +1,9 @@
-import { Unsubscribe } from "firebase/firestore";
 import { useEffect } from "react";
 import { useStore } from "stores/store";
 
 export function useListenToAuth() {
   const subscribe = useStore((store) => store.auth.subscribe);
-  const uid = useStore((store) => store.auth.user?.uid);
+  const uid = useStore((store) => store.auth.user?.id);
   const listenToUserDoc = useStore((store) => store.auth.subscribeToUser);
 
   useEffect(() => {
@@ -16,7 +15,7 @@ export function useListenToAuth() {
   }, [subscribe]);
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe;
+    let unsubscribe: () => void;
 
     if (uid) {
       unsubscribe = listenToUserDoc(uid);

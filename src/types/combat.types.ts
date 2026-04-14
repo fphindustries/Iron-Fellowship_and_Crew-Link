@@ -1,4 +1,3 @@
-import { Timestamp } from "firebase/firestore";
 import { Difficulty } from "types/Track.type";
 
 export type CombatPosition = "in_control" | "in_a_bad_spot";
@@ -19,6 +18,6 @@ export interface CombatDocument {
   difficulty: Difficulty;
   trackId?: string;
   active: boolean;
-  createdAt: Timestamp;
-  endedAt?: Timestamp;
+  createdAt: string; // ISO date string
+  endedAt?: string;  // ISO date string
 }

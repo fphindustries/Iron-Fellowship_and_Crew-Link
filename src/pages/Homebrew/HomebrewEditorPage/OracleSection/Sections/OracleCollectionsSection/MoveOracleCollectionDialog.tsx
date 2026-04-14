@@ -9,7 +9,7 @@ import {
   TextField,
 } from "@mui/material";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
-import { deleteField } from "firebase/firestore";
+
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
 import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
@@ -50,7 +50,7 @@ export function MoveOracleCollectionDialog(
       oracleCollectionId,
       collectionId
         ? { parentOracleCollectionId: collectionId }
-        : { parentOracleCollectionId: deleteField() }
+        : { parentOracleCollectionId: undefined }
     )
       .then(() => {
         onClose();

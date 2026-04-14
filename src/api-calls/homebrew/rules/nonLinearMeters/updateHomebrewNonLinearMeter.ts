@@ -1,21 +1,31 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { PartialWithFieldValue, updateDoc } from "firebase/firestore";
-import { getHomebrewNonLinearMeterDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_NON_LINEAR_METERS_TABLE } from "./_getRef";
 import { HomebrewNonLinearMeterDocument } from "api-calls/homebrew/rules/nonLinearMeters/_homebrewNonLinearMeter.type";
 
 export const updateHomebrewNonLinearMeter = createApiFunction<
   {
     meterId: string;
-    meter: PartialWithFieldValue<HomebrewNonLinearMeterDocument>;
+    meter: Partial<HomebrewNonLinearMeterDocument>;
   },
   void
->((params) => {
+>(async (params) => {
   const { meterId, meter } = params;
-  return new Promise((resolve, reject) => {
-    updateDoc(getHomebrewNonLinearMeterDoc(meterId), meter)
-      .then(() => {
-        resolve();
-      })
-      .catch(reject);
-  });
+
+  const { data: existing, error: fetchError } = await supabase
+    .from(HOMEBREW_NON_LINEAR_METERS_TABLE)
+    .select("data")
+    .eq("id", meterId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  const updatedData = { ...(existing?.data as object ?? {}), ...meter };
+
+  const { error } = await supabase
+    .from(HOMEBREW_NON_LINEAR_METERS_TABLE)
+    .update({ data: updatedData })
+    .eq("id", meterId);
+
+  if (error) throw error;
 }, "Failed to update meter.");

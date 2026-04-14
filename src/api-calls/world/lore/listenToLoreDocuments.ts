@@ -1,11 +1,6 @@
-import { Unsubscribe } from "firebase/auth";
-import { onSnapshot, query, where } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { Lore } from "types/Lore.type";
-import {
-  constructLoreImagePath,
-  convertFromDatabase,
-  getLoreCollection,
-} from "./_getRef";
+import { constructLoreImagesPath, convertFromDatabase, LORE_TABLE } from "./_getRef";
 import { getImageUrl } from "lib/storage.lib";
 
 export function listenToLoreDocuments(
@@ -15,40 +10,63 @@ export function listenToLoreDocuments(
   updateLoreImage: (loreId: string, imageUrl: string) => void,
   removeLore: (loreId: string) => void,
   onError: (error: string) => void
-): Unsubscribe {
-  const loreCollectionRef = getLoreCollection(worldId);
+): () => void {
+  const refetch = () => {
+    let query = supabase
+      .from(LORE_TABLE)
+      .select("*")
+      .eq("world_id", worldId);
 
-  return onSnapshot(
-    isWorldOwner
-      ? loreCollectionRef
-      : query(loreCollectionRef, where("sharedWithPlayers", "==", true)),
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "removed") {
-          removeLore(change.doc.id);
-        } else {
-          const convertedDoc = convertFromDatabase(change.doc.data());
-          updateLore(change.doc.id, convertedDoc);
-          if (
-            Array.isArray(convertedDoc.imageFilenames) &&
-            convertedDoc.imageFilenames.length > 0
-          ) {
+    if (!isWorldOwner) {
+      query = query.eq("data->>sharedWithPlayers", "true");
+    }
+
+    query.then(({ data, error }) => {
+      if (error) {
+        console.error(error);
+        onError("Failed to get lore documents.");
+        return;
+      }
+      if (data) {
+        data.forEach((row) => {
+          const converted = convertFromDatabase(row as any);
+          updateLore(row.id, converted);
+          const imageFilenames = converted.imageFilenames;
+          if (Array.isArray(imageFilenames) && imageFilenames.length > 0) {
             getImageUrl(
-              constructLoreImagePath(
-                worldId,
-                change.doc.id,
-                convertedDoc.imageFilenames[0]
-              )
+              constructLoreImagesPath(worldId, row.id) + "/" + imageFilenames[0]
             ).then((url) => {
-              updateLoreImage(change.doc.id, url);
+              updateLoreImage(row.id, url);
             });
           }
+        });
+      }
+    });
+  };
+
+  const channel = supabase
+    .channel(`lore:${worldId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: LORE_TABLE,
+        filter: `world_id=eq.${worldId}`,
+      },
+      (payload) => {
+        if (payload.eventType === "DELETE") {
+          removeLore((payload.old as { id: string }).id);
+        } else {
+          refetch();
         }
-      });
-    },
-    (error) => {
-      console.error(error);
-      onError("Failed to get lore documents.");
-    }
-  );
+      }
+    )
+    .subscribe();
+
+  refetch();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }

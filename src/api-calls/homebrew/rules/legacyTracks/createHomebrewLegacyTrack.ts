@@ -1,6 +1,6 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { addDoc } from "firebase/firestore";
-import { getHomebrewLegacyTrackCollection } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_LEGACY_TRACKS_TABLE } from "./_getRef";
 import { HomebrewLegacyTrackDocument } from "api-calls/homebrew/rules/legacyTracks/_homebrewLegacyTrack.type";
 
 export const createHomebrewLegacyTrack = createApiFunction<
@@ -8,13 +8,11 @@ export const createHomebrewLegacyTrack = createApiFunction<
     legacyTrack: HomebrewLegacyTrackDocument;
   },
   void
->((params) => {
+>(async (params) => {
   const { legacyTrack } = params;
-  return new Promise((resolve, reject) => {
-    addDoc(getHomebrewLegacyTrackCollection(), legacyTrack)
-      .then(() => {
-        resolve();
-      })
-      .catch(reject);
-  });
+  const { error } = await supabase.from(HOMEBREW_LEGACY_TRACKS_TABLE).insert({
+    collection_id: legacyTrack.collectionId,
+    data: legacyTrack,
+  } as any);
+  if (error) throw error;
 }, "Failed to create legacy track.");

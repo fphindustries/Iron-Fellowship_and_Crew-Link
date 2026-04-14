@@ -1,6 +1,6 @@
-import { updateDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { Lore } from "types/Lore.type";
-import { convertToDatabase, getLoreDoc } from "./_getRef";
+import { convertToDatabase, LORE_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface LoreParams {
@@ -9,16 +9,15 @@ interface LoreParams {
   lore: Partial<Lore>;
 }
 
-export const updateLore = createApiFunction<LoreParams, void>((params) => {
-  const { worldId, loreId, lore } = params;
+export const updateLore = createApiFunction<LoreParams, void>(async (params) => {
+  const { loreId, lore } = params;
 
-  return new Promise((resolve, reject) => {
-    updateDoc(getLoreDoc(worldId, loreId), convertToDatabase(lore))
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+  const dbUpdate = convertToDatabase(lore);
+
+  const { error } = await supabase
+    .from(LORE_TABLE)
+    .update(dbUpdate as any)
+    .eq("id", loreId);
+
+  if (error) throw error;
 }, "Failed to update lore document.");

@@ -1,5 +1,4 @@
-import { functions } from "config/firebase.config";
-import { httpsCallable } from "firebase/functions";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { CharacterSummaryRequest, CharacterSummaryOutput } from "./_ai.type";
 import { recordAiCall } from "stores/aiDebug";
@@ -10,12 +9,12 @@ export const generateCharacterSummary = createApiFunction<
 >(
   async (params) => {
     recordAiCall("generateCharacterSummary", params);
-    const fn = httpsCallable<CharacterSummaryRequest, CharacterSummaryOutput>(
-      functions,
-      "generateCharacterSummary"
+    const { data, error } = await supabase.functions.invoke<CharacterSummaryOutput>(
+      "generate-character-summary",
+      { body: params }
     );
-    const result = await fn(params);
-    return result.data;
+    if (error) throw error;
+    return data as CharacterSummaryOutput;
   },
   "Failed to generate character summary. Please try again."
 );

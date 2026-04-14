@@ -11,16 +11,15 @@ import { updateLocationNotes } from "api-calls/world/locations/updateLocationNot
 import { uploadLocationImage } from "api-calls/world/locations/uploadLocationImage";
 import { listenToLocationNotes } from "api-calls/world/locations/listenToLocationNotes";
 import { reportApiError } from "lib/analytics.lib";
-import { Unsubscribe, arrayRemove, arrayUnion } from "firebase/firestore";
 import { listenToLocationGMProperties } from "api-calls/world/locations/listenToLocationGMProperties";
 import { updateLocationCharacterBond } from "api-calls/world/locations/updateLocationCharacterBond";
 import { removeLocationImage } from "api-calls/world/locations/removeLocationImage";
 import { createSpecificLocation } from "api-calls/world/locations/createSpecificLocation";
-import { MapEntry, MapEntryType } from "types/Locations.type";
+import { MapEntry, MapEntryLocation, MapEntryType } from "types/Locations.type";
 import { uploadLocationMapBackgroundImage } from "api-calls/world/locations/uploadLocationMapBackgroundImage";
 import { removeLocationMapBackgroundImage } from "api-calls/world/locations/removeLocationMapBackgroundImage";
 import { getImageUrl } from "lib/storage.lib";
-import { constructLocationImagePath } from "api-calls/world/locations/_getRef";
+import { constructLocationImagesPath } from "api-calls/world/locations/_getRef";
 import { ignoreApiError } from "api-calls/createApiFunction";
 
 export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
@@ -169,16 +168,25 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
           Record<string, MapEntry>
         >;
         if (parentMap) {
-          Object.keys(parentMap ?? {}).forEach((row) => {
-            Object.keys(parentMap[row]).forEach((col) => {
-              const entry = parentMap[row][col];
+          Object.keys(parentMap ?? {}).forEach((r) => {
+            Object.keys(parentMap[r]).forEach((c) => {
+              const entry = parentMap[r][c];
               if (
                 entry?.type === MapEntryType.Location &&
                 entry.locationIds.includes(locationId)
               ) {
-                updateLocation(oldParentId, {
-                  [`map.${row}.${col}.locationIds`]: arrayRemove(locationId),
-                }).catch(ignoreApiError);
+                // Build a new map with the locationId removed from this cell
+                const newLocationIds = entry.locationIds.filter(
+                  (id: string) => id !== locationId
+                );
+                const newMap = {
+                  ...parentMap,
+                  [r]: {
+                    ...parentMap[r],
+                    [c]: { ...entry, locationIds: newLocationIds },
+                  },
+                };
+                updateLocation(oldParentId, { map: newMap } as Partial<typeof parentLocation>).catch(ignoreApiError);
               }
             });
           });
@@ -191,21 +199,75 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
     }).catch(ignoreApiError);
 
     if (typeof row === "number" && typeof col === "number" && parentId) {
-      // Add the new location to the map
-      return updateLocation(parentId, {
-        [`map.${row}.${col}.type`]: MapEntryType.Location,
-        [`map.${row}.${col}.locationIds`]: arrayUnion(locationId),
-      });
+      // Add the new location to the map cell
+      const targetLocation =
+        getState().worlds.currentWorld.currentWorldLocations.locationMap[parentId];
+      const targetMap = (targetLocation?.map ?? {}) as Record<
+        string,
+        Record<string, MapEntry>
+      >;
+      const existingCell = targetMap[row]?.[col];
+      const existingLocationIds: string[] = (existingCell as MapEntryLocation | undefined)?.locationIds ?? [];
+      const newLocationIds = existingLocationIds.includes(locationId)
+        ? existingLocationIds
+        : [...existingLocationIds, locationId];
+      const newMap = {
+        ...targetMap,
+        [row]: {
+          ...(targetMap[row] ?? {}),
+          [col]: {
+            ...existingCell,
+            type: MapEntryType.Location,
+            locationIds: newLocationIds,
+          },
+        },
+      };
+      return updateLocation(parentId, { map: newMap } as Partial<typeof targetLocation>);
     } else {
       return Promise.resolve();
     }
   },
-  updateLocation: (locationId, partialLocation) => {
+  updateLocation: (locationId, partialUpdate) => {
     const worldId = getState().worlds.currentWorld.currentWorldId;
     if (!worldId) {
       return new Promise((res, reject) => reject("No world found"));
     }
-    return updateLocation({ worldId, locationId, location: partialLocation });
+
+    // Handle Firestore-style dot-path keys by merging into existing location data.
+    // This preserves the full data JSONB column when doing partial nested updates.
+    const existing = getState().worlds.currentWorld.currentWorldLocations.locationMap[locationId];
+    const hasDotPaths = Object.keys(partialUpdate).some((k) => k.includes("."));
+
+    let location: Partial<typeof existing>;
+    if (hasDotPaths && existing) {
+      // Deep-merge dot-path keys into the existing location object
+      const base: Record<string, unknown> = { ...existing };
+      for (const [key, value] of Object.entries(partialUpdate)) {
+        if (key.includes(".")) {
+          const parts = key.split(".");
+          let target = base;
+          for (let i = 0; i < parts.length - 1; i++) {
+            if (typeof target[parts[i]] !== "object" || target[parts[i]] === null) {
+              target[parts[i]] = {};
+            }
+            target = target[parts[i]] as Record<string, unknown>;
+          }
+          const last = parts[parts.length - 1];
+          if (value === null) {
+            delete target[last];
+          } else {
+            target[last] = value;
+          }
+        } else {
+          base[key] = value;
+        }
+      }
+      location = base as Partial<typeof existing>;
+    } else {
+      location = partialUpdate;
+    }
+
+    return updateLocation({ worldId, locationId, location });
   },
   updateLocationGMNotes: (locationId, notes, isBeacon) => {
     const worldId = getState().worlds.currentWorld.currentWorldId;
@@ -292,7 +354,7 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
       );
       return;
     }
-    getImageUrl(constructLocationImagePath(worldId, locationId, filename))
+    getImageUrl(`${constructLocationImagesPath(worldId, locationId)}/${filename}`)
       .then((url) => {
         set((store) => {
           store.worlds.currentWorld.currentWorldLocations.locationMap[
@@ -376,7 +438,7 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
       }
     );
 
-    let gmPropertiesUnsubscribe: Unsubscribe;
+    let gmPropertiesUnsubscribe: () => void;
     if (isWorldOwner) {
       gmPropertiesUnsubscribe = listenToLocationGMProperties(
         worldId,

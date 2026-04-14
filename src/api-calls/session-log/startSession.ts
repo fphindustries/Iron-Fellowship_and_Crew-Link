@@ -1,10 +1,6 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { addDoc, Timestamp } from "firebase/firestore";
-import { SessionDocumentDB } from "./_session-log.type";
-import {
-  getCampaignSessionsCollection,
-  getCharacterSessionsCollection,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { SESSIONS_TABLE } from "./_getRef";
 
 export const startSession = createApiFunction<
   {
@@ -14,29 +10,28 @@ export const startSession = createApiFunction<
   },
   string
 >((params) => {
-  const { characterId, campaignId, title } = params;
+  const { campaignId } = params;
 
   return new Promise((resolve, reject) => {
-    if (!characterId && !campaignId) {
-      reject(new Error("Either campaign or character ID must be defined."));
+    if (!campaignId) {
+      reject(new Error("Campaign ID must be defined to start a session."));
       return;
     }
 
-    const sessionDoc: SessionDocumentDB = {
-      startedAt: Timestamp.now(),
-      isActive: true,
-      ...(characterId ? { characterId } : {}),
-      ...(campaignId ? { campaignId } : {}),
-      ...(title ? { title } : {}),
-    };
-
-    addDoc(
-      campaignId
-        ? getCampaignSessionsCollection(campaignId)
-        : getCharacterSessionsCollection(characterId as string),
-      sessionDoc
-    )
-      .then((docRef) => resolve(docRef.id))
-      .catch((e) => reject(e));
+    supabase
+      .from(SESSIONS_TABLE)
+      .insert({
+        campaign_id: campaignId,
+        started_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
+      .then(({ data: inserted, error }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(inserted.id);
+        }
+      });
   });
 }, "Failed to start session.");

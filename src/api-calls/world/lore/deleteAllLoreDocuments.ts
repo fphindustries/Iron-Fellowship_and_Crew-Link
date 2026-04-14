@@ -1,10 +1,5 @@
-import { deleteDoc, getDocs } from "firebase/firestore";
-import {
-  getLoreCollection,
-  getLoreDoc,
-  getPrivateDetailsLoreDoc,
-  getPublicNotesLoreDoc,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { LORE_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface Params {
@@ -12,29 +7,15 @@ interface Params {
 }
 
 export const deleteAllLoreDocuments = createApiFunction<Params, void>(
-  (params) => {
+  async (params) => {
     const { worldId } = params;
 
-    return new Promise((resolve, reject) => {
-      const promises: Promise<unknown>[] = [];
-      getDocs(getLoreCollection(worldId))
-        .then((docs) => {
-          docs.forEach((doc) => {
-            promises.push(deleteDoc(getLoreDoc(worldId, doc.id)));
-            promises.push(deleteDoc(getPrivateDetailsLoreDoc(worldId, doc.id)));
-            promises.push(deleteDoc(getPublicNotesLoreDoc(worldId, doc.id)));
-          });
-        })
-        .catch((e) => {
-          reject(e);
-        });
+    const { error } = await supabase
+      .from(LORE_TABLE)
+      .delete()
+      .eq("world_id", worldId);
 
-      Promise.all(promises)
-        .then(() => resolve())
-        .catch((e) => {
-          reject(e);
-        });
-    });
+    if (error) throw error;
   },
   "Failed to delete Lore Documents."
 );

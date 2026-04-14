@@ -1,7 +1,5 @@
-import { arrayUnion, updateDoc } from "firebase/firestore";
-import { getUserCustomMovesDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { StoredMove } from "types/Moves.type";
-import { encodeDataswornId } from "functions/dataswornIdEncoder";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const addCustomMove = createApiFunction<
@@ -14,16 +12,19 @@ export const addCustomMove = createApiFunction<
   const { uid, customMove } = params;
 
   return new Promise((resolve, reject) => {
-    const encodedId = encodeDataswornId(customMove.$id);
-    updateDoc(getUserCustomMovesDoc(uid), {
-      [`moves.${encodedId}`]: customMove,
-      moveOrder: arrayUnion(encodedId),
-    })
-      .then(() => {
-        resolve();
+    Promise.resolve(
+      supabase.from("user_custom_moves").insert(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { id: customMove.$id, user_id: uid, data: customMove } as any
+      )
+    )
+      .then(({ error }: { error: unknown }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       })
-      .catch((e) => {
-        reject(e);
-      });
+      .catch((error: unknown) => reject(error));
   });
 }, "Failed to add custom move.");

@@ -1,23 +1,21 @@
-import { UpdateData, updateDoc } from "firebase/firestore";
-import { getCampaignDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { CAMPAIGN_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { CampaignDocument } from "api-calls/campaign/_campaign.type";
 
 export const updateCampaign = createApiFunction<
   {
     campaignId: string;
-    campaign: UpdateData<CampaignDocument>;
+    campaign: Partial<CampaignDocument>;
   },
   void
->((params) => {
+>(async (params) => {
   const { campaignId, campaign } = params;
-  return new Promise((resolve, reject) => {
-    updateDoc(getCampaignDoc(campaignId), campaign)
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+
+  const { error } = await supabase
+    .from(CAMPAIGN_TABLE)
+    .update(campaign as any)
+    .eq("id", campaignId);
+
+  if (error) throw error;
 }, "Failed to update campaign.");

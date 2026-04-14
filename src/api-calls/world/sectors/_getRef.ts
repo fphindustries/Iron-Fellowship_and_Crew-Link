@@ -1,84 +1,41 @@
-import { firestore } from "config/firebase.config";
-import {
-  collection,
-  CollectionReference,
-  doc,
-  DocumentReference,
-  Timestamp,
-} from "firebase/firestore";
-import { NoteContentDocument } from "api-calls/notes/_notes.type";
+// Supabase migration: Firestore refs replaced with table name constants.
+
 import { Sector } from "types/Sector.type";
-import { SectorDocument } from "./_sectors.type";
 
-export function constructSectorsPath(worldId: string) {
-  return `/worlds/${worldId}/sectors`;
-}
+export const SECTORS_TABLE = "sectors";
+export const SECTOR_PUBLIC_NOTES_TABLE = "sector_public_notes";
+export const SECTOR_PRIVATE_NOTES_TABLE = "sector_private_notes";
 
-export function constructSectorDocPath(worldId: string, sectorId: string) {
-  return `/worlds/${worldId}/sectors/${sectorId}`;
-}
-
-export function constructPrivateSectorNotesDocPath(
-  worldId: string,
-  sectorId: string
-) {
-  return constructSectorDocPath(worldId, sectorId) + `/private/notes`;
-}
-
-export function constructPublicSectorNotesDocPath(
-  worldId: string,
-  sectorId: string
-) {
-  return constructSectorDocPath(worldId, sectorId) + `/public/notes`;
-}
-
-export function getSectorCollection(worldId: string) {
-  return collection(
-    firestore,
-    constructSectorsPath(worldId)
-  ) as CollectionReference<SectorDocument>;
-}
-
-export function getSectorDoc(worldId: string, sectorId: string) {
-  return doc(
-    firestore,
-    constructSectorDocPath(worldId, sectorId)
-  ) as DocumentReference<SectorDocument>;
-}
-
-export function getPrivateSectorNotesDoc(worldId: string, sectorId: string) {
-  return doc(
-    firestore,
-    constructPrivateSectorNotesDocPath(worldId, sectorId)
-  ) as DocumentReference<NoteContentDocument>;
-}
-
-export function getPublicSectorNotesDoc(worldId: string, sectorId: string) {
-  return doc(
-    firestore,
-    constructPublicSectorNotesDocPath(worldId, sectorId)
-  ) as DocumentReference<NoteContentDocument>;
-}
-
-export function convertToDatabase(
-  sector: Partial<Sector>
-): Partial<SectorDocument> {
-  const { createdDate, ...rest } = sector;
-  const newSector: Partial<SectorDocument> = {
-    ...rest,
-  };
-
-  if (createdDate) {
-    newSector.createdTimestamp = Timestamp.fromDate(createdDate);
-  }
-
-  return newSector;
-}
-
-export function convertFromDatabase(sector: SectorDocument): Sector {
-  const { createdTimestamp, ...rest } = sector;
+/** Convert a Supabase sectors row to a domain Sector object. */
+export function convertFromDatabase(row: {
+  id: string;
+  world_id: string;
+  name: string;
+  shared_with_players?: boolean | null;
+  region?: string | null;
+  trouble?: string | null;
+  map?: Record<string, unknown> | null;
+  created_at?: string | null;
+}): Sector {
   return {
-    createdDate: createdTimestamp.toDate(),
-    ...rest,
+    name: row.name,
+    sharedWithPlayers: row.shared_with_players ?? true,
+    region: row.region ?? undefined,
+    trouble: row.trouble ?? undefined,
+    map: (row.map ?? {}) as Sector["map"],
+    createdDate: row.created_at ? new Date(row.created_at) : new Date(),
   };
+}
+
+/** Convert a partial Sector update to Supabase update format. */
+export function convertToDatabase(sector: Partial<Sector>): Record<string, unknown> {
+  const { name, sharedWithPlayers, region, trouble, map, createdDate } = sector;
+  const update: Record<string, unknown> = {};
+  if (name !== undefined) update.name = name;
+  if (sharedWithPlayers !== undefined) update.shared_with_players = sharedWithPlayers;
+  if (region !== undefined) update.region = region;
+  if (trouble !== undefined) update.trouble = trouble;
+  if (map !== undefined) update.map = map;
+  if (createdDate !== undefined) update.created_at = createdDate.toISOString();
+  return update;
 }

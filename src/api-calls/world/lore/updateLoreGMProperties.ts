@@ -1,6 +1,6 @@
-import { setDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { GMLore } from "types/Lore.type";
-import { getPrivateDetailsLoreDoc } from "./_getRef";
+import { LORE_PRIVATE_NOTES_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface Params {
@@ -10,20 +10,19 @@ interface Params {
 }
 
 export const updateLoreGMProperties = createApiFunction<Params, void>(
-  (params) => {
-    const { worldId, loreId, loreGMProperties } = params;
+  async (params) => {
+    const { loreId, loreGMProperties } = params;
 
-    return new Promise((resolve, reject) => {
-      setDoc(getPrivateDetailsLoreDoc(worldId, loreId), loreGMProperties, {
-        merge: true,
-      })
-        .then(() => {
-          resolve();
-        })
-        .catch((e) => {
-          reject(e);
-        });
-    });
+    // gmNotes is stored separately via updateLoreGMNotes; other fields go into
+    // the lore_private_notes.fields JSONB column.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { gmNotes, ...fields } = loreGMProperties;
+
+    const { error } = await supabase
+      .from(LORE_PRIVATE_NOTES_TABLE)
+      .upsert({ lore_id: loreId, fields }, { onConflict: "lore_id" });
+
+    if (error) throw error;
   },
   "Failed to update lore document."
 );

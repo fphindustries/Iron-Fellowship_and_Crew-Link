@@ -1,6 +1,6 @@
-import { getHomebrewNonLinearMeterCollection } from "./_getRef";
 import { createHomebrewListenerFunction } from "api-calls/homebrew/homebrewListenerFunction";
+import { HOMEBREW_NON_LINEAR_METERS_TABLE } from "./_getRef";
 
 export const listenToHomebrewNonLinearMeters = createHomebrewListenerFunction(
-  getHomebrewNonLinearMeterCollection()
+  HOMEBREW_NON_LINEAR_METERS_TABLE
 );

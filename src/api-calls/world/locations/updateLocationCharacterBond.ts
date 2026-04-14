@@ -1,6 +1,6 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { updateDoc } from "firebase/firestore";
-import { getLocationDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { LOCATIONS_TABLE } from "./_getRef";
 
 export const updateLocationCharacterBond = createApiFunction<
   {
@@ -10,14 +10,29 @@ export const updateLocationCharacterBond = createApiFunction<
     bonded: boolean;
   },
   void
->((params) => {
-  const { worldId, locationId, characterId, bonded } = params;
+>(async (params) => {
+  const { locationId, characterId, bonded } = params;
 
-  return new Promise((resolve, reject) => {
-    updateDoc(getLocationDoc(worldId, locationId), {
-      [`characterBonds.${characterId}`]: bonded,
+  // Fetch current data to merge characterBonds
+  const { data, error: fetchError } = await supabase
+    .from(LOCATIONS_TABLE)
+    .select("data")
+    .eq("id", locationId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  const currentData = (data?.data as Record<string, unknown>) ?? {};
+  const currentBonds = (currentData.characterBonds as Record<string, boolean>) ?? {};
+  const updatedBonds = { ...currentBonds, [characterId]: bonded };
+
+  const { error } = await supabase
+    .from(LOCATIONS_TABLE)
+    .update({
+      data: { ...currentData, characterBonds: updatedBonds },
+      updated_at: new Date().toISOString(),
     })
-      .then(() => resolve())
-      .catch(reject);
-  });
+    .eq("id", locationId);
+
+  if (error) throw error;
 }, "Error updating location bonds.");

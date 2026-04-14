@@ -1,6 +1,6 @@
+import { supabase } from "config/supabase.config";
 import { World } from "api-calls/world/_world.type";
-import { decodeWorld, getWorldCollection } from "./_getRef";
-import { onSnapshot, or, query, where } from "firebase/firestore";
+import { WORLD_TABLE, decodeWorld } from "./_getRef";
 
 export function listenToUsersWorlds(
   uid: string,
@@ -11,26 +11,38 @@ export function listenToUsersWorlds(
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onError: (error: any) => void
-) {
-  const filter = or(
-    where("ownerIds", "array-contains", uid ?? ""),
-    where("campaignGuides", "array-contains", uid ?? "")
-  );
-  return onSnapshot(
-    query(getWorldCollection(), filter),
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "removed") {
-          dataHandler.onDocRemove(change.doc.id);
-        } else {
-          dataHandler.onDocChange(
-            change.doc.id,
-            decodeWorld(change.doc.data())
-          );
+): () => void {
+  const refetch = () => {
+    supabase
+      .from(WORLD_TABLE)
+      .select("*")
+      .or(`owner_ids.cs.{"${uid}"},campaign_guides.cs.{"${uid}"}`)
+      .then(({ data, error }) => {
+        if (error) {
+          onError(error);
+          return;
         }
+        if (data) {
+          data.forEach((row) => {
+            dataHandler.onDocChange(row.id, decodeWorld(row as any) as World);
+          });
+        }
+        dataHandler.onLoaded();
       });
-      dataHandler.onLoaded();
-    },
-    (error) => onError(error)
-  );
+  };
+
+  const channel = supabase
+    .channel(`worlds:user:${uid}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: WORLD_TABLE },
+      () => refetch()
+    )
+    .subscribe();
+
+  refetch();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }

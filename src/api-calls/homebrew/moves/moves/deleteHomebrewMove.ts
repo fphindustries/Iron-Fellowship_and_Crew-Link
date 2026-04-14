@@ -1,15 +1,17 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteDoc } from "firebase/firestore";
-import { getHomebrewMoveDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_MOVES_TABLE } from "./_getRef";
 
 export const deleteHomebrewMove = createApiFunction<
   {
     moveId: string;
   },
   void
->((params) => {
+>(async (params) => {
   const { moveId } = params;
-  return new Promise((resolve, reject) => {
-    deleteDoc(getHomebrewMoveDoc(moveId)).then(resolve).catch(reject);
-  });
+  const { error } = await supabase
+    .from(HOMEBREW_MOVES_TABLE)
+    .delete()
+    .eq("id", moveId);
+  if (error) throw error;
 }, "Failed to delete move.");

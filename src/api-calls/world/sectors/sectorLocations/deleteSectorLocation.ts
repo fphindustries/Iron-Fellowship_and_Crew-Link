@@ -1,9 +1,5 @@
-import { deleteDoc } from "firebase/firestore";
-import {
-  getPrivateSectorLocationNotesDoc,
-  getPublicSectorLocationNotesDoc,
-  getSectorLocationDoc,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { SECTOR_LOCATIONS_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface Params {
@@ -13,31 +9,17 @@ interface Params {
 }
 
 export const deleteSectorLocation = createApiFunction<Params, void>(
-  (params) => {
-    const { worldId, sectorId, locationId } = params;
+  async (params) => {
+    const { locationId } = params;
 
-    return new Promise((resolve, reject) => {
-      const promises: Promise<unknown>[] = [];
-      promises.push(
-        deleteDoc(getSectorLocationDoc(worldId, sectorId, locationId))
-      );
-      promises.push(
-        deleteDoc(
-          getPublicSectorLocationNotesDoc(worldId, sectorId, locationId)
-        )
-      );
-      promises.push(
-        deleteDoc(
-          getPrivateSectorLocationNotesDoc(worldId, sectorId, locationId)
-        )
-      );
+    // ON DELETE CASCADE handles sector_location_public_notes and
+    // sector_location_private_notes automatically.
+    const { error } = await supabase
+      .from(SECTOR_LOCATIONS_TABLE)
+      .delete()
+      .eq("id", locationId);
 
-      Promise.all(promises)
-        .then(() => resolve())
-        .catch((e) => {
-          reject(e);
-        });
-    });
+    if (error) throw error;
   },
   "Failed to delete location."
 );

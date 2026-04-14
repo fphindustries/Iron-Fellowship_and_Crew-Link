@@ -1,6 +1,6 @@
-import { setDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { GMNPC } from "types/NPCs.type";
-import { getPrivateDetailsNPCDoc } from "./_getRef";
+import { NPC_PRIVATE_NOTES_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface Params {
@@ -10,20 +10,19 @@ interface Params {
 }
 
 export const updateNPCGMProperties = createApiFunction<Params, void>(
-  (params) => {
-    const { worldId, npcId, npcGMProperties } = params;
+  async (params) => {
+    const { npcId, npcGMProperties } = params;
 
-    return new Promise((resolve, reject) => {
-      setDoc(getPrivateDetailsNPCDoc(worldId, npcId), npcGMProperties, {
-        merge: true,
-      })
-        .then(() => {
-          resolve();
-        })
-        .catch((e) => {
-          reject(e);
-        });
-    });
+    // gmNotes is stored separately via updateNPCGMNotes; other fields go into
+    // the npc_private_notes.fields JSONB column.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { gmNotes, ...fields } = npcGMProperties;
+
+    const { error } = await supabase
+      .from(NPC_PRIVATE_NOTES_TABLE)
+      .upsert({ npc_id: npcId, fields }, { onConflict: "npc_id" });
+
+    if (error) throw error;
   },
   "Failed to update npc."
 );

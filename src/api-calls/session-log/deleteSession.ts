@@ -1,6 +1,5 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteDoc } from "firebase/firestore";
-import { getCampaignSessionDoc, getCharacterSessionDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
 
 export const deleteSession = createApiFunction<
   {
@@ -11,19 +10,25 @@ export const deleteSession = createApiFunction<
   void
 >(
   (params) => {
-    const { sessionId, characterId, campaignId } = params;
+    const { sessionId, campaignId } = params;
 
-    if (!campaignId && !characterId) {
+    if (!campaignId) {
       return Promise.reject(
-        new Error("Either campaign or character ID must be defined.")
+        new Error("Campaign ID must be defined to delete a session.")
       );
     }
 
-    const docRef = campaignId
-      ? getCampaignSessionDoc(campaignId, sessionId)
-      : getCharacterSessionDoc(characterId as string, sessionId);
-
-    return deleteDoc(docRef);
+    return new Promise((resolve, reject) => {
+      Promise.resolve(
+        supabase.from("sessions").delete().eq("id", sessionId)
+      ).then(({ error }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
+    });
   },
   "Failed to delete session."
 );

@@ -1,5 +1,4 @@
-import { functions } from "config/firebase.config";
-import { httpsCallable } from "firebase/functions";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { PortraitGenerationRequest, PortraitGenerationOutput } from "./_ai.type";
 import { recordAiCall } from "stores/aiDebug";
@@ -10,13 +9,12 @@ export const generateCharacterPortraits = createApiFunction<
 >(
   async (params) => {
     recordAiCall("generateCharacterPortraits", params);
-    const fn = httpsCallable<PortraitGenerationRequest, PortraitGenerationOutput>(
-      functions,
-      "generateCharacterPortraits",
-      { timeout: 120000 }
+    const { data, error } = await supabase.functions.invoke<PortraitGenerationOutput>(
+      "generate-character-portraits",
+      { body: params }
     );
-    const result = await fn(params);
-    return result.data;
+    if (error) throw error;
+    return data as PortraitGenerationOutput;
   },
   "Failed to generate character portraits. Please try again."
 );

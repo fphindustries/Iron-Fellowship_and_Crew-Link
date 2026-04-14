@@ -1,54 +1,79 @@
-import { storage } from "config/firebase.config";
-import {
-  getDownloadURL,
-  ref,
-  uploadBytes,
-  deleteObject,
-} from "firebase/storage";
+import { supabase } from "config/supabase.config";
 
 export const MAX_FILE_SIZE = 2 * 1024 * 1024;
 export const MAX_FILE_SIZE_LABEL = "2 MB";
 
+/**
+ * Bucket routing: paths starting with "character-portraits/" go to the
+ * character-portraits bucket; everything else goes to world-images.
+ */
+function parsePath(fullPath: string): { bucket: string; objectPath: string } {
+  if (fullPath.startsWith("character-portraits/")) {
+    return { bucket: "character-portraits", objectPath: fullPath.slice("character-portraits/".length) };
+  }
+  if (fullPath.startsWith("world-images/")) {
+    return { bucket: "world-images", objectPath: fullPath.slice("world-images/".length) };
+  }
+  // Default: treat the full path as the object path in world-images
+  return { bucket: "world-images", objectPath: fullPath };
+}
+
 export function uploadImage(path: string, image: File): Promise<boolean> {
   return new Promise((resolve, reject) => {
-    const imageRef = ref(storage, `${path}/${image.name}`);
+    const { bucket, objectPath } = parsePath(`${path}/${image.name}`);
 
-    uploadBytes(imageRef, image)
-      .then(() => {
-        resolve(true);
-      })
-      .catch((e) => {
-        console.error(e);
-        reject(`Failed to upload ${image.name}.`);
+    supabase.storage
+      .from(bucket)
+      .upload(objectPath, image, { upsert: true })
+      .then(({ error }) => {
+        if (error) {
+          console.error(error);
+          reject(`Failed to upload ${image.name}.`);
+        } else {
+          resolve(true);
+        }
       });
   });
 }
 
 export function deleteImage(path: string, filename: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const imageRef = ref(storage, `${path}/${filename}`);
+    const { bucket, objectPath } = parsePath(`${path}/${filename}`);
 
-    deleteObject(imageRef)
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        console.error(e);
-        reject(`Failed to delete ${filename}.`);
+    supabase.storage
+      .from(bucket)
+      .remove([objectPath])
+      .then(({ error }) => {
+        if (error) {
+          console.error(error);
+          reject(`Failed to delete ${filename}.`);
+        } else {
+          resolve();
+        }
       });
   });
 }
 
-export function getImageUrl(path: string): Promise<string> {
+export function getImageUrl(fullPath: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const imageRef = ref(storage, path);
-
-    getDownloadURL(imageRef)
-      .then((url) => resolve(url))
-      .catch((e) => {
-        console.error(e);
-        reject(e);
-      });
+    const { bucket, objectPath } = parsePath(fullPath);
+    const { data } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+    if (data?.publicUrl) {
+      resolve(data.publicUrl);
+    } else {
+      // For private buckets, fall back to a signed URL
+      supabase.storage
+        .from(bucket)
+        .createSignedUrl(objectPath, 3600)
+        .then(({ data: signedData, error }) => {
+          if (error || !signedData?.signedUrl) {
+            console.error(error);
+            reject(error ?? new Error("Failed to get image URL."));
+          } else {
+            resolve(signedData.signedUrl);
+          }
+        });
+    }
   });
 }
 
@@ -58,7 +83,7 @@ export function replaceImage(
   newImage: File
 ) {
   return new Promise<void>((resolve, reject) => {
-    let deleteImagePromise: Promise<void> | undefined;
+    let deleteImagePromise: Promise<void>;
     if (oldImageFilename) {
       deleteImagePromise = deleteImage(folderPath, oldImageFilename);
     } else {
@@ -69,9 +94,7 @@ export function replaceImage(
       .then(() => {
         if (newImage) {
           if (newImage.size > MAX_FILE_SIZE) {
-            reject(
-              `Image must be smaller than ${MAX_FILE_SIZE_LABEL} in size.`
-            );
+            reject(`Image must be smaller than ${MAX_FILE_SIZE_LABEL} in size.`);
             return;
           }
 

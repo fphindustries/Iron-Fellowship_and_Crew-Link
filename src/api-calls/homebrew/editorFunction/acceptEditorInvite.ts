@@ -1,19 +1,21 @@
-import { functions } from "config/firebase.config";
-import { httpsCallable } from "firebase/functions";
+import { supabase } from "config/supabase.config";
 
 export function acceptEditorInvite(
   homebrewCollectionId: string,
   inviteKey: string
 ): Promise<boolean> {
   return new Promise((resolve, reject) => {
-    const acceptInvite = httpsCallable(
-      functions,
-      "addCurrentUserAsHomebrewCampaignEditor"
-    );
-
-    acceptInvite({ homebrewCollectionId, inviteKey })
-      .then((wasSuccessful) => {
-        resolve(wasSuccessful.data as boolean);
+    supabase.functions
+      .invoke("add-current-user-as-homebrew-editor", {
+        body: { inviteKey, homebrewCollectionId },
+      })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error(error);
+          reject(error);
+          return;
+        }
+        resolve(data as boolean);
       })
       .catch((e) => {
         console.error(e);

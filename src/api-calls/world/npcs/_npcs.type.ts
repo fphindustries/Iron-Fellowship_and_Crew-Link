@@ -1,15 +1,19 @@
-import { Bytes, Timestamp } from "firebase/firestore";
-import { NPC, GMNPC } from "types/NPCs.type";
+// Legacy Firestore document types — no longer used in application code.
+// Kept as reference only.
 
-export interface NPCDocument extends Omit<NPC, "updatedDate" | "createdDate"> {
-  updatedTimestamp: Timestamp;
-  createdTimestamp: Timestamp;
+export interface NPCDocument {
+  name: string;
+  pronouns?: string;
+  sharedWithPlayers?: boolean;
+  imageFilenames?: string[];
+  updatedTimestamp: string;
+  createdTimestamp: string;
+}
+
+export interface GMNPCDocument {
+  gmNotes?: string; // Base64-encoded Uint8Array
 }
 
 export interface NPCNotesDocument {
-  notes: Bytes;
-}
-
-export interface GMNPCDocument extends Omit<GMNPC, "gmNotes"> {
-  gmNotes: Bytes;
+  notes?: string; // Base64-encoded Uint8Array
 }

@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { Roll } from "types/DieRolls.type";
 
 export interface GameLogSliceData {
@@ -21,7 +20,7 @@ export interface GameLogSliceActions {
     campaignId?: string;
     characterId?: string;
     totalLogsToLoad: number;
-  }) => Unsubscribe;
+  }) => () => void;
 
   resetStore: () => void;
 }

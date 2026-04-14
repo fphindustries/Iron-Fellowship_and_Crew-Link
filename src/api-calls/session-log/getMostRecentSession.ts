@@ -1,47 +1,31 @@
-import {
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { SessionDocument } from "types/SessionLog.type";
-import {
-  convertSessionFromDatabase,
-  getCampaignSessionsCollection,
-  getCharacterSessionsCollection,
-} from "./_getRef";
+import { convertSessionFromDatabase, SESSIONS_TABLE } from "./_getRef";
 
 export async function getMostRecentSession(params: {
   campaignId?: string;
   characterId?: string;
 }): Promise<{ id: string; session: SessionDocument } | null> {
-  const { campaignId, characterId } = params;
+  const { campaignId } = params;
 
-  if (!campaignId && !characterId) {
+  if (!campaignId) {
     return null;
   }
 
-  const sessionsCollection = campaignId
-    ? getCampaignSessionsCollection(campaignId)
-    : getCharacterSessionsCollection(characterId as string);
+  const { data, error } = await supabase
+    .from(SESSIONS_TABLE)
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .not("ended_at", "is", null)
+    .order("started_at", { ascending: false })
+    .limit(1);
 
-  const snapshot = await getDocs(
-    query(
-      sessionsCollection,
-      where("isActive", "==", false),
-      orderBy("startedAt", "desc"),
-      limit(1)
-    )
-  );
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
 
-  if (snapshot.empty) {
-    return null;
-  }
-
-  const docSnap = snapshot.docs[0];
+  const row = data[0];
   return {
-    id: docSnap.id,
-    session: convertSessionFromDatabase(docSnap.data()),
+    id: row.id,
+    session: convertSessionFromDatabase(row),
   };
 }

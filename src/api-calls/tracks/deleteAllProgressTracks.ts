@@ -1,34 +1,5 @@
-import { getDocs } from "firebase/firestore";
-import { removeProgressTrack } from "./removeProgressTrack";
-import {
-  getCampaignTracksCollection,
-  getCharacterTracksCollection,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
-
-function getAllProgressTracks(
-  campaignId: string | undefined,
-  characterId: string | undefined
-): Promise<string[]> {
-  return new Promise<string[]>((resolve, reject) => {
-    if (!characterId && !campaignId) {
-      reject(new Error("Either character or campaign ID must be defined."));
-      return;
-    }
-    getDocs(
-      characterId
-        ? getCharacterTracksCollection(characterId)
-        : getCampaignTracksCollection(campaignId as string)
-    )
-      .then((snapshot) => {
-        const ids = snapshot.docs.map((doc) => doc.id);
-        resolve(ids);
-      })
-      .catch(() => {
-        reject("Failed to get tracks.");
-      });
-  });
-}
 
 export const deleteAllProgressTracks = createApiFunction<
   { characterId?: string; campaignId?: string },
@@ -39,21 +10,21 @@ export const deleteAllProgressTracks = createApiFunction<
       reject("Either campaign or character ID must be defined.");
       return;
     }
-    getAllProgressTracks(campaignId, characterId)
-      .then((trackIds) => {
-        const promises = trackIds.map((trackId) =>
-          removeProgressTrack({ campaignId, characterId, id: trackId })
-        );
-        Promise.all(promises)
-          .then(() => {
-            resolve();
-          })
-          .catch((e) => {
-            reject(e);
-          });
-      })
-      .catch((e) => {
-        reject(e);
+
+    const table = campaignId ? "campaign_tracks" : "character_tracks";
+    const column = campaignId ? "campaign_id" : "character_id";
+    const id = (campaignId ?? characterId) as string;
+
+    supabase
+      .from(table as any)
+      .delete()
+      .eq(column, id)
+      .then(({ error }: { error: unknown }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       });
   });
 }, "Failed to delete some or all tracks.");

@@ -1,10 +1,10 @@
 import { analyticsEnabled } from "config/posthog.config";
-import { User } from "firebase/auth";
 import { posthog } from "posthog-js";
 
-export function setAnalyticsUser(user: User) {
+export function setAnalyticsUser(user: { uid?: string; id?: string; email?: string | null }) {
   if (!analyticsEnabled) return;
-  posthog.identify(user.uid, { email: user.email });
+  const id = user.uid ?? user.id ?? "";
+  posthog.identify(id, { email: user.email });
 }
 
 export function clearAnalyticsUser() {

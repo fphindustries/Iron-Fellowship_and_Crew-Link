@@ -1,7 +1,6 @@
-import { addDoc, serverTimestamp } from "firebase/firestore";
-import { CombatDocument, CombatEnemy, CombatPosition } from "types/combat.types";
+import { supabase } from "config/supabase.config";
+import { CombatEnemy, CombatPosition } from "types/combat.types";
 import { Difficulty } from "types/Track.type";
-import { getCombatsRef } from "./_getRef";
 
 export async function createCombat(params: {
   characterId: string;
@@ -13,31 +12,21 @@ export async function createCombat(params: {
   difficulty: Difficulty;
   trackId?: string;
 }): Promise<string> {
-  const {
-    characterId,
-    campaignId,
-    sessionId,
-    objective,
-    enemies,
-    position,
-    difficulty,
-    trackId,
-  } = params;
+  const { campaignId, sessionId, objective, enemies, position } = params;
 
-  const data = {
-    characterId,
-    ...(campaignId ? { campaignId } : {}),
-    sessionId,
-    objective,
-    enemies,
-    position,
-    difficulty,
-    ...(trackId ? { trackId } : {}),
-    active: true,
-    createdAt: serverTimestamp(),
-  } as Omit<CombatDocument, "id">;
+  const { data: inserted, error } = await supabase
+    .from("combats")
+    .insert({
+      session_id: sessionId,
+      campaign_id: campaignId ?? "",
+      objective,
+      enemies: enemies.map((e) => e.name),
+      position,
+      ended: false,
+    })
+    .select()
+    .single();
 
-  const ref = getCombatsRef(characterId, campaignId);
-  const docRef = await addDoc(ref, data);
-  return docRef.id;
+  if (error) throw error;
+  return inserted.id;
 }

@@ -1,0 +1,405 @@
+###############################################################################
+# Supabase Self-Hosted Stack
+# Based on: https://github.com/supabase/supabase/blob/master/docker/docker-compose.yml
+#
+# All image tags are PINNED. Update intentionally via scripts/upgrade.sh.
+# The application (Vite build) is NOT in this file — deploy it separately.
+#
+# First-time setup: cd deploy && ./scripts/setup.sh
+###############################################################################
+
+name: supabase
+
+x-common-env: &common-env
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  JWT_SECRET: ${JWT_SECRET}
+  ANON_KEY: ${ANON_KEY}
+  SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+
+services:
+  # -------------------------------------------------------------------------
+  # Studio — Supabase dashboard (bind to localhost only — use SSH tunnel)
+  # -------------------------------------------------------------------------
+  studio:
+    image: supabase/studio:20240101-ce42139
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/profile', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) })"]
+      timeout: 10s
+      interval: 5s
+      retries: 3
+    ports:
+      - "127.0.0.1:${STUDIO_PORT:-3000}:3000"  # Local only — never expose to internet
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DEFAULT_ORGANIZATION_NAME: Iron Fellowship
+      DEFAULT_PROJECT_NAME: iron-fellowship
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${API_EXTERNAL_URL}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      LOGFLARE_URL: http://analytics:4000
+      LOGFLARE_API_KEY: ${LOGFLARE_API_KEY:-your-super-secret-and-long-logflare-key}
+      NEXT_PUBLIC_ENABLE_LOGS: "true"
+    depends_on:
+      analytics:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Kong — API gateway (single entry point for the application)
+  # -------------------------------------------------------------------------
+  kong:
+    image: kong:2.8.1
+    restart: unless-stopped
+    ports:
+      - "${KONG_HTTP_PORT:-8000}:8000/tcp"
+      - "${KONG_HTTPS_PORT:-8443}:8443/tcp"
+    volumes:
+      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/temp.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      analytics:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Auth — GoTrue (handles JWT, OAuth, email OTP)
+  # -------------------------------------------------------------------------
+  auth:
+    image: supabase/gotrue:v2.151.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      GOTRUE_API_HOST: "0.0.0.0"
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
+      GOTRUE_DISABLE_SIGNUP: "false"
+
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY:-3600}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: ${GOTRUE_MAILER_AUTOCONFIRM:-false}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-Iron Fellowship}
+      GOTRUE_MAILER_URLPATHS_INVITE: ${API_EXTERNAL_URL}/auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${API_EXTERNAL_URL}/auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: ${API_EXTERNAL_URL}/auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${API_EXTERNAL_URL}/auth/v1/verify
+      GOTRUE_MAILER_OTP_EXP: ${GOTRUE_MAILER_OTP_EXP:-3600}
+
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOTRUE_EXTERNAL_GOOGLE_ENABLED:-false}
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOTRUE_EXTERNAL_GOOGLE_SECRET:-}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI:-}
+
+      GOTRUE_SECURITY_CAPTCHA_ENABLED: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # REST — PostgREST (auto-generated REST API from PostgreSQL schema)
+  # -------------------------------------------------------------------------
+  rest:
+    image: postgrest/postgrest:v12.2.0
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
+    depends_on:
+      db:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+    command: ["postgrest"]
+
+  # -------------------------------------------------------------------------
+  # Realtime — Supabase Realtime (WebSocket subscriptions via pg logical replication)
+  # -------------------------------------------------------------------------
+  realtime:
+    image: supabase/realtime:v2.30.23
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sSfL", "--head", "-o", "/dev/null", "-H", "Authorization: Bearer ${ANON_KEY}", "http://localhost:4000/api/tenants/realtime-dev/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      PORT: 4000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: "SET search_path TO _realtime"
+      DB_ENC_KEY: supabaserealtime
+      API_JWT_SECRET: ${JWT_SECRET}
+      FLY_ALLOC_ID: fly123
+      FLY_APP_NAME: realtime
+      SECRET_KEY_BASE: UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
+      ERL_AFLAGS: -proto_dist inet_tcp
+      ENABLE_TAILSCALE: "false"
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+    depends_on:
+      db:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+    command:
+      - bash
+      - -c
+      - |
+        /app/bin/migrate && /app/bin/realtime eval 'Realtime.Release.seeds(Realtime.Repo)' && /app/bin/server
+
+  # -------------------------------------------------------------------------
+  # Storage — Supabase Storage (S3-compatible file storage)
+  # -------------------------------------------------------------------------
+  storage:
+    image: supabase/storage-api:v1.0.6
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/status"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    volumes:
+      - storage-data:/var/lib/storage
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://imgproxy:5001
+    depends_on:
+      db:
+        condition: service_healthy
+      rest:
+        condition: service_started
+      imgproxy:
+        condition: service_started
+
+  # -------------------------------------------------------------------------
+  # ImgProxy — image transformations for Supabase Storage
+  # -------------------------------------------------------------------------
+  imgproxy:
+    image: darthsim/imgproxy:v3.8.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "imgproxy", "health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+    volumes:
+      - storage-data:/var/lib/storage:ro
+
+  # -------------------------------------------------------------------------
+  # Meta — postgres-meta (PostgreSQL metadata service for Studio)
+  # -------------------------------------------------------------------------
+  meta:
+    image: supabase/postgres-meta:v0.83.2
+    restart: unless-stopped
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Functions — Edge Functions runtime (Deno)
+  # -------------------------------------------------------------------------
+  functions:
+    image: supabase/edge-runtime:v1.58.2
+    restart: unless-stopped
+    volumes:
+      - ../supabase/functions:/home/deno/functions:ro
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      VERIFY_JWT: "true"
+    depends_on:
+      analytics:
+        condition: service_healthy
+    command:
+      - start
+      - --main-service
+      - /home/deno/functions/main
+
+  # -------------------------------------------------------------------------
+  # Analytics — Logflare (log aggregation for Studio)
+  # -------------------------------------------------------------------------
+  analytics:
+    image: supabase/logflare:1.4.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:4000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "127.0.0.1:4000:4000"
+    environment:
+      LOGFLARE_NODE_HOST: 127.0.0.1
+      DB_USERNAME: supabase_admin
+      DB_DATABASE: _analytics
+      DB_HOSTNAME: db
+      DB_PORT: 5432
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_SCHEMA: _analytics
+      LOGFLARE_API_KEY: ${LOGFLARE_API_KEY:-your-super-secret-and-long-logflare-key}
+      LOGFLARE_SINGLE_TENANT: "true"
+      LOGFLARE_SUPABASE_MODE: "true"
+      LOGFLARE_MIN_CLUSTER_SIZE: 1
+      POSTGRES_BACKEND_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      POSTGRES_BACKEND_SCHEMA: _analytics
+      LOGFLARE_FEATURE_FLAG_OVERRIDE: multibackend=true
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Vector — log collector (feeds analytics)
+  # -------------------------------------------------------------------------
+  vector:
+    image: timberio/vector:0.28.1-alpine
+    restart: unless-stopped
+    volumes:
+      - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      LOGFLARE_API_KEY: ${LOGFLARE_API_KEY:-your-super-secret-and-long-logflare-key}
+    command:
+      - --config
+      - /etc/vector/vector.yml
+    depends_on:
+      analytics:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Supavisor — PostgreSQL connection pooler
+  # -------------------------------------------------------------------------
+  supavisor:
+    image: supabase/supavisor:1.1.56
+    restart: unless-stopped
+    volumes:
+      - ./volumes/pooler/:/etc/pooler
+    environment:
+      PORT: 4000
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: ecto://supabase_admin:${POSTGRES_PASSWORD}@db:5432/_supavisor
+      CLUSTER_POSTGRES: "true"
+      SECRET_KEY_BASE: UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
+      VAULT_ENC_KEY: your-encryption-key-32-chars-minimum
+      API_JWT_SECRET: ${JWT_SECRET}
+      METRICS_JWT_SECRET: ${JWT_SECRET}
+      REGION: local
+      ERL_AFLAGS: -proto_dist inet_tcp
+    depends_on:
+      db:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # DB — PostgreSQL 15 (the heart of everything)
+  # IMPORTANT: DB port is NOT exposed to the host
+  # -------------------------------------------------------------------------
+  db:
+    image: supabase/postgres:15.6.1.117
+    restart: unless-stopped
+    healthcheck:
+      test: pg_isready -U postgres -h localhost
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # DO NOT add ports: here — never expose PostgreSQL directly
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./volumes/db/init/:/docker-entrypoint-initdb.d/init/
+      - ./volumes/db/migrations/:/docker-entrypoint-initdb.d/migrations/:ro
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: 5432
+      POSTGRES_PORT: 5432
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: postgres
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: ${JWT_EXPIRY:-3600}
+
+volumes:
+  db-data:
+    driver: local
+  storage-data:
+    driver: local

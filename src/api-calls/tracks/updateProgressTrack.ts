@@ -1,5 +1,4 @@
-import { updateDoc } from "firebase/firestore";
-import { getCampaignTracksDoc, getCharacterTracksDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { Track } from "types/Track.type";
 import { createApiFunction } from "api-calls/createApiFunction";
 
@@ -19,18 +18,19 @@ export const updateProgressTrack = createApiFunction<
       return;
     }
 
-    updateDoc(
-      campaignId
-        ? getCampaignTracksDoc(campaignId, trackId)
-        : getCharacterTracksDoc(characterId as string, trackId),
-      track
-    )
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        console.error(e);
-        reject("Failed to update progress track");
+    const table = campaignId ? "campaign_tracks" : "character_tracks";
+
+    supabase
+      .from(table as any)
+      .update(track as Record<string, unknown> as any)
+      .eq("id", trackId)
+      .then(({ error }: { error: unknown }) => {
+        if (error) {
+          console.error(error);
+          reject("Failed to update progress track");
+        } else {
+          resolve();
+        }
       });
   });
 }, "Failed to update progress track.");

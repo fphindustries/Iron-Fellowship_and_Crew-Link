@@ -1,9 +1,9 @@
-import { deleteDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import {
   constructLocationImagesPath,
-  getLocationDoc,
-  getPrivateDetailsLocationDoc,
-  getPublicNotesLocationDoc,
+  LOCATIONS_TABLE,
+  LOCATION_PUBLIC_NOTES_TABLE,
+  LOCATION_PRIVATE_NOTES_TABLE,
 } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { deleteImage } from "lib/storage.lib";
@@ -14,26 +14,32 @@ interface Params {
   imageFilename?: string;
 }
 
-export const deleteLocation = createApiFunction<Params, void>((params) => {
-  const { worldId, locationId, imageFilename } = params;
+export const deleteLocation = createApiFunction<Params, void>(
+  async (params) => {
+    const { worldId, locationId, imageFilename } = params;
 
-  return new Promise((resolve, reject) => {
-    const promises: Promise<unknown>[] = [];
-    promises.push(deleteDoc(getLocationDoc(worldId, locationId)));
-    promises.push(deleteDoc(getPrivateDetailsLocationDoc(worldId, locationId)));
-    promises.push(deleteDoc(getPublicNotesLocationDoc(worldId, locationId)));
+    const deletePromises: PromiseLike<unknown>[] = [
+      supabase
+        .from(LOCATION_PUBLIC_NOTES_TABLE)
+        .delete()
+        .eq("location_id", locationId),
+      supabase
+        .from(LOCATION_PRIVATE_NOTES_TABLE)
+        .delete()
+        .eq("location_id", locationId),
+      supabase.from(LOCATIONS_TABLE).delete().eq("id", locationId),
+    ];
+
     if (imageFilename) {
-      promises.push(
+      deletePromises.push(
         deleteImage(
           constructLocationImagesPath(worldId, locationId),
           imageFilename
         )
       );
     }
-    Promise.all(promises)
-      .then(() => resolve())
-      .catch((e) => {
-        reject(e);
-      });
-  });
-}, "Failed to delete location.");
+
+    await Promise.all(deletePromises);
+  },
+  "Failed to delete location."
+);

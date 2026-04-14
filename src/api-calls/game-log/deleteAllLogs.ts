@@ -1,35 +1,5 @@
-import { deleteDoc, getDocs } from "firebase/firestore";
-import {
-  getCampaignGameLogCollection,
-  getCampaignGameLogDocument,
-  getCharacterGameLogCollection,
-  getCharacterGameLogDocument,
-} from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
-
-function getAllLogs(
-  campaignId: string | undefined,
-  characterId: string | undefined
-): Promise<string[]> {
-  return new Promise<string[]>((resolve, reject) => {
-    if (!characterId && !campaignId) {
-      reject(new Error("Either character or campaign ID must be defined."));
-      return;
-    }
-    getDocs(
-      characterId
-        ? getCharacterGameLogCollection(characterId)
-        : getCampaignGameLogCollection(campaignId as string)
-    )
-      .then((snapshot) => {
-        const ids = snapshot.docs.map((doc) => doc.id);
-        resolve(ids);
-      })
-      .catch(() => {
-        reject("Failed to get game logs.");
-      });
-  });
-}
+import { supabase } from "config/supabase.config";
 
 export const deleteAllLogs = createApiFunction<
   { characterId?: string; campaignId?: string },
@@ -40,25 +10,17 @@ export const deleteAllLogs = createApiFunction<
       reject("Either campaign or character ID must be defined.");
       return;
     }
-    getAllLogs(campaignId, characterId)
-      .then((logIds) => {
-        const promises = logIds.map((logId) =>
-          deleteDoc(
-            characterId
-              ? getCharacterGameLogDocument(characterId, logId)
-              : getCampaignGameLogDocument(campaignId as string, logId)
-          )
-        );
-        Promise.all(promises)
-          .then(() => {
-            resolve();
-          })
-          .catch((e) => {
-            reject(e);
-          });
-      })
-      .catch((e) => {
-        reject(e);
-      });
+
+    const query = characterId
+      ? supabase.from("character_game_log").delete().eq("character_id", characterId)
+      : supabase.from("campaign_game_log").delete().eq("campaign_id", campaignId as string);
+
+    Promise.resolve(query).then(({ error }) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
   });
 }, "Failed to delete some or all logs.");

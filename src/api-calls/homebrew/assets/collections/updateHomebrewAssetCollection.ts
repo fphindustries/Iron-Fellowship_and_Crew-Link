@@ -1,19 +1,31 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { PartialWithFieldValue, updateDoc } from "firebase/firestore";
-import { getHomebrewAssetCollectionDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_ASSET_COLLECTIONS_TABLE } from "./_getRef";
 import { HomebrewAssetCollectionDocument } from "api-calls/homebrew/assets/collections/_homebrewAssetCollection.type";
 
 export const updateHomebrewAssetCollection = createApiFunction<
   {
     assetCollectionId: string;
-    assetCollection: PartialWithFieldValue<HomebrewAssetCollectionDocument>;
+    assetCollection: Partial<HomebrewAssetCollectionDocument>;
   },
   void
->((params) => {
+>(async (params) => {
   const { assetCollectionId, assetCollection } = params;
-  return new Promise((resolve, reject) => {
-    updateDoc(getHomebrewAssetCollectionDoc(assetCollectionId), assetCollection)
-      .then(() => resolve())
-      .catch(reject);
-  });
+
+  const { data: existing, error: fetchError } = await supabase
+    .from(HOMEBREW_ASSET_COLLECTIONS_TABLE)
+    .select("data")
+    .eq("id", assetCollectionId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  const updatedData = { ...(existing?.data as object ?? {}), ...assetCollection };
+
+  const { error } = await supabase
+    .from(HOMEBREW_ASSET_COLLECTIONS_TABLE)
+    .update({ data: updatedData })
+    .eq("id", assetCollectionId);
+
+  if (error) throw error;
 }, "Failed to update asset collection.");

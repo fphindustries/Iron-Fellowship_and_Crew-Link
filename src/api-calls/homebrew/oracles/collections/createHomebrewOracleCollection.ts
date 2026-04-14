@@ -1,16 +1,18 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { addDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
-import { getHomebrewOracleCollectionCollection } from "./_getRef";
+import { HOMEBREW_ORACLE_COLLECTIONS_TABLE } from "./_getRef";
 
 export const createHomebrewOracleCollection = createApiFunction<
   { oracleCollection: HomebrewOracleCollectionDocument },
   void
->((params) => {
+>(async (params) => {
   const { oracleCollection } = params;
-  return new Promise((resolve, reject) => {
-    addDoc(getHomebrewOracleCollectionCollection(), oracleCollection)
-      .then(() => resolve())
-      .catch(reject);
-  });
+  const { error } = await supabase
+    .from(HOMEBREW_ORACLE_COLLECTIONS_TABLE)
+    .insert({
+      collection_id: oracleCollection.collectionId,
+      data: oracleCollection,
+    } as any);
+  if (error) throw error;
 }, "Failed to create oracle collection.");

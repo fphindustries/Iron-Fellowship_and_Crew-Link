@@ -1,5 +1,4 @@
-import { functions } from "config/firebase.config";
-import { httpsCallable } from "firebase/functions";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { StatAllocationRequest, StatAllocationOutput } from "./_ai.type";
 import { recordAiCall } from "stores/aiDebug";
@@ -10,12 +9,12 @@ export const recommendStatAllocation = createApiFunction<
 >(
   async (params) => {
     recordAiCall("recommendStatAllocation", params);
-    const fn = httpsCallable<StatAllocationRequest, StatAllocationOutput>(
-      functions,
-      "recommendStatAllocation"
+    const { data, error } = await supabase.functions.invoke<StatAllocationOutput>(
+      "recommend-stat-allocation",
+      { body: params }
     );
-    const result = await fn(params);
-    return result.data;
+    if (error) throw error;
+    return data as StatAllocationOutput;
   },
   "Failed to get stat recommendations. Please try again."
 );

@@ -117,7 +117,7 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
     },
 
     createCharacter: (name, stats, assets, portrait, expansionIds, backstory, backgroundVow, pronouns, callsign, characteristics) => {
-      const uid = getState().auth.user?.uid;
+      const uid = getState().auth.user?.id;
       if (!uid) {
         return new Promise((res, reject) =>
           reject("You must be logged in to create a character")

@@ -1,14 +1,7 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { addDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { SessionLogEvent } from "types/SessionLog.type";
-import {
-  convertEventToDatabase,
-  getSessionEventsCollection,
-} from "./_getRef";
-import {
-  constructCampaignSessionsCollectionPath,
-  constructCharacterSessionsCollectionPath,
-} from "./_getRef";
+import { convertEventToInsertData } from "./_getRef";
 
 export const addSessionEvent = createApiFunction<
   {
@@ -19,23 +12,26 @@ export const addSessionEvent = createApiFunction<
   },
   string
 >((params) => {
-  const { sessionId, event, characterId, campaignId } = params;
+  const { sessionId, event, campaignId } = params;
 
   return new Promise((resolve, reject) => {
-    if (!characterId && !campaignId) {
-      reject(new Error("Either campaign or character ID must be defined."));
+    if (!campaignId) {
+      reject(new Error("Campaign ID must be defined for session events."));
       return;
     }
 
-    const parentPath = campaignId
-      ? constructCampaignSessionsCollectionPath(campaignId)
-      : constructCharacterSessionsCollectionPath(characterId as string);
-
-    addDoc(
-      getSessionEventsCollection(parentPath, sessionId),
-      convertEventToDatabase(event)
-    )
-      .then((docRef) => resolve(docRef.id))
-      .catch((e) => reject(e));
+    Promise.resolve(
+      supabase
+        .from("session_events")
+        .insert(convertEventToInsertData(event, sessionId, campaignId) as any)
+        .select()
+        .single()
+    ).then(({ data: inserted, error }) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(inserted.id);
+      }
+    });
   });
 }, "Failed to log session event.");

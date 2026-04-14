@@ -1,18 +1,7 @@
-import {
-  QueryConstraint,
-  Unsubscribe,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { Roll } from "types/DieRolls.type";
-import {
-  convertFromDatabase,
-  getCampaignGameLogCollection,
-  getCharacterGameLogCollection,
-} from "./_getRef";
+import { CharacterGameLogRow, CampaignGameLogRow } from "lib/database.types";
+import { convertFromDatabase } from "./_getRef";
 
 export function listenToMostRecentCharacterLog(params: {
   isGM: boolean;
@@ -20,36 +9,54 @@ export function listenToMostRecentCharacterLog(params: {
   characterId: string;
   onRoll: (rollId: string, roll: Roll) => void;
   onError: (error: string) => void;
-}): Unsubscribe {
+}): () => void {
   const { isGM, campaignId, characterId, onRoll, onError } = params;
 
-  const collection = campaignId
-    ? getCampaignGameLogCollection(campaignId)
-    : getCharacterGameLogCollection(characterId as string);
+  type LogRow = CharacterGameLogRow | CampaignGameLogRow;
+  const table = campaignId ? "campaign_game_log" : "character_game_log";
+  const parentColumn = campaignId ? "campaign_id" : "character_id";
+  const parentValue = (campaignId ?? characterId) as string;
 
-  const queryConstraints: QueryConstraint[] = [
-    where("timestamp", ">", new Date()),
-    where("characterId", "==", characterId),
-    orderBy("timestamp", "desc"),
-    limit(1),
-  ];
-  if (!isGM) {
-    queryConstraints.push(where("gmsOnly", "==", false));
-  }
+  const channel = supabase
+    .channel(`${table}:recent:${characterId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table,
+        filter: `${parentColumn}=eq.${parentValue}`,
+      },
+      (payload) => {
+        const row = payload.new as LogRow;
+        if (row.character_id !== characterId) return;
+        if (!isGM && row.gms_only) return;
+        onRoll(row.id, convertFromDatabase(row));
+      }
+    )
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        const baseQuery = campaignId
+          ? supabase.from("campaign_game_log").select("*").eq("campaign_id", parentValue).eq("character_id", characterId)
+          : supabase.from("character_game_log").select("*").eq("character_id", characterId);
 
-  return onSnapshot(
-    query(collection, ...queryConstraints),
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const doc = convertFromDatabase(change.doc.data());
-          onRoll(change.doc.id, doc);
-        }
-      });
-    },
-    (error) => {
-      console.error(error);
-      onError("Error getting new logs.");
-    }
-  );
+        const query = isGM
+          ? baseQuery.order("timestamp", { ascending: false }).limit(1)
+          : baseQuery.eq("gms_only", false).order("timestamp", { ascending: false }).limit(1);
+
+        Promise.resolve(query).then(({ data, error }) => {
+          if (error) {
+            console.error(error);
+            onError("Error getting new logs.");
+            return;
+          }
+          if (data && data.length > 0) {
+            const row = data[0] as LogRow;
+            onRoll(row.id, convertFromDatabase(row));
+          }
+        });
+      }
+    });
+
+  return () => supabase.removeChannel(channel);
 }

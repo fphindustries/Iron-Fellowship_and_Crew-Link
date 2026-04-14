@@ -1,19 +1,17 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteDoc } from "firebase/firestore";
-import { getHomebrewImpactsDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_IMPACTS_TABLE } from "./_getRef";
 
 export const deleteHomebrewImpactCategory = createApiFunction<
   {
     impactCategoryId: string;
   },
   void
->((params) => {
+>(async (params) => {
   const { impactCategoryId } = params;
-  return new Promise((resolve, reject) => {
-    deleteDoc(getHomebrewImpactsDoc(impactCategoryId))
-      .then(() => {
-        resolve();
-      })
-      .catch(reject);
-  });
+  const { error } = await supabase
+    .from(HOMEBREW_IMPACTS_TABLE)
+    .delete()
+    .eq("id", impactCategoryId);
+  if (error) throw error;
 }, "Failed to delete impact category.");

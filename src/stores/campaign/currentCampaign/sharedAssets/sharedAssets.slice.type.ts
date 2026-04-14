@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { AssetDocument } from "api-calls/assets/_asset.type";
 
 export interface SharedAssetSliceData {
@@ -8,7 +7,7 @@ export interface SharedAssetSliceData {
 }
 
 export interface SharedAssetSliceActions {
-  subscribe: (campaignId: string) => Unsubscribe;
+  subscribe: (campaignId: string) => () => void;
 
   addAsset: (asset: AssetDocument) => Promise<void>;
   removeAsset: (assetId: string) => Promise<void>;

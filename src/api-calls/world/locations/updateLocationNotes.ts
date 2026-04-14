@@ -1,9 +1,5 @@
-import { Bytes, setDoc } from "firebase/firestore";
-import {
-  constructPublicNotesLocationDocPath,
-  getPublicNotesLocationDoc,
-} from "./_getRef";
-import { projectId } from "config/firebase.config";
+import { supabase } from "config/supabase.config";
+import { LOCATION_PUBLIC_NOTES_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface Params {
@@ -13,52 +9,39 @@ interface Params {
   isBeacon?: boolean;
 }
 
-export const updateLocationNotes = createApiFunction<Params, void>((params) => {
-  const { worldId, locationId, notes, isBeacon } = params;
+export const updateLocationNotes = createApiFunction<Params, void>(
+  async (params) => {
+    const { locationId, notes, isBeacon } = params;
 
-  return new Promise((resolve, reject) => {
+    const encoded = btoa(String.fromCharCode(...notes));
+
     if (isBeacon) {
-      const contentPath = `projects/${projectId}/databases/(default)/documents${constructPublicNotesLocationDocPath(
-        worldId,
-        locationId
-      )}`;
-
-      const token = window.sessionStorage.getItem("id-token") ?? "";
-      if (notes) {
+      const supabaseUrl = (supabase as unknown as { supabaseUrl: string }).supabaseUrl;
+      const supabaseKey = (supabase as unknown as { supabaseKey: string }).supabaseKey;
+      if (notes && supabaseUrl) {
         fetch(
-          `https://firestore.googleapis.com/v1/${contentPath}?updateMask.fieldPaths=notes`,
+          `${supabaseUrl}/rest/v1/${LOCATION_PUBLIC_NOTES_TABLE}?location_id=eq.${locationId}`,
           {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
+              "Prefer": "return=minimal",
+              apikey: supabaseKey,
+              Authorization: `Bearer ${window.sessionStorage.getItem("sb-access-token") ?? supabaseKey}`,
             },
-            body: JSON.stringify({
-              name: contentPath,
-              fields: {
-                notes: {
-                  bytesValue: Bytes.fromUint8Array(notes).toBase64(),
-                },
-              },
-            }),
+            body: JSON.stringify({ notes: encoded }),
             keepalive: true,
           }
         ).catch((e) => console.error(e));
       }
-
-      resolve();
-    } else {
-      setDoc(
-        getPublicNotesLocationDoc(worldId, locationId),
-        { notes: Bytes.fromUint8Array(notes) },
-        { merge: true }
-      )
-        .then(() => {
-          resolve();
-        })
-        .catch((e) => {
-          reject(e);
-        });
+      return;
     }
-  });
-}, "Failed to save changes to notes.");
+
+    const { error } = await supabase
+      .from(LOCATION_PUBLIC_NOTES_TABLE)
+      .upsert({ location_id: locationId, notes: encoded }, { onConflict: "location_id" });
+
+    if (error) throw error;
+  },
+  "Failed to save changes to notes."
+);

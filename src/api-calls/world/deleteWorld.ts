@@ -1,69 +1,41 @@
-import {
-  deleteDoc,
-  deleteField,
-  getDocs,
-  query,
-  runTransaction,
-  where,
-} from "firebase/firestore";
-import { getWorldDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { CAMPAIGN_TABLE } from "api-calls/campaign/_getRef";
+import { CHARACTER_TABLE } from "api-calls/character/_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
-import { firestore } from "config/firebase.config";
-import {
-  getCampaignCollection,
-  getCampaignDoc,
-} from "api-calls/campaign/_getRef";
-import {
-  getCharacterCollection,
-  getCharacterDoc,
-} from "api-calls/character/_getRef";
+import { WORLD_TABLE } from "./_getRef";
 import { deleteAllLocations } from "./locations/deleteAllLocations";
 import { deleteAllLoreDocuments } from "./lore/deleteAllLoreDocuments";
 import { deleteAllNPCs } from "./npcs/deleteAllNPCs";
 import { deleteAllSectors } from "./sectors/deleteAllSectors";
 
-export const deleteWorld = createApiFunction<string, void>((worldId) => {
-  return new Promise((resolve, reject) => {
-    const campaignsUsingWorld = getDocs(
-      query(getCampaignCollection(), where("worldId", "==", worldId))
-    );
-    const charactersUsingWorld = getDocs(
-      query(getCharacterCollection(), where("worldId", "==", worldId))
-    );
+export const deleteWorld = createApiFunction<string, void>(async (worldId) => {
+  // Remove world reference from campaigns that use it
+  const { error: campaignError } = await supabase
+    .from(CAMPAIGN_TABLE)
+    .update({ world_id: null })
+    .eq("world_id", worldId);
 
-    const promises: Promise<unknown>[] = [];
-    promises.push(
-      runTransaction(firestore, async (transaction) => {
-        (await campaignsUsingWorld).docs.map((doc) => {
-          transaction.update(getCampaignDoc(doc.id), {
-            worldId: deleteField(),
-          });
-        });
-        (await charactersUsingWorld).docs.map((doc) => {
-          transaction.update(getCharacterDoc(doc.id), {
-            worldId: deleteField(),
-          });
-        });
-      })
-    );
+  if (campaignError) throw campaignError;
 
-    promises.push(deleteAllLocations({ worldId }));
-    promises.push(deleteAllLoreDocuments({ worldId }));
-    promises.push(deleteAllNPCs({ worldId }));
-    promises.push(deleteAllSectors({ worldId }));
+  // Remove world reference from characters that use it
+  const { error: characterError } = await supabase
+    .from(CHARACTER_TABLE)
+    .update({ world_id: null })
+    .eq("world_id", worldId);
 
-    Promise.all(promises)
-      .then(() => {
-        deleteDoc(getWorldDoc(worldId))
-          .then(() => {
-            resolve();
-          })
-          .catch((e) => {
-            reject(e);
-          });
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+  if (characterError) throw characterError;
+
+  await Promise.all([
+    deleteAllLocations({ worldId }),
+    deleteAllLoreDocuments({ worldId }),
+    deleteAllNPCs({ worldId }),
+    deleteAllSectors({ worldId }),
+  ]);
+
+  const { error: worldError } = await supabase
+    .from(WORLD_TABLE)
+    .delete()
+    .eq("id", worldId);
+
+  if (worldError) throw worldError;
 }, "Failed to delete world.");

@@ -1,5 +1,4 @@
-import { functions } from "config/firebase.config";
-import { httpsCallable } from "firebase/functions";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { BackstoryRequest, BackstoryOutput } from "./_ai.type";
 import { recordAiCall } from "stores/aiDebug";
@@ -10,12 +9,12 @@ export const generateCharacterBackstory = createApiFunction<
 >(
   async (params) => {
     recordAiCall("generateCharacterBackstory", params);
-    const fn = httpsCallable<BackstoryRequest, BackstoryOutput>(
-      functions,
-      "generateCharacterBackstory"
+    const { data, error } = await supabase.functions.invoke<BackstoryOutput>(
+      "generate-character-backstory",
+      { body: params }
     );
-    const result = await fn(params);
-    return result.data;
+    if (error) throw error;
+    return data as BackstoryOutput;
   },
   "Failed to generate backstory. Please try again."
 );

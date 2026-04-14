@@ -1,9 +1,9 @@
-import { deleteDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import {
   constructNPCImagesPath,
-  getNPCDoc,
-  getPrivateDetailsNPCDoc,
-  getPublicNotesNPCDoc,
+  NPCS_TABLE,
+  NPC_PUBLIC_NOTES_TABLE,
+  NPC_PRIVATE_NOTES_TABLE,
 } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { deleteImage } from "lib/storage.lib";
@@ -14,24 +14,20 @@ interface Params {
   imageFilename?: string;
 }
 
-export const deleteNPC = createApiFunction<Params, void>((params) => {
+export const deleteNPC = createApiFunction<Params, void>(async (params) => {
   const { worldId, npcId, imageFilename } = params;
 
-  return new Promise((resolve, reject) => {
-    const promises: Promise<unknown>[] = [];
-    promises.push(deleteDoc(getNPCDoc(worldId, npcId)));
-    promises.push(deleteDoc(getPrivateDetailsNPCDoc(worldId, npcId)));
-    promises.push(deleteDoc(getPublicNotesNPCDoc(worldId, npcId)));
-    if (imageFilename) {
-      promises.push(
-        deleteImage(constructNPCImagesPath(worldId, npcId), imageFilename)
-      );
-    }
+  const deletePromises: PromiseLike<unknown>[] = [
+    supabase.from(NPC_PUBLIC_NOTES_TABLE).delete().eq("npc_id", npcId),
+    supabase.from(NPC_PRIVATE_NOTES_TABLE).delete().eq("npc_id", npcId),
+    supabase.from(NPCS_TABLE).delete().eq("id", npcId),
+  ];
 
-    Promise.all(promises)
-      .then(() => resolve())
-      .catch((e) => {
-        reject(e);
-      });
-  });
+  if (imageFilename) {
+    deletePromises.push(
+      deleteImage(constructNPCImagesPath(worldId, npcId), imageFilename)
+    );
+  }
+
+  await Promise.all(deletePromises);
 }, "Failed to delete npc.");

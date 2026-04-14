@@ -1,12 +1,11 @@
-import { addDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { momentumTrack } from "data/defaultTracks";
 import { AssetDocument } from "api-calls/assets/_asset.type";
 import {
   CharacterDocument,
   StatsMap,
 } from "api-calls/character/_character.type";
-import { getCharacterAssetCollection } from "../assets/_getRef";
-import { getCharacterCollection } from "./_getRef";
+import { characterDocumentToInsert, CHARACTER_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const createCharacter = createApiFunction<
@@ -22,49 +21,54 @@ export const createCharacter = createApiFunction<
     characteristics?: string;
   },
   string
->((params) => {
-  return new Promise((resolve, reject) => {
-    const { uid, name, stats, assets, expansionIds, backstory, pronouns, callsign, characteristics } = params;
-    const character: CharacterDocument = {
-      uid: uid,
-      name: name,
-      stats: stats,
-      conditionMeters: {},
-      specialTracks: {},
-      momentum: momentumTrack.startingValue,
-    };
-    if (expansionIds) {
-      character.expansionIds = expansionIds;
-    }
-    if (backstory) {
-      character.backstory = backstory;
-    }
-    if (pronouns) {
-      character.pronouns = pronouns;
-    }
-    if (callsign) {
-      character.callsign = callsign;
-    }
-    if (characteristics) {
-      character.characteristics = characteristics;
-    }
+>(async (params) => {
+  const {
+    uid,
+    name,
+    stats,
+    assets,
+    expansionIds,
+    backstory,
+    pronouns,
+    callsign,
+    characteristics,
+  } = params;
 
-    addDoc(getCharacterCollection(), character)
-      .then((doc) => {
-        const id = doc.id;
-        const assetPromises = assets.map((asset) =>
-          addDoc(getCharacterAssetCollection(id), asset)
-        );
-        Promise.all(assetPromises)
-          .then(() => {
-            resolve(id);
-          })
-          .catch(() => {
-            resolve(id);
-          });
-      })
-      .catch((error) => {
-        reject(error);
-      });
-  });
+  const character: CharacterDocument = {
+    uid,
+    name,
+    stats,
+    conditionMeters: {},
+    specialTracks: {},
+    momentum: momentumTrack.startingValue,
+  };
+  if (expansionIds) character.expansionIds = expansionIds;
+  if (backstory) character.backstory = backstory;
+  if (pronouns) character.pronouns = pronouns;
+  if (callsign) character.callsign = callsign;
+  if (characteristics) character.characteristics = characteristics;
+
+  const insert = characterDocumentToInsert(character);
+
+  const { data, error } = await supabase
+    .from(CHARACTER_TABLE)
+    .insert(insert)
+    .select()
+    .single();
+
+  if (error) throw error;
+  const id = data.id;
+
+  // Insert initial assets
+  if (assets.length > 0) {
+    const assetInserts = assets.map((asset) => ({
+      character_id: id,
+      data: asset as unknown as import("lib/database.types").Json,
+      order: asset.order,
+    }));
+    // Best-effort; don't fail character creation if assets fail
+    await supabase.from("character_assets").insert(assetInserts).then();
+  }
+
+  return id;
 }, "Failed to create your character");

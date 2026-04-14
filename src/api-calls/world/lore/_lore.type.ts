@@ -1,16 +1,18 @@
-import { Bytes, Timestamp } from "firebase/firestore";
-import { Lore } from "types/Lore.type";
+// Legacy Firestore document types — no longer used in application code.
+// Kept as reference only.
 
-export interface LoreDocument
-  extends Omit<Lore, "updatedDate" | "createdDate"> {
-  updatedTimestamp: Timestamp;
-  createdTimestamp: Timestamp;
+export interface LoreDocument {
+  name: string;
+  sharedWithPlayers?: boolean;
+  imageFilenames?: string[];
+  updatedTimestamp: string;
+  createdTimestamp: string;
 }
 
 export interface GMLoreDocument {
-  gmNotes?: Bytes;
+  gmNotes?: string; // Base64-encoded Uint8Array
 }
 
 export interface LoreNotesDocument {
-  notes: Bytes;
+  notes?: string; // Base64-encoded Uint8Array
 }

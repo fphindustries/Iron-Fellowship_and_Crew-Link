@@ -1,5 +1,5 @@
-import { updateDoc } from "firebase/firestore";
-import { getSectorLocationDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { SECTOR_LOCATIONS_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { SectorLocationDocument } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
 
@@ -11,18 +11,15 @@ interface Params {
 }
 
 export const updateSectorLocation = createApiFunction<Params, void>(
-  (params) => {
-    const { worldId, sectorId, locationId, location } = params;
+  async (params) => {
+    const { locationId, location } = params;
 
-    return new Promise((resolve, reject) => {
-      updateDoc(getSectorLocationDoc(worldId, sectorId, locationId), location)
-        .then(() => {
-          resolve();
-        })
-        .catch((e) => {
-          reject(e);
-        });
-    });
+    const { error } = await supabase
+      .from(SECTOR_LOCATIONS_TABLE)
+      .update(location as any)
+      .eq("id", locationId);
+
+    if (error) throw error;
   },
   "Failed to update location."
 );

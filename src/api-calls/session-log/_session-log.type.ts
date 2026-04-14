@@ -1,11 +1,13 @@
-import { Timestamp } from "firebase/firestore";
-import { SessionDocument, SessionLogEvent } from "types/SessionLog.type";
+// Legacy Firestore document types — no longer used in application code.
+// Kept as reference only.
 
-export type SessionDocumentDB = Omit<SessionDocument, "startedAt" | "endedAt"> & {
-  startedAt: Timestamp;
-  endedAt?: Timestamp;
-};
+export interface SessionLogDocument {
+  startedAt: string; // ISO date string
+  endedAt?: string; // ISO date string
+}
 
-export type SessionEventDocumentDB = Omit<SessionLogEvent, "timestamp"> & {
-  timestamp: Timestamp;
-};
+export interface SessionEventDocument {
+  timestamp: string; // ISO date string
+  type: number;
+  data: Record<string, unknown>;
+}

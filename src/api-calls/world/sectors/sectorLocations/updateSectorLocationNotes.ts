@@ -1,11 +1,8 @@
-import { Bytes, setDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import {
-  constructPrivateSectorLocationNotesDocPath,
-  constructPublicSectorLocationNotesDocPath,
-  getPrivateSectorLocationNotesDoc,
-  getPublicSectorLocationNotesDoc,
+  SECTOR_LOCATION_PUBLIC_NOTES_TABLE,
+  SECTOR_LOCATION_PRIVATE_NOTES_TABLE,
 } from "./_getRef";
-import { projectId } from "config/firebase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface Params {
@@ -18,66 +15,41 @@ interface Params {
 }
 
 export const updateSectorLocationNotes = createApiFunction<Params, void>(
-  (params) => {
-    const { worldId, sectorId, locationId, notes, isBeacon, isPrivate } =
-      params;
+  async (params) => {
+    const { locationId, notes, isBeacon, isPrivate } = params;
 
-    const path = isPrivate
-      ? constructPrivateSectorLocationNotesDocPath(
-          worldId,
-          sectorId,
-          locationId
-        )
-      : constructPublicSectorLocationNotesDocPath(
-          worldId,
-          sectorId,
-          locationId
-        );
+    const table = isPrivate
+      ? SECTOR_LOCATION_PRIVATE_NOTES_TABLE
+      : SECTOR_LOCATION_PUBLIC_NOTES_TABLE;
+    const encoded = btoa(String.fromCharCode(...notes));
 
-    return new Promise((resolve, reject) => {
-      if (isBeacon) {
-        const contentPath = `projects/${projectId}/databases/(default)/documents${path}`;
-
-        const token = window.sessionStorage.getItem("id-token") ?? "";
-        if (notes) {
-          fetch(
-            `https://firestore.googleapis.com/v1/${contentPath}?updateMask.fieldPaths=notes`,
-            {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                name: contentPath,
-                fields: {
-                  notes: {
-                    bytesValue: Bytes.fromUint8Array(notes).toBase64(),
-                  },
-                },
-              }),
-              keepalive: true,
-            }
-          ).catch((e) => console.error(e));
-        }
-
-        resolve();
-      } else {
-        setDoc(
-          isPrivate
-            ? getPrivateSectorLocationNotesDoc(worldId, sectorId, locationId)
-            : getPublicSectorLocationNotesDoc(worldId, sectorId, locationId),
-          { notes: Bytes.fromUint8Array(notes) },
-          { merge: true }
-        )
-          .then(() => {
-            resolve();
-          })
-          .catch((e) => {
-            reject(e);
-          });
+    if (isBeacon) {
+      const supabaseUrl = (supabase as unknown as { supabaseUrl: string }).supabaseUrl;
+      const supabaseKey = (supabase as unknown as { supabaseKey: string }).supabaseKey;
+      if (notes && supabaseUrl) {
+        fetch(
+          `${supabaseUrl}/rest/v1/${table}?sector_location_id=eq.${locationId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              "Prefer": "return=minimal",
+              apikey: supabaseKey,
+              Authorization: `Bearer ${window.sessionStorage.getItem("sb-access-token") ?? supabaseKey}`,
+            },
+            body: JSON.stringify({ notes: encoded }),
+            keepalive: true,
+          }
+        ).catch((e) => console.error(e));
       }
-    });
+      return;
+    }
+
+    const { error } = await supabase
+      .from(table)
+      .upsert({ sector_location_id: locationId, notes: encoded } as any, { onConflict: "sector_location_id" });
+
+    if (error) throw error;
   },
   "Failed to save changes to notes."
 );

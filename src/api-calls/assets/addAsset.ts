@@ -1,8 +1,4 @@
-import { addDoc } from "firebase/firestore";
-import {
-  getCampaignAssetCollection,
-  getCharacterAssetCollection,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { AssetDocument } from "api-calls/assets/_asset.type";
 import { createApiFunction } from "api-calls/createApiFunction";
 
@@ -20,17 +16,21 @@ export const addAsset = createApiFunction<AddAssetParams, void>((params) => {
       reject("Either character or campaign ID must be defined.");
       return;
     }
-    addDoc(
-      characterId
-        ? getCharacterAssetCollection(characterId)
-        : getCampaignAssetCollection(campaignId as string),
-      asset
-    )
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
+
+    const table = characterId ? "character_assets" : "campaign_assets";
+    const foreignKey = characterId
+      ? { character_id: characterId }
+      : { campaign_id: campaignId };
+
+    supabase
+      .from(table as any)
+      .insert({ ...foreignKey, data: asset, order: asset.order })
+      .then(({ error }: { error: unknown }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       });
   });
 }, "Error creating your asset");

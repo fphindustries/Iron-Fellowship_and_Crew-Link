@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { AssetDocument } from "api-calls/assets/_asset.type";
 
 export interface AssetSliceData {
@@ -8,7 +7,7 @@ export interface AssetSliceData {
 }
 
 export interface AssetSliceActions {
-  subscribe: (characterId: string) => Unsubscribe;
+  subscribe: (characterId: string) => () => void;
   addAsset: (asset: AssetDocument) => Promise<void>;
   removeAsset: (assetId: string) => Promise<void>;
   updateAssetCheckbox: (

@@ -1,9 +1,5 @@
-import { Bytes, setDoc } from "firebase/firestore";
-import {
-  constructPublicNotesNPCDocPath,
-  getPublicNotesNPCDoc,
-} from "./_getRef";
-import { projectId } from "config/firebase.config";
+import { supabase } from "config/supabase.config";
+import { NPC_PUBLIC_NOTES_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface Params {
@@ -13,52 +9,39 @@ interface Params {
   isBeacon?: boolean;
 }
 
-export const updateNPCNotes = createApiFunction<Params, void>((params) => {
-  const { worldId, npcId, notes, isBeacon } = params;
+export const updateNPCNotes = createApiFunction<Params, void>(
+  async (params) => {
+    const { npcId, notes, isBeacon } = params;
 
-  return new Promise((resolve, reject) => {
+    const encoded = btoa(String.fromCharCode(...notes));
+
     if (isBeacon) {
-      const contentPath = `projects/${projectId}/databases/(default)/documents${constructPublicNotesNPCDocPath(
-        worldId,
-        npcId
-      )}`;
-
-      const token = window.sessionStorage.getItem("id-token") ?? "";
-      if (notes) {
+      const supabaseUrl = (supabase as unknown as { supabaseUrl: string }).supabaseUrl;
+      const supabaseKey = (supabase as unknown as { supabaseKey: string }).supabaseKey;
+      if (notes && supabaseUrl) {
         fetch(
-          `https://firestore.googleapis.com/v1/${contentPath}?updateMask.fieldPaths=notes`,
+          `${supabaseUrl}/rest/v1/${NPC_PUBLIC_NOTES_TABLE}?npc_id=eq.${npcId}`,
           {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
+              "Prefer": "return=minimal",
+              apikey: supabaseKey,
+              Authorization: `Bearer ${window.sessionStorage.getItem("sb-access-token") ?? supabaseKey}`,
             },
-            body: JSON.stringify({
-              name: contentPath,
-              fields: {
-                notes: {
-                  bytesValue: Bytes.fromUint8Array(notes).toBase64(),
-                },
-              },
-            }),
+            body: JSON.stringify({ notes: encoded }),
             keepalive: true,
           }
         ).catch((e) => console.error(e));
       }
-
-      resolve();
-    } else {
-      setDoc(
-        getPublicNotesNPCDoc(worldId, npcId),
-        { notes: Bytes.fromUint8Array(notes) },
-        { merge: true }
-      )
-        .then(() => {
-          resolve();
-        })
-        .catch((e) => {
-          reject(e);
-        });
+      return;
     }
-  });
-}, "Failed to save changes to notes.");
+
+    const { error } = await supabase
+      .from(NPC_PUBLIC_NOTES_TABLE)
+      .upsert({ npc_id: npcId, notes: encoded }, { onConflict: "npc_id" });
+
+    if (error) throw error;
+  },
+  "Failed to save changes to notes."
+);

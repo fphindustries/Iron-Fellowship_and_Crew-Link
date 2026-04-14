@@ -1,7 +1,6 @@
 import { CreateSliceType } from "stores/store.type";
 import { SettingsSlice } from "./settings.slice.type";
 import { defaultSettings } from "./settings.slice.default";
-import { Unsubscribe } from "firebase/firestore";
 import { listenToCustomMoves } from "api-calls/user/custom-moves/listenToCustomMoves";
 import { listenToCustomOracles } from "api-calls/user/custom-oracles/listenToCustomOracles";
 import { listenToSettings } from "api-calls/character-campaign-settings/listenToSettings";
@@ -25,7 +24,7 @@ export const createSettingsSlice: CreateSliceType<SettingsSlice> = (
 
   subscribe: (uids) => {
     getState().users.loadUserDocuments(uids);
-    const unsubscribes: Unsubscribe[] = [];
+    const unsubscribes: (() => void)[] = [];
 
     uids.forEach((uid) => {
       unsubscribes.push(

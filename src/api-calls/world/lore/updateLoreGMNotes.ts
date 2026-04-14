@@ -1,9 +1,5 @@
-import { Bytes, setDoc } from "firebase/firestore";
-import {
-  constructPrivateDetailsLoreDocPath,
-  getPrivateDetailsLoreDoc,
-} from "./_getRef";
-import { projectId } from "config/firebase.config";
+import { supabase } from "config/supabase.config";
+import { LORE_PRIVATE_NOTES_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface Params {
@@ -13,52 +9,39 @@ interface Params {
   isBeacon?: boolean;
 }
 
-export const updateLoreGMNotes = createApiFunction<Params, void>((params) => {
-  const { worldId, loreId, notes, isBeacon } = params;
+export const updateLoreGMNotes = createApiFunction<Params, void>(
+  async (params) => {
+    const { loreId, notes, isBeacon } = params;
 
-  return new Promise((resolve, reject) => {
+    const encoded = btoa(String.fromCharCode(...notes));
+
     if (isBeacon) {
-      const contentPath = `projects/${projectId}/databases/(default)/documents${constructPrivateDetailsLoreDocPath(
-        worldId,
-        loreId
-      )}`;
-
-      const token = window.sessionStorage.getItem("id-token") ?? "";
-      if (notes) {
+      const supabaseUrl = (supabase as unknown as { supabaseUrl: string }).supabaseUrl;
+      const supabaseKey = (supabase as unknown as { supabaseKey: string }).supabaseKey;
+      if (notes && supabaseUrl) {
         fetch(
-          `https://firestore.googleapis.com/v1/${contentPath}?updateMask.fieldPaths=gmNotes`,
+          `${supabaseUrl}/rest/v1/${LORE_PRIVATE_NOTES_TABLE}?lore_id=eq.${loreId}`,
           {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
+              "Prefer": "return=minimal",
+              apikey: supabaseKey,
+              Authorization: `Bearer ${window.sessionStorage.getItem("sb-access-token") ?? supabaseKey}`,
             },
-            body: JSON.stringify({
-              name: contentPath,
-              fields: {
-                gmNotes: {
-                  bytesValue: Bytes.fromUint8Array(notes).toBase64(),
-                },
-              },
-            }),
+            body: JSON.stringify({ gm_notes: encoded }),
             keepalive: true,
           }
         ).catch((e) => console.error(e));
       }
-
-      resolve();
-    } else {
-      setDoc(
-        getPrivateDetailsLoreDoc(worldId, loreId),
-        { gmNotes: Bytes.fromUint8Array(notes) },
-        { merge: true }
-      )
-        .then(() => {
-          resolve();
-        })
-        .catch((e) => {
-          reject(e);
-        });
+      return;
     }
-  });
-}, "Failed to update notes.");
+
+    const { error } = await supabase
+      .from(LORE_PRIVATE_NOTES_TABLE)
+      .upsert({ lore_id: loreId, gm_notes: encoded }, { onConflict: "lore_id" });
+
+    if (error) throw error;
+  },
+  "Failed to update notes."
+);

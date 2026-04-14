@@ -1,17 +1,33 @@
-import {
-  Unsubscribe,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-} from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { SessionLogEvent } from "types/SessionLog.type";
-import {
-  constructCampaignSessionsCollectionPath,
-  constructCharacterSessionsCollectionPath,
-  convertEventFromDatabase,
-  getSessionEventsCollection,
-} from "./_getRef";
+import { SessionEventRow } from "lib/database.types";
+import { convertEventFromDatabase, SESSION_EVENTS_TABLE } from "./_getRef";
+
+function fetchSessionEvents(
+  sessionId: string,
+  totalEventsToLoad: number,
+  updateEvent: (eventId: string, event: SessionLogEvent) => void,
+  onError: (error: string) => void
+): void {
+  supabase
+    .from(SESSION_EVENTS_TABLE)
+    .select("*")
+    .eq("session_id", sessionId)
+    .order("timestamp", { ascending: false })
+    .limit(totalEventsToLoad)
+    .then(({ data, error }) => {
+      if (error) {
+        console.error(error);
+        onError("Error listening to session events.");
+        return;
+      }
+      if (data) {
+        (data as SessionEventRow[]).forEach((row) => {
+          updateEvent(row.id, convertEventFromDatabase(row));
+        });
+      }
+    });
+}
 
 export function listenToSessionEvents(params: {
   sessionId: string;
@@ -21,7 +37,7 @@ export function listenToSessionEvents(params: {
   updateEvent: (eventId: string, event: SessionLogEvent) => void;
   removeEvent: (eventId: string) => void;
   onError: (error: string) => void;
-}): Unsubscribe {
+}): () => void {
   const {
     sessionId,
     campaignId,
@@ -37,31 +53,28 @@ export function listenToSessionEvents(params: {
     return () => {};
   }
 
-  const parentPath = campaignId
-    ? constructCampaignSessionsCollectionPath(campaignId)
-    : constructCharacterSessionsCollectionPath(characterId as string);
-
-  const eventsCollection = getSessionEventsCollection(parentPath, sessionId);
-
-  return onSnapshot(
-    query(
-      eventsCollection,
-      orderBy("timestamp", "desc"),
-      limit(totalEventsToLoad)
-    ),
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added" || change.type === "modified") {
-          const event = convertEventFromDatabase(change.doc.data());
-          updateEvent(change.doc.id, event);
-        } else if (change.type === "removed") {
-          removeEvent(change.doc.id);
+  const channel = supabase
+    .channel(`${SESSION_EVENTS_TABLE}:${sessionId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: SESSION_EVENTS_TABLE,
+        filter: `session_id=eq.${sessionId}`,
+      },
+      (payload) => {
+        if (payload.eventType === "DELETE") {
+          removeEvent((payload.old as { id: string }).id);
+        } else {
+          fetchSessionEvents(sessionId, totalEventsToLoad, updateEvent, onError);
         }
-      });
-    },
-    (error) => {
-      console.error(error);
-      onError("Error listening to session events.");
-    }
-  );
+      }
+    )
+    .subscribe();
+
+  // Initial fetch
+  fetchSessionEvents(sessionId, totalEventsToLoad, updateEvent, onError);
+
+  return () => supabase.removeChannel(channel);
 }

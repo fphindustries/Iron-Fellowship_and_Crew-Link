@@ -1,6 +1,4 @@
-import { arrayRemove, deleteField, updateDoc } from "firebase/firestore";
-import { getUsersCustomOracleDoc } from "./_getRef";
-import { encodeDataswornId } from "functions/dataswornIdEncoder";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const removeCustomOracle = createApiFunction<
@@ -13,16 +11,20 @@ export const removeCustomOracle = createApiFunction<
   const { uid, oracleId } = params;
 
   return new Promise((resolve, reject) => {
-    const encodedId = encodeDataswornId(oracleId);
-    updateDoc(getUsersCustomOracleDoc(uid), {
-      [`oracles.${encodedId}`]: deleteField(),
-      oracleOrder: arrayRemove(encodedId),
-    })
-      .then(() => {
-        resolve();
+    Promise.resolve(
+      supabase
+        .from("user_custom_oracles")
+        .delete()
+        .eq("id", oracleId)
+        .eq("user_id", uid)
+    )
+      .then(({ error }) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
       })
-      .catch((e) => {
-        reject(e);
-      });
+      .catch((error: unknown) => reject(error));
   });
 }, "Failed to remove custom oracle.");

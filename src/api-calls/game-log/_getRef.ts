@@ -1,77 +1,94 @@
-import { firestore } from "config/firebase.config";
-import {
-  CollectionReference,
-  DocumentReference,
-  Timestamp,
-  collection,
-  doc,
-} from "firebase/firestore";
-import { Roll } from "types/DieRolls.type";
-import { GameLogDocument } from "./_game-log.type";
+// Supabase migration: Firestore refs replaced with table name constants.
 
-export function constructCampaignGameLogCollectionPath(campaignId: string) {
-  return `/campaigns/${campaignId}/game-log`;
-}
+import { Roll, ROLL_TYPE } from "types/DieRolls.type";
+import { CharacterGameLogRow, CampaignGameLogRow } from "lib/database.types";
 
-export function constructCampaignGameLogDocPath(
-  campaignId: string,
-  logId: string
-) {
-  return `/campaigns/${campaignId}/game-log/${logId}`;
-}
+export const CHARACTER_GAME_LOG_TABLE = "character_game_log" as const;
+export const CAMPAIGN_GAME_LOG_TABLE = "campaign_game_log" as const;
 
-export function getCampaignGameLogCollection(campaignId: string) {
-  return collection(
-    firestore,
-    constructCampaignGameLogCollectionPath(campaignId)
-  ) as CollectionReference<GameLogDocument>;
-}
-
-export function getCampaignGameLogDocument(campaignId: string, logId: string) {
-  return doc(
-    firestore,
-    constructCampaignGameLogDocPath(campaignId, logId)
-  ) as DocumentReference<GameLogDocument>;
-}
-
-export function constructCharacterGameLogCollectionPath(characterId: string) {
-  return `/characters/${characterId}/game-log`;
-}
-
-export function constructCharacterGameLogDocPath(
-  characterId: string,
-  logId: string
-) {
-  return `/characters/${characterId}/game-log/${logId}`;
-}
-
-export function getCharacterGameLogCollection(characterId: string) {
-  return collection(
-    firestore,
-    constructCharacterGameLogCollectionPath(characterId)
-  ) as CollectionReference<GameLogDocument>;
-}
-
-export function getCharacterGameLogDocument(
-  characterId: string,
-  logId: string
-) {
-  return doc(
-    firestore,
-    constructCharacterGameLogDocPath(characterId, logId)
-  ) as DocumentReference<GameLogDocument>;
-}
-
-export function convertFromDatabase(log: GameLogDocument): Roll {
+export function convertFromDatabase(
+  row: CharacterGameLogRow | CampaignGameLogRow
+): Roll {
+  const data = (row.data ?? {}) as Record<string, unknown>;
   return {
-    ...log,
-    timestamp: log.timestamp.toDate(),
+    ...data,
+    type: row.type as ROLL_TYPE,
+    rollLabel: row.roll_label,
+    timestamp: new Date(row.timestamp),
+    uid: row.uid,
+    gmsOnly: row.gms_only,
+    characterId: row.character_id ?? null,
   } as Roll;
 }
 
-export function convertRollToGameLogDocument(roll: Roll): GameLogDocument {
+export function convertRollToInsertData(
+  roll: Roll,
+  campaignId: string | undefined,
+  characterId: string | undefined
+): {
+  type: number;
+  roll_label: string;
+  timestamp: string;
+  uid: string;
+  gms_only: boolean;
+  character_id: string | null;
+  data: Record<string, unknown>;
+  campaign_id?: string;
+  character_id_key?: string;
+} {
+  const {
+    type,
+    rollLabel,
+    timestamp,
+    uid,
+    gmsOnly,
+    characterId: _cid,
+    ...rest
+  } = roll as unknown as {
+    type: number;
+    rollLabel: string;
+    timestamp: Date;
+    uid: string;
+    gmsOnly: boolean;
+    characterId: string | null;
+    [key: string]: unknown;
+  };
+
   return {
-    ...roll,
-    timestamp: Timestamp.fromDate(roll.timestamp),
+    type,
+    roll_label: rollLabel,
+    timestamp: timestamp instanceof Date ? timestamp.toISOString() : String(timestamp),
+    uid,
+    gms_only: gmsOnly ?? false,
+    character_id: characterId ?? null,
+    ...(campaignId ? { campaign_id: campaignId } : {}),
+    data: rest as Record<string, unknown>,
+  };
+}
+
+export function convertRollToUpdateData(
+  roll: Roll
+): { gms_only?: boolean; data: Record<string, unknown> } {
+  const {
+    type: _type,
+    rollLabel: _rl,
+    timestamp: _ts,
+    uid: _uid,
+    gmsOnly,
+    characterId: _cid,
+    ...rest
+  } = roll as unknown as {
+    type: number;
+    rollLabel: string;
+    timestamp: Date;
+    uid: string;
+    gmsOnly: boolean;
+    characterId: string | null;
+    [key: string]: unknown;
+  };
+
+  return {
+    gms_only: gmsOnly,
+    data: rest as Record<string, unknown>,
   };
 }

@@ -1,8 +1,7 @@
-import { Unsubscribe } from "firebase/auth";
-import { onSnapshot } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import {
-  getPublicSectorLocationNotesDoc,
-  getPrivateSectorLocationNotesDoc,
+  SECTOR_LOCATION_PUBLIC_NOTES_TABLE,
+  SECTOR_LOCATION_PRIVATE_NOTES_TABLE,
 } from "./_getRef";
 import { getErrorMessage } from "functions/getErrorMessage";
 
@@ -13,17 +12,50 @@ export function listenToSectorLocationNotes(
   updateNotes: (notes: Uint8Array | undefined) => void,
   onError: (error: string) => void,
   isPrivate?: boolean
-): Unsubscribe {
-  return onSnapshot(
-    isPrivate
-      ? getPrivateSectorLocationNotesDoc(worldId, sectorId, locationId)
-      : getPublicSectorLocationNotesDoc(worldId, sectorId, locationId),
-    (snapshot) => {
-      const notes = snapshot.data()?.notes?.toUint8Array();
-      updateNotes(notes);
-    },
-    (error) => {
-      onError(getErrorMessage(error, "Failed to get location notes"));
-    }
-  );
+): () => void {
+  const table = isPrivate
+    ? SECTOR_LOCATION_PRIVATE_NOTES_TABLE
+    : SECTOR_LOCATION_PUBLIC_NOTES_TABLE;
+
+  const refetch = () => {
+    ;(supabase as any)
+      .from(table)
+      .select("notes")
+      .eq("sector_location_id", locationId)
+      .single()
+      .then(({ data, error }: { data: { notes: string | null } | null; error: { code: string; message: string } | null }) => {
+        if (error) {
+          if (error.code === "PGRST116") {
+            updateNotes(undefined);
+          } else {
+            onError(getErrorMessage(error, "Failed to get location notes"));
+          }
+          return;
+        }
+        const notes = data?.notes
+          ? Uint8Array.from(atob(data.notes), (c) => c.charCodeAt(0))
+          : undefined;
+        updateNotes(notes);
+      });
+  };
+
+  const channel = supabase
+    .channel(`${table}:${locationId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table,
+        filter: `sector_location_id=eq.${locationId}`,
+      },
+      () => refetch()
+    )
+    .subscribe();
+
+  refetch();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }

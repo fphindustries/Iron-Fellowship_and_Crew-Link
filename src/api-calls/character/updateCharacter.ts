@@ -1,23 +1,25 @@
-import { UpdateData, updateDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { CharacterDocument } from "./_character.type";
-import { getCharacterDoc } from "./_getRef";
+import { CHARACTER_TABLE, characterDocumentToUpdate } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 interface Params {
   characterId: string;
-  character: UpdateData<CharacterDocument>;
+  character: Partial<CharacterDocument>;
 }
 
-export const updateCharacter = createApiFunction<Params, void>((params) => {
-  const { characterId, character } = params;
+export const updateCharacter = createApiFunction<Params, void>(
+  async (params) => {
+    const { characterId, character } = params;
 
-  return new Promise((resolve, reject) => {
-    updateDoc(getCharacterDoc(characterId), character)
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
-}, "Failed to update character.");
+    const update = characterDocumentToUpdate(character);
+
+    const { error } = await supabase
+      .from(CHARACTER_TABLE)
+      .update(update)
+      .eq("id", characterId);
+
+    if (error) throw error;
+  },
+  "Failed to update character."
+);

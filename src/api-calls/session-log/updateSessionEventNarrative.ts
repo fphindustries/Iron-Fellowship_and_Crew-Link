@@ -1,10 +1,6 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { updateDoc } from "firebase/firestore";
-import {
-  constructCampaignSessionsCollectionPath,
-  constructCharacterSessionsCollectionPath,
-  getSessionEventDoc,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { SESSION_EVENTS_TABLE } from "./_getRef";
 
 export const updateSessionEventNarrative = createApiFunction<
   {
@@ -16,20 +12,40 @@ export const updateSessionEventNarrative = createApiFunction<
   },
   void
 >((params) => {
-  const { sessionId, eventId, narrative, characterId, campaignId } = params;
+  const { eventId, narrative, campaignId } = params;
 
   return new Promise((resolve, reject) => {
-    if (!characterId && !campaignId) {
-      reject(new Error("Either campaign or character ID must be defined."));
+    if (!campaignId) {
+      reject(new Error("Campaign ID must be defined to update a session event."));
       return;
     }
 
-    const parentPath = campaignId
-      ? constructCampaignSessionsCollectionPath(campaignId)
-      : constructCharacterSessionsCollectionPath(characterId as string);
-
-    updateDoc(getSessionEventDoc(parentPath, sessionId, eventId), { narrative })
-      .then(() => resolve())
-      .catch((e) => reject(e));
+    // narrative is stored in the data JSONB column
+    supabase
+      .from(SESSION_EVENTS_TABLE)
+      .select("data")
+      .eq("id", eventId)
+      .single()
+      .then(({ data: existing, error: fetchError }) => {
+        if (fetchError) {
+          reject(fetchError);
+          return;
+        }
+        const updatedData = {
+          ...((existing?.data ?? {}) as Record<string, unknown>),
+          narrative,
+        };
+        supabase
+          .from(SESSION_EVENTS_TABLE)
+          .update({ data: updatedData })
+          .eq("id", eventId)
+          .then(({ error }) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve();
+            }
+          });
+      });
   });
 }, "Failed to update session event narrative.");

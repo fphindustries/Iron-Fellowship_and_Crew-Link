@@ -1,31 +1,21 @@
-import { deleteDoc } from "firebase/firestore";
-import {
-  getPrivateSectorNotesDoc,
-  getPublicSectorNotesDoc,
-  getSectorDoc,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { SECTORS_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteAllSectorLocations } from "./sectorLocations/deleteAllSectorLocations";
 
 interface Params {
   worldId: string;
   sectorId: string;
 }
 
-export const deleteSector = createApiFunction<Params, void>((params) => {
-  const { worldId, sectorId } = params;
+export const deleteSector = createApiFunction<Params, void>(async (params) => {
+  const { sectorId } = params;
 
-  return new Promise((resolve, reject) => {
-    const promises: Promise<unknown>[] = [];
-    promises.push(deleteDoc(getSectorDoc(worldId, sectorId)));
-    promises.push(deleteAllSectorLocations({ worldId, sectorId }));
-    promises.push(deleteDoc(getPublicSectorNotesDoc(worldId, sectorId)));
-    promises.push(deleteDoc(getPrivateSectorNotesDoc(worldId, sectorId)));
+  // Deleting the sector cascades to sector_public_notes, sector_private_notes,
+  // and sector_locations (via ON DELETE CASCADE in the schema).
+  const { error } = await supabase
+    .from(SECTORS_TABLE)
+    .delete()
+    .eq("id", sectorId);
 
-    Promise.all(promises)
-      .then(() => resolve())
-      .catch((e) => {
-        reject(e);
-      });
-  });
+  if (error) throw error;
 }, "Failed to delete sector.");

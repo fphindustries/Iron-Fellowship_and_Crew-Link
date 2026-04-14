@@ -1,10 +1,6 @@
-import { functions } from "config/firebase.config";
-import { httpsCallable } from "firebase/functions";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
-import {
-  SectorGenerationRequest,
-  SectorGenerationOutput,
-} from "./_ai.type";
+import { SectorGenerationRequest, SectorGenerationOutput } from "./_ai.type";
 import { recordAiCall } from "stores/aiDebug";
 
 export const generateSectorContent = createApiFunction<
@@ -13,12 +9,12 @@ export const generateSectorContent = createApiFunction<
 >(
   async (params) => {
     recordAiCall("generateSectorContent", params);
-    const fn = httpsCallable<SectorGenerationRequest, SectorGenerationOutput>(
-      functions,
-      "generateSectorContent"
+    const { data, error } = await supabase.functions.invoke<SectorGenerationOutput>(
+      "generate-sector-content",
+      { body: params }
     );
-    const result = await fn(params);
-    return result.data;
+    if (error) throw error;
+    return data as SectorGenerationOutput;
   },
   "Failed to generate sector content. Please try again."
 );

@@ -1,5 +1,4 @@
-import { setDoc } from "firebase/firestore";
-import { getUsersDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { UserDocument } from "api-calls/user/_user.type";
 import { createApiFunction } from "api-calls/createApiFunction";
 
@@ -9,12 +8,22 @@ export const updateUserDoc = createApiFunction<
 >((params) => {
   const { uid, user } = params;
   return new Promise((resolve, reject) => {
-    setDoc(getUsersDoc(uid), user, { merge: true })
-      .then(() => {
-        resolve();
+    Promise.resolve(
+      supabase.from("users").upsert(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { id: uid, display_name: user.displayName, photo_url: user.photoURL ?? null } as any
+      )
+    )
+      .then(({ error }: { error: unknown }) => {
+        if (error) {
+          console.error(error);
+          reject("Failed to update user");
+        } else {
+          resolve();
+        }
       })
-      .catch((e) => {
-        console.error(e);
+      .catch((error: unknown) => {
+        console.error(error);
         reject("Failed to update user");
       });
   });

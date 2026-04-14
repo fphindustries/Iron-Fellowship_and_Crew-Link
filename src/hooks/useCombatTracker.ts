@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { addDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { useStore } from "stores/store";
 import { CombatDocument, CombatEnemy, CombatPosition } from "types/combat.types";
 import {
@@ -15,9 +15,9 @@ import { updateCombat } from "api-calls/combat/updateCombat";
 import { endCombat as endCombatApi } from "api-calls/combat/endCombat";
 import { listenToActiveCombat } from "api-calls/combat/listenToActiveCombat";
 import {
-  convertToDatabase,
-  getCampaignTracksCollection,
-  getCharacterTracksCollection,
+  convertToRow,
+  CHARACTER_TRACKS_TABLE,
+  CAMPAIGN_TRACKS_TABLE,
 } from "api-calls/tracks/_getRef";
 
 export function useCombatTracker() {
@@ -112,7 +112,7 @@ export function useCombatTracker() {
   ): Promise<void> => {
     if (!characterId || !sessionId) return;
 
-    // Create the Fray progress track in Firestore and get its ID
+    // Create the Fray progress track and get its ID
     const frayTrackData: Omit<ProgressTrack, "createdDate"> = {
       label: objective || "Combat",
       type: TrackTypes.Fray,
@@ -120,15 +120,23 @@ export function useCombatTracker() {
       value: 0,
       status: TrackStatus.Active,
     };
-    const dbTrack = convertToDatabase({
+    const trackRow = convertToRow({
       ...frayTrackData,
       createdDate: new Date(),
     });
-    const tracksRef = campaignId
-      ? getCampaignTracksCollection(campaignId)
-      : getCharacterTracksCollection(characterId);
-    const trackDocRef = await addDoc(tracksRef, dbTrack);
-    const trackId = trackDocRef.id;
+
+    const table = campaignId ? CAMPAIGN_TRACKS_TABLE : CHARACTER_TRACKS_TABLE;
+    const parentIdCol = campaignId ? "campaign_id" : "character_id";
+    const parentId = campaignId ?? characterId;
+
+    const { data: trackData, error: trackError } = await supabase
+      .from(table)
+      .insert({ ...trackRow, [parentIdCol]: parentId } as any)
+      .select("id")
+      .single();
+
+    if (trackError) throw trackError;
+    const trackId = trackData.id;
 
     await createCombat({
       characterId,

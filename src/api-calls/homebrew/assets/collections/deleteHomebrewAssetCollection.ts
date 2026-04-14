@@ -1,17 +1,17 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteDoc } from "firebase/firestore";
-import { getHomebrewAssetCollectionDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_ASSET_COLLECTIONS_TABLE } from "./_getRef";
 
 export const deleteHomebrewAssetCollection = createApiFunction<
   {
     assetCollectionId: string;
   },
   void
->((params) => {
+>(async (params) => {
   const { assetCollectionId } = params;
-  return new Promise((resolve, reject) => {
-    deleteDoc(getHomebrewAssetCollectionDoc(assetCollectionId))
-      .then(resolve)
-      .catch(reject);
-  });
+  const { error } = await supabase
+    .from(HOMEBREW_ASSET_COLLECTIONS_TABLE)
+    .delete()
+    .eq("id", assetCollectionId);
+  if (error) throw error;
 }, "Failed to delete asset collection.");

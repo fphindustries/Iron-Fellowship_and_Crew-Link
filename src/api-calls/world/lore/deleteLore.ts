@@ -1,10 +1,5 @@
-import { deleteDoc } from "firebase/firestore";
-import {
-  constructLoreImagesPath,
-  getLoreDoc,
-  getPrivateDetailsLoreDoc,
-  getPublicNotesLoreDoc,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { constructLoreImagesPath, LORE_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { deleteImage } from "lib/storage.lib";
 
@@ -14,24 +9,17 @@ interface Params {
   imageFilename?: string;
 }
 
-export const deleteLore = createApiFunction<Params, void>((params) => {
+export const deleteLore = createApiFunction<Params, void>(async (params) => {
   const { worldId, loreId, imageFilename } = params;
 
-  return new Promise((resolve, reject) => {
-    const promises: Promise<unknown>[] = [];
-    promises.push(deleteDoc(getLoreDoc(worldId, loreId)));
-    promises.push(deleteDoc(getPrivateDetailsLoreDoc(worldId, loreId)));
-    promises.push(deleteDoc(getPublicNotesLoreDoc(worldId, loreId)));
-    if (imageFilename) {
-      promises.push(
-        deleteImage(constructLoreImagesPath(worldId, loreId), imageFilename)
-      );
-    }
+  const { error } = await supabase
+    .from(LORE_TABLE)
+    .delete()
+    .eq("id", loreId);
 
-    Promise.all(promises)
-      .then(() => resolve())
-      .catch((e) => {
-        reject(e);
-      });
-  });
+  if (error) throw error;
+
+  if (imageFilename) {
+    await deleteImage(constructLoreImagesPath(worldId, loreId), imageFilename);
+  }
 }, "Failed to delete lore document.");

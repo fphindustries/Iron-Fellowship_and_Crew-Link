@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { useEffect, useRef } from "react";
 import { useStore } from "stores/store";
 
@@ -10,12 +9,12 @@ export function useListenToLogs() {
     (store) => store.campaigns.currentCampaign.currentCampaignId
   );
   const totalLogsToLoad = useStore((store) => store.gameLog.totalLogsToLoad);
-  const previousUnsubscribe = useRef<Unsubscribe | undefined>(undefined);
+  const previousUnsubscribe = useRef<((() => void) | undefined)>(undefined);
 
   const subscribe = useStore((store) => store.gameLog.subscribe);
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe | undefined = undefined;
+    let unsubscribe: (() => void) | undefined = undefined;
 
     if (characterId || campaignId) {
       unsubscribe = subscribe({

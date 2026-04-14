@@ -4,7 +4,7 @@ import * as Y from "yjs";
 import { RtcEditorComponent } from "./RtcEditorComponent";
 import { TiptapTransformer } from "@hocuspocus/transformer";
 import { useCreateRefFrom } from "hooks/useCreateRefFrom";
-import { firebaseAuth } from "config/firebase.config";
+import { supabase } from "config/supabase.config";
 
 export interface RtcRichTextEditorProps {
   id: string;
@@ -132,9 +132,12 @@ export function RtcRichTextEditor(props: RtcRichTextEditorProps) {
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     if (yDoc && hasUnsavedChanges) {
-      firebaseAuth.currentUser?.getIdToken(true).then((token) => {
-        window.sessionStorage.setItem("id-token", token);
-      }); // Force refresh of token in case the user exits soon.
+      // Refresh session token so beacon saves can authenticate
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.access_token) {
+          window.sessionStorage.setItem("sb-access-token", session.access_token);
+        }
+      });
       timeout = setTimeout(() => {
         handleSave(id, yDoc);
       }, 30 * 1000);

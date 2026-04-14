@@ -34,7 +34,7 @@ export function LayoutChooserDialog(props: LayoutChooserDialogProps) {
     if (value === ReferenceSidebarLocation.Right) {
       newValue = ReferenceSidebarLocation.Right;
     }
-    updateUser({ "layout.referenceSidebarLocation": newValue });
+    updateUser({ layout: { referenceSidebarLocation: newValue } });
   };
 
   return (

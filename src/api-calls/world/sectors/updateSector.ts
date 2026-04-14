@@ -1,5 +1,5 @@
-import { updateDoc } from "firebase/firestore";
-import { convertToDatabase, getSectorDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { convertToDatabase, SECTORS_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { Sector } from "types/Sector.type";
 
@@ -9,16 +9,13 @@ interface Params {
   sector: Partial<Sector>;
 }
 
-export const updateSector = createApiFunction<Params, void>((params) => {
-  const { worldId, sectorId, sector } = params;
+export const updateSector = createApiFunction<Params, void>(async (params) => {
+  const { sectorId, sector } = params;
 
-  return new Promise((resolve, reject) => {
-    updateDoc(getSectorDoc(worldId, sectorId), convertToDatabase(sector))
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+  const { error } = await supabase
+    .from(SECTORS_TABLE)
+    .update(convertToDatabase(sector as any) as any)
+    .eq("id", sectorId);
+
+  if (error) throw error;
 }, "Failed to update sector.");

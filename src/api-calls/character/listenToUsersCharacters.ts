@@ -1,6 +1,6 @@
-import { onSnapshot, query, where } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { CharacterDocument } from "api-calls/character/_character.type";
-import { getCharacterCollection } from "./_getRef";
+import { CHARACTER_TABLE, CharacterRow, rowToCharacterDocument } from "./_getRef";
 
 export function listenToUsersCharacters(
   uid: string,
@@ -11,26 +11,55 @@ export function listenToUsersCharacters(
   },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onError: (error: any) => void
-) {
+): () => void {
   if (!uid) {
-    return;
+    return () => {};
   }
-  const characterQuery = query(
-    getCharacterCollection(),
-    where("uid", "==", uid)
-  );
-  return onSnapshot(
-    characterQuery,
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "removed") {
-          dataHandler.onDocRemove(change.doc.id);
-        } else {
-          dataHandler.onDocChange(change.doc.id, change.doc.data());
+
+  const fetchAll = () =>
+    supabase
+      .from(CHARACTER_TABLE)
+      .select("*")
+      .eq("uid", uid)
+      .then(({ data, error }) => {
+        if (error) {
+          onError(error);
+          return;
         }
+        if (data) {
+          (data as (CharacterRow & { id: string })[]).forEach((row) =>
+            dataHandler.onDocChange(row.id, rowToCharacterDocument(row))
+          );
+        }
+        dataHandler.onLoaded();
       });
-      dataHandler.onLoaded();
-    },
-    (error) => onError(error)
-  );
+
+  const channel = supabase
+    .channel(`characters:uid:${uid}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: CHARACTER_TABLE,
+        filter: `uid=eq.${uid}`,
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (payload: any) => {
+        if (payload.eventType === "DELETE") {
+          dataHandler.onDocRemove((payload.old as { id: string }).id);
+        } else {
+          const row = payload.new as CharacterRow & { id: string };
+          dataHandler.onDocChange(row.id, rowToCharacterDocument(row));
+        }
+        dataHandler.onLoaded();
+      }
+    )
+    .subscribe();
+
+  fetchAll();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }

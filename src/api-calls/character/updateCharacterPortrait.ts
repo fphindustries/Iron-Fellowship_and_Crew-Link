@@ -1,8 +1,7 @@
-import { updateDoc } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { replaceImage } from "lib/storage.lib";
 import {
   constructCharacterPortraitFolderPath,
-  getCharacterDoc,
 } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
@@ -21,7 +20,7 @@ export const updateCharacterPortrait = createApiFunction<
     params;
 
   return new Promise((resolve, reject) => {
-    let replaceImagePromise: Promise<void> | undefined;
+    let replaceImagePromise: Promise<void>;
 
     if (portrait) {
       replaceImagePromise = replaceImage(
@@ -35,30 +34,30 @@ export const updateCharacterPortrait = createApiFunction<
 
     replaceImagePromise
       .then(() => {
-        updateDoc(
-          getCharacterDoc(characterId),
-          portrait
-            ? {
-                profileImage: {
-                  filename: portrait.name,
-                  position,
-                  scale,
-                },
-              }
-            : {
-                "profileImage.position": position,
-                "profileImage.scale": scale,
-              }
-        )
-          .then(() => {
-            resolve();
-          })
-          .catch((e) => {
-            reject(e);
+        const updateFields = portrait
+          ? {
+              profile_image: {
+                filename: portrait.name,
+                position,
+                scale,
+              },
+            }
+          : {
+              "profile_image.position": position,
+              "profile_image.scale": scale,
+            };
+
+        supabase
+          .from("characters")
+          .update(updateFields as Record<string, unknown> as any)
+          .eq("id", characterId)
+          .then(({ error }: { error: unknown }) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve();
+            }
           });
-      })
-      .catch((e) => {
-        reject(e);
       });
   });
 }, "Failed to update character portrait");

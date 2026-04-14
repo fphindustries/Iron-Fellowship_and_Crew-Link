@@ -1,17 +1,17 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteDoc } from "firebase/firestore";
-import { getHomebrewMoveCategoryDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_MOVE_CATEGORIES_TABLE } from "./_getRef";
 
 export const deleteHomebrewMoveCategory = createApiFunction<
   {
     moveCategoryId: string;
   },
   void
->((params) => {
+>(async (params) => {
   const { moveCategoryId } = params;
-  return new Promise((resolve, reject) => {
-    deleteDoc(getHomebrewMoveCategoryDoc(moveCategoryId))
-      .then(resolve)
-      .catch(reject);
-  });
+  const { error } = await supabase
+    .from(HOMEBREW_MOVE_CATEGORIES_TABLE)
+    .delete()
+    .eq("id", moveCategoryId);
+  if (error) throw error;
 }, "Failed to delete move category.");

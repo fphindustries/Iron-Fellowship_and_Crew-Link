@@ -1,8 +1,7 @@
 import { CreateSliceType } from "stores/store.type";
 import { AuthSlice, AUTH_STATE } from "./auth.slice.type";
 import { defaultAuthSlice } from "./auth.slice.default";
-import { onAuthStateChanged } from "firebase/auth";
-import { firebaseAuth } from "config/firebase.config";
+import { supabase } from "config/supabase.config";
 import { UserDocument } from "api-calls/user/_user.type";
 import { clearAnalyticsUser, setAnalyticsUser } from "lib/analytics.lib";
 import { updateUserDoc } from "api-calls/user/updateUserDoc";
@@ -14,49 +13,45 @@ export const createAuthSlice: CreateSliceType<AuthSlice> = (set, getState) => ({
   ...defaultAuthSlice,
 
   subscribe: () => {
-    return onAuthStateChanged(
-      firebaseAuth,
-      (user) => {
-        set((state) => {
-          if (user) {
-            if (!user.displayName) {
-              state.auth.userNameDialogOpen = true;
-            }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      set((state) => {
+        const user = session?.user;
+        if (user) {
+          const displayName =
+            user.user_metadata?.full_name ??
+            user.user_metadata?.name ??
+            user.email ??
+            "Unknown User";
 
-            const userDoc: UserDocument = {
-              displayName: user.displayName ?? "Unknown User",
-            };
-
-            if (user.photoURL) {
-              userDoc.photoURL = user.photoURL;
-            }
-
-            setAnalyticsUser(user);
-            updateUserDoc({ uid: user.uid, user: userDoc }).catch((e) => {
-              console.error(e);
-            });
-
-            state.auth.user = user;
-            state.auth.uid = user?.uid;
-            state.auth.status = AUTH_STATE.AUTHENTICATED;
-          } else {
-            clearAnalyticsUser();
-            state.auth.user = undefined;
-            state.auth.uid = "";
-            state.auth.status = AUTH_STATE.UNAUTHENTICATED;
+          if (!displayName || displayName === "Unknown User") {
+            state.auth.userNameDialogOpen = true;
           }
-        });
-      },
-      (error) => {
-        console.error(error);
-        set((state) => {
+
+          const userDoc: UserDocument = { displayName };
+          if (user.user_metadata?.avatar_url) {
+            userDoc.photoURL = user.user_metadata.avatar_url as string;
+          }
+
+          setAnalyticsUser({ uid: user.id, email: user.email });
+          updateUserDoc({ uid: user.id, user: userDoc }).catch((e) => {
+            console.error(e);
+          });
+
+          state.auth.user = user;
+          state.auth.uid = user.id;
+          state.auth.status = AUTH_STATE.AUTHENTICATED;
+        } else {
           clearAnalyticsUser();
           state.auth.user = undefined;
           state.auth.uid = "";
           state.auth.status = AUTH_STATE.UNAUTHENTICATED;
-        });
-      }
-    );
+        }
+      });
+    });
+
+    return () => subscription.unsubscribe();
   },
 
   subscribeToUser: (uid) => {
@@ -73,7 +68,7 @@ export const createAuthSlice: CreateSliceType<AuthSlice> = (set, getState) => ({
     });
   },
 
-  updateUserDoc: (doc) => {
+  updateUserDoc: (doc: Partial<UserDocument>) => {
     const uid = getState().auth.uid;
 
     updateUserDocNestedFields({ uid, user: doc }).catch(ignoreApiError);

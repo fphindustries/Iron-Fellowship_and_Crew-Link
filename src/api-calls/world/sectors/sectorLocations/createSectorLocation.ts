@@ -1,5 +1,5 @@
-import { addDoc } from "firebase/firestore";
-import { getSectorLocationsCollection } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { SECTOR_LOCATIONS_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { SectorLocationDocument } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
 
@@ -10,15 +10,18 @@ export const createSectorLocation = createApiFunction<
     location: SectorLocationDocument;
   },
   string
->((params) => {
-  const { worldId, sectorId, location } = params;
-  return new Promise((resolve, reject) => {
-    addDoc(getSectorLocationsCollection(worldId, sectorId), location)
-      .then((doc) => {
-        resolve(doc.id);
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+>(async (params) => {
+  const { sectorId, location } = params;
+
+  const { data, error } = await supabase
+    .from(SECTOR_LOCATIONS_TABLE)
+    .insert({
+      sector_id: sectorId,
+      ...location,
+    } as any)
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data.id;
 }, "Failed to create a new location.");

@@ -1,14 +1,5 @@
-import { firestore } from "config/firebase.config";
-import { doc, DocumentReference } from "firebase/firestore";
-import { UserDocument } from "api-calls/user/_user.type";
+// Deprecated: Firestore document references are no longer used.
+// This file is kept to avoid breaking any stale imports.
+// The Supabase table name for users is defined below.
 
-export function constructUserDocPath(userId: string) {
-  return `/users/${userId}`;
-}
-
-export function getUsersDoc(userId: string) {
-  return doc(
-    firestore,
-    constructUserDocPath(userId)
-  ) as DocumentReference<UserDocument>;
-}
+export const USERS_TABLE = "users";

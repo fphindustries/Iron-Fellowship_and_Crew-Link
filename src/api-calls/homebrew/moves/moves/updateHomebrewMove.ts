@@ -1,17 +1,37 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { PartialWithFieldValue, updateDoc } from "firebase/firestore";
-import { getHomebrewMoveDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_MOVES_TABLE } from "./_getRef";
 import { HomebrewMoveDocument } from "api-calls/homebrew/moves/moves/_homebrewMove.type";
 
 export const updateHomebrewMove = createApiFunction<
   {
     moveId: string;
-    move: PartialWithFieldValue<HomebrewMoveDocument>;
+    move: Partial<HomebrewMoveDocument>;
   },
   void
->((params) => {
+>(async (params) => {
   const { moveId, move } = params;
-  return new Promise((resolve, reject) => {
-    updateDoc(getHomebrewMoveDoc(moveId), move).then(resolve).catch(reject);
-  });
+
+  const updates: Record<string, unknown> = {};
+
+  if ((move as any).categoryId !== undefined) {
+    updates.move_category_id = (move as any).categoryId;
+  }
+
+  const { data: existing, error: fetchError } = await supabase
+    .from(HOMEBREW_MOVES_TABLE)
+    .select("data")
+    .eq("id", moveId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  updates.data = { ...(existing?.data as object ?? {}), ...move };
+
+  const { error } = await supabase
+    .from(HOMEBREW_MOVES_TABLE)
+    .update(updates as any)
+    .eq("id", moveId);
+
+  if (error) throw error;
 }, "Failed to update move.");

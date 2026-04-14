@@ -1,22 +1,16 @@
-import { arrayUnion, updateDoc } from "firebase/firestore";
-import { getCampaignDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { CAMPAIGN_MEMBERS_TABLE } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const addUserToCampaign = createApiFunction<
   { campaignId: string; userId: string },
   void
->((params) => {
-  return new Promise((resolve, reject) => {
-    const { campaignId, userId } = params;
+>(async (params) => {
+  const { campaignId, userId } = params;
 
-    updateDoc(getCampaignDoc(campaignId), {
-      users: arrayUnion(userId),
-    })
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        reject(e);
-      });
-  });
+  const { error } = await supabase
+    .from(CAMPAIGN_MEMBERS_TABLE)
+    .insert({ campaign_id: campaignId, user_id: userId, is_gm: false });
+
+  if (error) throw error;
 }, "Error adding user to campaign.");

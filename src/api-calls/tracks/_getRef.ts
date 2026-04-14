@@ -1,74 +1,36 @@
-import { firestore } from "config/firebase.config";
-import {
-  collection,
-  CollectionReference,
-  doc,
-  DocumentReference,
-  Timestamp,
-} from "firebase/firestore";
-import { TrackDocument } from "./_track.type";
+// Supabase migration: Firestore refs replaced with table name constants.
+
 import { Track } from "types/Track.type";
 
-export function constructCampaignTracksCollection(campaignId: string) {
-  return `/campaigns/${campaignId}/tracks`;
-}
-export function constructCampaignTracksDocPath(
-  campaignId: string,
-  trackId: string
-) {
-  return `/campaigns/${campaignId}/tracks/${trackId}`;
+export const CHARACTER_TRACKS_TABLE = "character_tracks";
+export const CAMPAIGN_TRACKS_TABLE = "campaign_tracks";
+
+export interface TrackRow {
+  id: string;
+  label: string;
+  type: string;
+  description?: string;
+  value: number;
+  status: string;
+  difficulty?: string;
+  segments?: number;
+  segments_filled?: number;
+  oracle_key?: string;
+  created_date: string;
 }
 
-export function getCampaignTracksCollection(campaignId: string) {
-  return collection(
-    firestore,
-    constructCampaignTracksCollection(campaignId)
-  ) as CollectionReference<TrackDocument>;
-}
-export function getCampaignTracksDoc(campaignId: string, trackId: string) {
-  return doc(
-    firestore,
-    constructCampaignTracksDocPath(campaignId, trackId)
-  ) as DocumentReference<TrackDocument>;
-}
-
-export function constructCharacterTracksCollection(characterId: string) {
-  return `/characters/${characterId}/tracks`;
-}
-export function constructCharacterTracksDocPath(
-  characterId: string,
-  trackId: string
-) {
-  return `/characters/${characterId}/tracks/${trackId}`;
-}
-
-export function getCharacterTracksCollection(characterId: string) {
-  return collection(
-    firestore,
-    constructCharacterTracksCollection(characterId)
-  ) as CollectionReference<TrackDocument>;
-}
-export function getCharacterTracksDoc(characterId: string, trackId: string) {
-  return doc(
-    firestore,
-    constructCharacterTracksDocPath(characterId, trackId)
-  ) as DocumentReference<TrackDocument>;
-}
-
-export function convertToDatabase(track: Track): TrackDocument {
-  const { createdDate, ...rest } = track;
-
+export function convertToRow(track: Track): Omit<TrackRow, "id"> {
+  const { createdDate, ...rest } = track as Track & { createdDate: Date };
   return {
     ...rest,
-    createdTimestamp: Timestamp.fromDate(createdDate),
-  } as TrackDocument;
+    created_date: createdDate.toISOString(),
+  } as unknown as Omit<TrackRow, "id">;
 }
 
-export function convertFromDatabase(track: TrackDocument): Track {
-  const { createdTimestamp, ...rest } = track;
-
+export function convertFromRow(row: TrackRow): Track {
+  const { created_date, ...rest } = row;
   return {
     ...rest,
-    createdDate: createdTimestamp.toDate(),
-  };
+    createdDate: new Date(created_date),
+  } as unknown as Track;
 }

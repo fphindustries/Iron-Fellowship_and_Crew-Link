@@ -17,7 +17,7 @@ import { useUpdateQueryStringValueWithoutNavigation } from "hooks/useUpdateQuery
 import { OracleSection } from "./OracleSection";
 import { MovesSection } from "./MovesSection";
 import { AssetsSection } from "./AssetsSection";
-import { arrayUnion } from "firebase/firestore";
+
 import { useSnackbar } from "providers/SnackbarProvider";
 import { ignoreApiError } from "api-calls/createApiFunction";
 
@@ -69,7 +69,7 @@ export function HomebrewEditorPage() {
   }, []);
 
   const uid = useStore(
-    (store) => store.auth.user?.uid,
+    (store) => store.auth.user?.id,
     (a, b) => a === b
   );
 
@@ -80,7 +80,9 @@ export function HomebrewEditorPage() {
   );
   const addSelfAsViewer = useCallback(() => {
     if (homebrewId && uid) {
-      updateHomebrewCollection(homebrewId, { viewers: arrayUnion(uid) })
+      updateHomebrewCollection(homebrewId, {
+            viewers: [...(homebrewDetails?.viewers ?? []).filter((v) => v !== uid), uid],
+          })
         .catch(ignoreApiError)
         .then(() => {
           success("Added collection to your homebrew");

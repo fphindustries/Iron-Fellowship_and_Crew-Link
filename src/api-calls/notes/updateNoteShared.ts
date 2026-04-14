@@ -1,5 +1,4 @@
-import { updateDoc } from "firebase/firestore";
-import { getCampaignNoteDocument, getCharacterNoteDocument } from "./_getRef";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const updateNoteShared = createApiFunction<
@@ -10,24 +9,19 @@ export const updateNoteShared = createApiFunction<
     shared: boolean;
   },
   void
->((params) => {
+>(async (params) => {
   const { campaignId, characterId, noteId, shared } = params;
 
-  return new Promise((resolve, reject) => {
-    if (!campaignId && !characterId) {
-      reject(new Error("Either campaign or character ID must be defined."));
-      return;
-    }
+  if (!campaignId && !characterId) {
+    throw new Error("Either campaign or character ID must be defined.");
+  }
 
-    updateDoc(
-      characterId
-        ? getCharacterNoteDocument(characterId, noteId)
-        : getCampaignNoteDocument(campaignId as string, noteId),
-      {
-        shared,
-      }
-    )
-      .then(() => resolve())
-      .catch(reject);
-  });
+  const table = characterId ? "character_notes" : "campaign_notes";
+
+  const { error } = await supabase
+    .from(table)
+    .update({ shared })
+    .eq("id", noteId);
+
+  if (error) throw error;
 }, "Failed to update note.");

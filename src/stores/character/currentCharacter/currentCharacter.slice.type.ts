@@ -1,8 +1,6 @@
 import { CharacterDocument } from "api-calls/character/_character.type";
 import { AssetSlice } from "./assets/assets.slice.type";
 import { CharacterTracksSlice } from "./tracks/characterTracks.slice.type";
-import { UpdateData } from "firebase/firestore";
-
 export interface CurrentCharacterSliceData {
   currentCharacterId?: string;
   momentumResetValue?: number;
@@ -12,7 +10,7 @@ export interface CurrentCharacterSliceActions {
   setCurrentCharacterId: (characterId?: string) => void;
 
   updateCurrentCharacter: (
-    character: UpdateData<CharacterDocument>
+    character: Partial<CharacterDocument>
   ) => Promise<void>;
   updateCharacterConditionMeter: (
     conditionMeterKey: string,

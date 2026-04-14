@@ -1,18 +1,20 @@
-import { functions } from "config/firebase.config";
-import { httpsCallable } from "firebase/functions";
+import { supabase } from "config/supabase.config";
 
 export function removeSelfAsEditor(
   homebrewCollectionId: string
 ): Promise<boolean> {
   return new Promise((resolve, reject) => {
-    const removeEditor = httpsCallable(
-      functions,
-      "removeCurrentUserAsHomebrewCampaignEditor"
-    );
-
-    removeEditor({ homebrewCollectionId })
-      .then((wasSuccessful) => {
-        resolve(wasSuccessful.data as boolean);
+    supabase.functions
+      .invoke("remove-current-user-as-homebrew-editor", {
+        body: { homebrewCollectionId },
+      })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error(error);
+          reject(error);
+          return;
+        }
+        resolve(data as boolean);
       })
       .catch((e) => {
         console.error(e);

@@ -1,6 +1,6 @@
-import { onSnapshot, or, query, where } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import { HomebrewCollectionDocument } from "api-calls/homebrew/_homebrewCollection.type";
-import { getHomebrewCollection } from "./_getRef";
+import { HOMEBREW_COLLECTION_TABLE } from "./_getRef";
 
 export function listenToHomebrewCollections(
   uid: string,
@@ -11,31 +11,59 @@ export function listenToHomebrewCollections(
   removeCollection: (collectionId: string) => void,
   onError: (error: unknown) => void,
   onLoaded: () => void
-) {
-  const homebrewQuery = query(
-    getHomebrewCollection(),
-    or(
-      where("editors", "array-contains", uid),
-      where("viewers", "array-contains", uid)
-    )
-  );
-  return onSnapshot(
-    homebrewQuery,
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "removed") {
-          removeCollection(change.doc.id);
-        } else {
-          updateCollection(change.doc.id, change.doc.data());
+): () => void {
+  const fetchCollections = () => {
+    supabase
+      .from(HOMEBREW_COLLECTION_TABLE)
+      .select("*")
+      .or(`editors.cs.{"${uid}"},viewers.cs.{"${uid}"}`)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error(error);
+          onError(error);
+          return;
         }
-      });
-      if (snapshot.docChanges.length === 0) {
+        const rows = data ?? [];
+        rows.forEach((row) => {
+          updateCollection(
+            row.id,
+            row as unknown as HomebrewCollectionDocument
+          );
+        });
         onLoaded();
+      });
+  };
+
+  fetchCollections();
+
+  const channel = supabase
+    .channel(`homebrew_collections:${uid}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: HOMEBREW_COLLECTION_TABLE,
+      },
+      (payload) => {
+        if (payload.eventType === "DELETE") {
+          removeCollection((payload.old as any).id);
+        } else {
+          const row = payload.new as any;
+          const editors: string[] = row.editors ?? [];
+          const viewers: string[] = row.viewers ?? [];
+          if (editors.includes(uid) || viewers.includes(uid)) {
+            updateCollection(row.id, row as unknown as HomebrewCollectionDocument);
+          } else {
+            // User no longer has access
+            removeCollection(row.id);
+          }
+        }
       }
-    },
-    (error) => {
-      console.error(error);
-      onError(error);
-    }
-  );
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }

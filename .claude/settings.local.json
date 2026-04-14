@@ -40,6 +40,8 @@
       "Bash(node -e \"console.log\\(''@mui/material installed:'', require\\(''./node_modules/@mui/material/package.json''\\).version\\)\")",
       "Bash(node -e \"console.log\\(require\\(''c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@mui/material/package.json''\\).version\\)\")",
       "Bash(find *)",
+      "Bash(sed *)",
+      "Bash(grep *)",
       "Bash(npm view:*)",
       "Bash(node -e \"console.log\\(require\\(''./node_modules/openai/package.json''\\).version\\)\")",
       "Bash(grep -rl httpsCallable c:/Repos/Iron-Fellowship_and_Crew-Link/src --include=*.ts)",
@@ -70,7 +72,20 @@
       "Bash(grep -r \"markdown\\\\|react-markdown\\\\|ReactMarkdown\\\\|remark\\\\|rehype\" c:ReposIron-Fellowship_and_Crew-Linksrc --include=*.ts --include=*.tsx -l)",
       "Bash(node -e \":*)",
       "Bash(grep -r compel c:/Repos/Iron-Fellowship_and_Crew-Link/node_modules/@datasworn --include=*.json -l)",
-      "Bash(ls c:/Repos/Iron-Fellowship_and_Crew-Link/src/pages/Character/CharacterSheetPage/Tabs/SessionLogSection/*.tsx)"
+      "Bash(ls c:/Repos/Iron-Fellowship_and_Crew-Link/src/pages/Character/CharacterSheetPage/Tabs/SessionLogSection/*.tsx)",
+      "Bash(xargs head:*)",
+      "Bash(grep -l \"supabase\" /c/Repos/Iron-Fellowship_and_Crew-Link/src/api-calls/user/*.ts /c/Repos/Iron-Fellowship_and_Crew-Link/src/api-calls/character/*.ts /c/Repos/Iron-Fellowship_and_Crew-Link/src/api-calls/combat/*.ts)",
+      "Bash(grep -l \"firebase\" /c/Repos/Iron-Fellowship_and_Crew-Link/src/api-calls/user/*.ts /c/Repos/Iron-Fellowship_and_Crew-Link/src/api-calls/character/*.ts /c/Repos/Iron-Fellowship_and_Crew-Link/src/api-calls/combat/*.ts)",
+      "Bash(grep -v \"\\\\.type\\\\.ts$\")",
+      "Bash(xargs cat:*)",
+      "Bash(sed -i 's/import { deleteField } from \"firebase\\\\/firestore\";//g' /c/Repos/Iron-Fellowship_and_Crew-Link/src/pages/Homebrew/HomebrewEditorPage/OracleSection/Sections/OracleCollectionsSection/MoveOracleCollectionDialog.tsx)",
+      "Bash(sed -i 's/: { parentOracleCollectionId: deleteField\\(\\) }/: { parentOracleCollectionId: null }/g' /c/Repos/Iron-Fellowship_and_Crew-Link/src/pages/Homebrew/HomebrewEditorPage/OracleSection/Sections/OracleCollectionsSection/MoveOracleCollectionDialog.tsx)",
+      "Bash(sed -i '/^import { FirebaseError } from \"firebase\\\\/app\";$/d' /c/Repos/Iron-Fellowship_and_Crew-Link/src/components/shared/LoginOrSignupPage/LoginOrSignupPage.tsx)",
+      "Bash(sed -i 's/\\(e: FirebaseError\\)/\\(e: { message?: string }\\)/g' /c/Repos/Iron-Fellowship_and_Crew-Link/src/components/shared/LoginOrSignupPage/LoginOrSignupPage.tsx)",
+      "Bash(sed -n '440,450p' /c/Repos/Iron-Fellowship_and_Crew-Link/src/lib/database.types.ts)",
+      "Bash(sed -n '1129,1140p' /c/Repos/Iron-Fellowship_and_Crew-Link/src/lib/database.types.ts)",
+      "Bash(sed -n '30,45p' /c/Repos/Iron-Fellowship_and_Crew-Link/src/components/shared/Layout/LayoutChooserDialog.tsx)",
+      "Bash(sed -n '30,45p' /c/Repos/Iron-Fellowship_and_Crew-Link/src/pages/Character/CharacterSheetPage/noteLayout/CharacterSidebar/CharacterPanel/CharacterExperience.tsx)"
     ]
   }
 }

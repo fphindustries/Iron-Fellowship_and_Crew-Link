@@ -1,9 +1,8 @@
-import { deleteDoc, getDocs } from "firebase/firestore";
+import { supabase } from "config/supabase.config";
 import {
-  getLocationCollection,
-  getLocationDoc,
-  getPrivateDetailsLocationDoc,
-  getPublicNotesLocationDoc,
+  LOCATIONS_TABLE,
+  LOCATION_PUBLIC_NOTES_TABLE,
+  LOCATION_PRIVATE_NOTES_TABLE,
 } from "./_getRef";
 import { createApiFunction } from "api-calls/createApiFunction";
 
@@ -11,29 +10,33 @@ interface Params {
   worldId: string;
 }
 
-export const deleteAllLocations = createApiFunction<Params, void>((params) => {
-  const { worldId } = params;
+export const deleteAllLocations = createApiFunction<Params, void>(
+  async (params) => {
+    const { worldId } = params;
 
-  return new Promise((resolve, reject) => {
-    const promises: Promise<unknown>[] = [];
-    getDocs(getLocationCollection(worldId))
-      .then((docs) => {
-        docs.forEach((doc) => {
-          promises.push(deleteDoc(getLocationDoc(worldId, doc.id)));
-          promises.push(
-            deleteDoc(getPrivateDetailsLocationDoc(worldId, doc.id))
-          );
-          promises.push(deleteDoc(getPublicNotesLocationDoc(worldId, doc.id)));
-        });
-      })
-      .catch((e) => {
-        reject(e);
-      });
+    // Fetch all location ids for this world first
+    const { data: locations, error: fetchError } = await supabase
+      .from(LOCATIONS_TABLE)
+      .select("id")
+      .eq("world_id", worldId);
 
-    Promise.all(promises)
-      .then(() => resolve())
-      .catch((e) => {
-        reject(e);
-      });
-  });
-}, "Failed to delete locations.");
+    if (fetchError) throw fetchError;
+    if (!locations || locations.length === 0) return;
+
+    const locationIds = locations.map((l) => l.id);
+
+    // Delete notes for all locations in parallel
+    await Promise.all([
+      supabase.from(LOCATION_PUBLIC_NOTES_TABLE).delete().in("location_id", locationIds),
+      supabase.from(LOCATION_PRIVATE_NOTES_TABLE).delete().in("location_id", locationIds),
+    ]);
+
+    const { error } = await supabase
+      .from(LOCATIONS_TABLE)
+      .delete()
+      .eq("world_id", worldId);
+
+    if (error) throw error;
+  },
+  "Failed to delete locations."
+);

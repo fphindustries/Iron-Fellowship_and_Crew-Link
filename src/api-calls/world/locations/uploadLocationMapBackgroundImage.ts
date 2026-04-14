@@ -1,6 +1,6 @@
-import { constructLocationImagesPath, getLocationDoc } from "./_getRef";
-import { replaceImage } from "lib/storage.lib";
-import { updateDoc } from "firebase/firestore";
+import { constructLocationImagesPath, LOCATIONS_TABLE } from "./_getRef";
+import { replaceImage, uploadImage } from "lib/storage.lib";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 
 export const uploadLocationMapBackgroundImage = createApiFunction<
@@ -11,25 +11,37 @@ export const uploadLocationMapBackgroundImage = createApiFunction<
     oldImageFilename?: string;
   },
   void
->((params) => {
+>(async (params) => {
   const { worldId, locationId, image, oldImageFilename } = params;
 
-  return new Promise((resolve, reject) => {
-    replaceImage(
-      constructLocationImagesPath(worldId, locationId),
-      oldImageFilename,
-      image
-    )
-      .then(() => {
-        const filename = image.name;
-        updateDoc(getLocationDoc(worldId, locationId), {
-          mapBackgroundImageFilename: filename,
-        })
-          .then(() => {
-            resolve();
-          })
-          .catch(reject);
-      })
-      .catch(reject);
-  });
+  const folderPath = constructLocationImagesPath(worldId, locationId);
+
+  if (oldImageFilename) {
+    await replaceImage(folderPath, oldImageFilename, image);
+  } else {
+    await uploadImage(folderPath, image);
+  }
+
+  const filename = image.name;
+
+  // Fetch current data to merge mapBackgroundImageFilename
+  const { data, error: fetchError } = await supabase
+    .from(LOCATIONS_TABLE)
+    .select("data")
+    .eq("id", locationId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  const currentData = (data?.data as Record<string, unknown>) ?? {};
+
+  const { error } = await supabase
+    .from(LOCATIONS_TABLE)
+    .update({
+      data: { ...currentData, mapBackgroundImageFilename: filename },
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", locationId);
+
+  if (error) throw error;
 }, "Failed to upload image");

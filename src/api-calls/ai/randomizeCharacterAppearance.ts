@@ -1,5 +1,4 @@
-import { functions } from "config/firebase.config";
-import { httpsCallable } from "firebase/functions";
+import { supabase } from "config/supabase.config";
 import { createApiFunction } from "api-calls/createApiFunction";
 import { RandomizeAppearanceRequest, RandomizeAppearanceOutput } from "./_ai.type";
 import { recordAiCall } from "stores/aiDebug";
@@ -10,12 +9,12 @@ export const randomizeCharacterAppearance = createApiFunction<
 >(
   async (params) => {
     recordAiCall("randomizeCharacterAppearance", params);
-    const fn = httpsCallable<RandomizeAppearanceRequest, RandomizeAppearanceOutput>(
-      functions,
-      "randomizeCharacterAppearance"
+    const { data, error } = await supabase.functions.invoke<RandomizeAppearanceOutput>(
+      "randomize-character-appearance",
+      { body: params }
     );
-    const result = await fn(params);
-    return result.data;
+    if (error) throw error;
+    return data as RandomizeAppearanceOutput;
   },
   "Failed to generate appearance suggestions. Please try again."
 );

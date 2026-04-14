@@ -1,21 +1,31 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { PartialWithFieldValue, updateDoc } from "firebase/firestore";
-import { getHomebrewLegacyTrackDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { HOMEBREW_LEGACY_TRACKS_TABLE } from "./_getRef";
 import { HomebrewLegacyTrackDocument } from "api-calls/homebrew/rules/legacyTracks/_homebrewLegacyTrack.type";
 
 export const updateHomebrewLegacyTrack = createApiFunction<
   {
     legacyTrackId: string;
-    legacyTrack: PartialWithFieldValue<HomebrewLegacyTrackDocument>;
+    legacyTrack: Partial<HomebrewLegacyTrackDocument>;
   },
   void
->((params) => {
+>(async (params) => {
   const { legacyTrackId, legacyTrack } = params;
-  return new Promise((resolve, reject) => {
-    updateDoc(getHomebrewLegacyTrackDoc(legacyTrackId), legacyTrack)
-      .then(() => {
-        resolve();
-      })
-      .catch(reject);
-  });
+
+  const { data: existing, error: fetchError } = await supabase
+    .from(HOMEBREW_LEGACY_TRACKS_TABLE)
+    .select("data")
+    .eq("id", legacyTrackId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  const updatedData = { ...(existing?.data as object ?? {}), ...legacyTrack };
+
+  const { error } = await supabase
+    .from(HOMEBREW_LEGACY_TRACKS_TABLE)
+    .update({ data: updatedData })
+    .eq("id", legacyTrackId);
+
+  if (error) throw error;
 }, "Failed to update legacy track.");

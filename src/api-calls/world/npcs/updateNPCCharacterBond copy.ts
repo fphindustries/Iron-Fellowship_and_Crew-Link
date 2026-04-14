@@ -1,6 +1,6 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { updateDoc } from "firebase/firestore";
-import { getNPCDoc } from "./_getRef";
+import { supabase } from "config/supabase.config";
+import { NPCS_TABLE } from "./_getRef";
 
 export const updateNPCCharacterBondProgress = createApiFunction<
   {
@@ -10,15 +10,31 @@ export const updateNPCCharacterBondProgress = createApiFunction<
     progress: number;
   },
   void
->((params) => {
-  const { worldId, npcId, characterId, progress } = params;
+>(async (params) => {
+  const { npcId, characterId, progress } = params;
 
-  return new Promise((resolve, reject) => {
-    updateDoc(getNPCDoc(worldId, npcId), {
-      [`characterBondProgress.${characterId}`]: progress,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any)
-      .then(() => resolve())
-      .catch(reject);
-  });
+  // Fetch current data JSONB, merge the new bond progress entry, then write back
+  const { data: existing, error: fetchError } = await supabase
+    .from(NPCS_TABLE)
+    .select("data")
+    .eq("id", npcId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  const currentData = (existing?.data ?? {}) as Record<string, unknown>;
+  const characterBondProgress = {
+    ...((currentData.characterBondProgress as Record<string, number>) ?? {}),
+    [characterId]: progress,
+  };
+
+  const { error } = await supabase
+    .from(NPCS_TABLE)
+    .update({
+      data: { ...currentData, characterBondProgress },
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", npcId);
+
+  if (error) throw error;
 }, "Error updating npc bond progress.");

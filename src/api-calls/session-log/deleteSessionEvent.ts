@@ -1,10 +1,5 @@
 import { createApiFunction } from "api-calls/createApiFunction";
-import { deleteDoc } from "firebase/firestore";
-import {
-  constructCampaignSessionsCollectionPath,
-  constructCharacterSessionsCollectionPath,
-  getSessionEventDoc,
-} from "./_getRef";
+import { supabase } from "config/supabase.config";
 
 export const deleteSessionEvent = createApiFunction<
   {
@@ -15,20 +10,22 @@ export const deleteSessionEvent = createApiFunction<
   },
   void
 >((params) => {
-  const { sessionId, eventId, characterId, campaignId } = params;
+  const { eventId, campaignId } = params;
 
   return new Promise((resolve, reject) => {
-    if (!characterId && !campaignId) {
-      reject(new Error("Either campaign or character ID must be defined."));
+    if (!campaignId) {
+      reject(new Error("Campaign ID must be defined to delete a session event."));
       return;
     }
 
-    const parentPath = campaignId
-      ? constructCampaignSessionsCollectionPath(campaignId)
-      : constructCharacterSessionsCollectionPath(characterId as string);
-
-    deleteDoc(getSessionEventDoc(parentPath, sessionId, eventId))
-      .then(() => resolve())
-      .catch((e) => reject(e));
+    Promise.resolve(
+      supabase.from("session_events").delete().eq("id", eventId)
+    ).then(({ error }) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
   });
 }, "Failed to delete session event.");

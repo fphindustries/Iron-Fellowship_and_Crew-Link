@@ -1,15 +1,20 @@
-import { Bytes, Timestamp } from "firebase/firestore";
-import { GMLocation, Location } from "types/Locations.type";
+// Legacy Firestore document types — no longer used in application code.
+// Kept as reference only.
 
-export type LocationDocument = Omit<Location, "createdDate" | "updatedDate"> & {
-  createdTimestamp: Timestamp;
-  updatedTimestamp: Timestamp;
-};
+export interface LocationDocument {
+  name: string;
+  description?: string;
+  sharedWithPlayers?: boolean;
+  imageFilenames?: string[];
+  createdTimestamp: string;
+  updatedTimestamp: string;
+}
 
-export type GMLocationDocument = Omit<GMLocation, "gmNotes"> & {
-  gmNotes: Bytes;
-};
+export interface GMLocationDocument {
+  gmNotes?: string; // Base64-encoded Uint8Array
+  fields?: Record<string, unknown>;
+}
 
 export interface LocationNotesDocument {
-  notes: Bytes;
+  notes?: string; // Base64-encoded Uint8Array
 }
