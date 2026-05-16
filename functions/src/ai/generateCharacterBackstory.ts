@@ -19,7 +19,7 @@ export const generateCharacterBackstory = onCall<
       return null;
     }
 
-    const { prompt, worldContext } = request.data;
+    const { prompt, pathNames, role, worldContext } = request.data;
     if (!prompt?.trim()) {
       logger.warn("generateCharacterBackstory: empty prompt");
       return null;
@@ -34,9 +34,16 @@ export const generateCharacterBackstory = onCall<
       "Keep it simple and evocative — leave room for the story to unfold in play.",
       "Do not mention game mechanics or asset names.",
       "Write in second person (\"you\").",
+      "Weave the character's role and path skills naturally into the narrative without naming them as game mechanics.",
     ].join("\n");
 
     const userParts = [prompt];
+    if (role) {
+      userParts.push("", `Character role: ${role}`);
+    }
+    if (pathNames && pathNames.length > 0) {
+      userParts.push("", `Character paths (skills/background): ${pathNames.join(", ")}`);
+    }
     appendWorldContextLines(userParts, worldContext);
 
     const backstory = await callTextGeneration({

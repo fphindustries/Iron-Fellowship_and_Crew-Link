@@ -18,6 +18,9 @@ export function AssetsSection() {
   );
 
   // Identity fields
+  const storedRole = useStore(
+    (store) => store.characters.currentCharacter.currentCharacter?.role ?? ""
+  );
   const storedPronouns = useStore(
     (store) => store.characters.currentCharacter.currentCharacter?.pronouns ?? ""
   );
@@ -31,20 +34,22 @@ export function AssetsSection() {
     (store) => store.characters.currentCharacter.updateCurrentCharacter
   );
 
+  const [role, setRole] = useState(storedRole);
   const [pronouns, setPronouns] = useState(storedPronouns);
   const [callsign, setCallsign] = useState(storedCallsign);
   const [characteristics, setCharacteristics] = useState(storedCharacteristics);
   const [identitySaving, setIdentitySaving] = useState(false);
 
   useEffect(() => {
+    setRole(storedRole);  
     setPronouns(storedPronouns);
     setCallsign(storedCallsign);
     setCharacteristics(storedCharacteristics);
-  }, [storedPronouns, storedCallsign, storedCharacteristics]);
+  }, [storedRole, storedPronouns, storedCallsign, storedCharacteristics]);
 
   const handleIdentitySave = () => {
     setIdentitySaving(true);
-    updateCurrentCharacter({ pronouns, callsign, characteristics })
+    updateCurrentCharacter({ role, pronouns, callsign, characteristics })
       .catch(ignoreApiError)
       .finally(() => setIdentitySaving(false));
   };
@@ -159,6 +164,14 @@ export function AssetsSection() {
       <Box px={2} pt={2} pb={1}>
         <Box display="flex" gap={2} flexWrap="wrap" mb={1.5}>
           <TextField
+            label="Role"
+            size="small"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            placeholder="e.g. Pilot, Engineer"
+            sx={{ maxWidth: 180 }}
+          />
+          <TextField
             label="Pronouns"
             size="small"
             value={pronouns}
@@ -184,9 +197,9 @@ export function AssetsSection() {
           fullWidth
           multiline
           minRows={2}
-          sx={{ maxWidth: 540, mb: 1.5 }}
+          sx={{ mb: 1.5 }}
         />
-        <Box display="flex" justifyContent="flex-end" sx={{ maxWidth: 540 }}>
+        <Box display="flex" justifyContent="flex-end" >
           <Button
             variant="contained"
             size="small"

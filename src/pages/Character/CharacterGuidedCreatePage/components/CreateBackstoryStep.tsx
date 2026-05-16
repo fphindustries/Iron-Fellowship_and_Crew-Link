@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Stack,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -27,10 +26,12 @@ type Method = "write" | "table" | "random" | "custom";
 
 export interface CreateBackstoryStepProps {
   onComplete: (backstory: string) => void;
+  pathNames?: string[];
+  role?: string;
   worldContext?: WorldContext;
 }
 
-export function CreateBackstoryStep({ onComplete, worldContext }: CreateBackstoryStepProps) {
+export function CreateBackstoryStep({ onComplete, pathNames, role, worldContext }: CreateBackstoryStepProps) {
   const showAi = useAiGuide();
 
   const [method, setMethod] = useState<Method>("write");
@@ -56,7 +57,7 @@ export function CreateBackstoryStep({ onComplete, worldContext }: CreateBackstor
     setAiError(null);
     setBackstory("");
     try {
-      const result = await generateCharacterBackstory({ prompt, worldContext });
+      const result = await generateCharacterBackstory({ prompt, pathNames, role, worldContext });
       setBackstory(result?.backstory ?? "");
     } catch {
       setAiError("Failed to generate backstory. Please try again.");
@@ -98,28 +99,28 @@ export function CreateBackstoryStep({ onComplete, worldContext }: CreateBackstor
         value={method}
         exclusive
         onChange={handleMethodChange}
-        sx={{ flexWrap: "wrap", gap: 1, mb: 3 }}
+        sx={(theme) => ({
+          ["& button"]: {
+            borderColor: theme.palette.grey[500],
+          },
+        })}
       >
         <ToggleButton value="write" sx={{ gap: 0.5 }}>
           <EditIcon fontSize="small" />
           Write My Own
         </ToggleButton>
-        {showAi && (
-          <>
-            <ToggleButton value="table" sx={{ gap: 0.5 }}>
-              <ListAltIcon fontSize="small" />
-              Pick a Prompt
-            </ToggleButton>
-            <ToggleButton value="random" sx={{ gap: 0.5 }}>
-              <CasinoIcon fontSize="small" />
-              Roll Randomly
-            </ToggleButton>
-            <ToggleButton value="custom" sx={{ gap: 0.5 }}>
-              <AutoAwesomeIcon fontSize="small" />
-              Custom Prompt
-            </ToggleButton>
-          </>
-        )}
+        <ToggleButton value="table" sx={{ gap: 0.5 }}>
+          <ListAltIcon fontSize="small" />
+          Pick a Prompt
+        </ToggleButton>
+        <ToggleButton value="random" sx={{ gap: 0.5 }}>
+          <CasinoIcon fontSize="small" />
+          Roll Randomly
+        </ToggleButton>
+        <ToggleButton value="custom" sx={{ gap: 0.5 }}>
+          <AutoAwesomeIcon fontSize="small" />
+          Custom Prompt
+        </ToggleButton>
       </ToggleButtonGroup>
 
       {/* Write your own */}
@@ -177,14 +178,7 @@ export function CreateBackstoryStep({ onComplete, worldContext }: CreateBackstor
       {/* AI-generated editable result (shown for non-write methods) */}
       {method !== "write" && showAi && (
         <Box mt={2}>
-          {aiLoading ? (
-            <Stack direction="row" alignItems="center" spacing={1} mb={2}>
-              <CircularProgress size={16} />
-              <Typography variant="body2" color="text.secondary">
-                Generating backstory…
-              </Typography>
-            </Stack>
-          ) : (
+          {
             backstory && (
               <>
                 <Typography variant="subtitle2" gutterBottom>
@@ -200,7 +194,7 @@ export function CreateBackstoryStep({ onComplete, worldContext }: CreateBackstor
                 />
               </>
             )
-          )}
+          }
         </Box>
       )}
 

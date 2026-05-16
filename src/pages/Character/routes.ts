@@ -33,7 +33,9 @@ export function constructCharacterGuidedCreatePath() {
 }
 
 export function constructCharacterGuidedCreateInCampaignUrl(campaignId: string) {
-  return `${basePaths[BASE_ROUTES.CHARACTER]}/${characterPaths[CHARACTER_ROUTES.GUIDED_CREATE]}?campaignId=${campaignId}`;
+  return `${basePaths[BASE_ROUTES.CHARACTER]}/${
+    characterPaths[CHARACTER_ROUTES.GUIDED_CREATE]
+  }?campaignId=${campaignId}`;
 }
 
 export function constructCharacterCreateInCampaignUrl(campaignId: string) {
@@ -41,6 +43,7 @@ export function constructCharacterCreateInCampaignUrl(campaignId: string) {
     characterPaths[CHARACTER_ROUTES.CREATE]
   }?campaignId=${campaignId}`;
 }
+
 
 export function constructCharacterCardUrl(characterId: string) {
   return `${basePaths[BASE_ROUTES.CHARACTER]}/${characterId}/card`;

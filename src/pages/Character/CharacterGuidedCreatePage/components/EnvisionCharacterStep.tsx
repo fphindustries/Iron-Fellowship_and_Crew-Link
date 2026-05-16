@@ -22,6 +22,39 @@ import { WorldContext } from "api-calls/ai/_ai.type";
 import { useStore } from "stores/store";
 
 const PRONOUN_OPTIONS = ["he/him", "she/her", "they/them", "xe/xem"];
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
+
+async function compressBase64ToFile(base64: string, filename: string): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      // Scale down to at most 512px on the longest side
+      const MAX_DIM = 512;
+      const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Try decreasing quality until under the size limit
+      const tryQuality = (quality: number) => {
+        canvas.toBlob((blob) => {
+          if (!blob) { reject(new Error("Failed to compress image")); return; }
+          if (blob.size <= MAX_FILE_SIZE || quality <= 0.1) {
+            resolve(new File([blob], filename, { type: "image/jpeg" }));
+          } else {
+            tryQuality(Math.round((quality - 0.1) * 10) / 10);
+          }
+        }, "image/jpeg", quality);
+      };
+      tryQuality(0.85);
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = `data:image/png;base64,${base64}`;
+  });
+}
 const CUSTOM_PRONOUNS_VALUE = "custom";
 
 export interface EnvisionCharacterStepProps {
@@ -35,6 +68,7 @@ export interface EnvisionCharacterStepProps {
   pathNames: string[];
   backstory: string;
   backgroundVow: string;
+  role?: string;
   initialLook?: string;
   initialAct?: string;
   initialWear?: string;
@@ -47,6 +81,7 @@ export function EnvisionCharacterStep({
   pathNames,
   backstory,
   backgroundVow,
+  role,
   initialLook,
   initialAct,
   initialWear,
@@ -131,6 +166,7 @@ export function EnvisionCharacterStep({
         wear,
         pronouns: effectivePronouns || undefined,
         paths: pathNames,
+        role: role || undefined,
         portraitStyleAnchor,
       });
       if (result?.images?.length) {
@@ -145,20 +181,14 @@ export function EnvisionCharacterStep({
 
   const effectivePronouns = showCustom ? customPronounsText : pronouns;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     let portrait:
       | { image: File; scale: number; position: { x: number; y: number } }
       | undefined;
 
     if (selectedImageIndex !== null && generatedImages[selectedImageIndex]) {
       const base64 = generatedImages[selectedImageIndex];
-      const bytes = atob(base64);
-      const arr = new Uint8Array(bytes.length);
-      for (let i = 0; i < bytes.length; i++) {
-        arr[i] = bytes.charCodeAt(i);
-      }
-      const blob = new Blob([arr], { type: "image/png" });
-      const file = new File([blob], "ai-portrait.png", { type: "image/png" });
+      const file = await compressBase64ToFile(base64, "ai-portrait.jpg");
       portrait = { image: file, scale: 1, position: { x: 0.5, y: 0.5 } };
     }
 
@@ -215,8 +245,11 @@ export function EnvisionCharacterStep({
           exclusive
           onChange={handlePronounsChange}
           size="small"
-          sx={{ flexWrap: "wrap", gap: 0.5 }}
-        >
+          sx={(theme) => ({
+            ["& button"]: {
+              borderColor: theme.palette.grey[500],
+            },
+          })}        >
           {PRONOUN_OPTIONS.map((p) => (
             <ToggleButton key={p} value={p}>
               {p}
@@ -283,8 +316,8 @@ export function EnvisionCharacterStep({
             {generatedImages.length > 0
               ? "Regenerate Headshots"
               : portraitLoading
-              ? "Generating…"
-              : "Generate Headshots"}
+                ? "Generating…"
+                : "Generate Headshots"}
           </Button>
 
           {portraitError && (

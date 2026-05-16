@@ -41,11 +41,12 @@ const PATH_RECOMMENDATION_SCHEMA = {
         type: "object",
         properties: {
           backgroundName: { type: "string" },
+          roleName: { type: "string" },
           asset1: { type: "string" },
           asset2: { type: "string" },
           reasoning: { type: "string" },
         },
-        required: ["backgroundName", "asset1", "asset2", "reasoning"],
+        required: ["backgroundName", "roleName", "asset1", "asset2", "reasoning"],
         additionalProperties: false,
       },
     },
@@ -79,6 +80,7 @@ export const recommendCharacterPaths = onCall<
       "Given a character concept description, recommend exactly 3 backgrounds from the provided table that best fit.",
       "Use ONLY background names and asset names from the table — do not invent new ones.",
       "Return asset names exactly as they appear in the table (e.g. 'ACE', 'LORE HUNTER').",
+      "For each recommendation also provide a short roleName (1-3 words) that captures the character's role or identity based on the description — this can be the background name or a more specific title inspired by the concept.",
       "Keep reasoning brief (1-2 sentences) and focused on why the background fits the concept.",
     ].join("\n");
 

@@ -26,6 +26,7 @@ export interface ReviewFormData {
   look: string;
   act: string;
   wear: string;
+  role: string;
   pronouns: string;
   name: string;
   callsign: string;
@@ -137,6 +138,12 @@ export function ReviewStep({
             <TableRow>
               <TableCell sx={{ fontWeight: "bold" }}>Final Asset</TableCell>
               <TableCell>{finalAssetName}</TableCell>
+            </TableRow>
+          )}
+          {formData.role && (
+            <TableRow>
+              <TableCell sx={{ fontWeight: "bold" }}>Role</TableCell>
+              <TableCell>{formData.role}</TableCell>
             </TableRow>
           )}
           {formData.backstory && (

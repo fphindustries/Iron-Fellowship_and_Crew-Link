@@ -19,7 +19,7 @@ export const generateCharacterVow = onCall<
       return null;
     }
 
-    const { paths, backstory, prompt, worldContext } = request.data;
+    const { paths, backstory, prompt, role, worldContext } = request.data;
 
     logger.info("generateCharacterVow called", { uid });
 
@@ -31,14 +31,16 @@ export const generateCharacterVow = onCall<
       "Keep it to one sentence, evocative and personal but simple enough to leave room for the story to develop.",
       "Do not mention game mechanics, asset names, or difficulty ratings.",
       "Match the tone: personal struggle against a vast, dangerous cosmos.",
+      "Root the vow in the character's role and skills where it feels natural.",
     ].join("\n");
 
+    const roleLine = role ? `Character role: ${role}` : "";
     const pathsLine =
       paths.length > 0 ? `Character paths: ${paths.join(", ")}.` : "";
     const backstoryLine = backstory ? `Character backstory: ${backstory}` : "";
     const promptLine = prompt ? `Additional context: ${prompt}` : "";
 
-    const userParts = [pathsLine, backstoryLine, promptLine].filter(Boolean);
+    const userParts = [roleLine, pathsLine, backstoryLine, promptLine].filter(Boolean);
     appendWorldContextLines(userParts, worldContext);
 
     const vow = await callTextGeneration({

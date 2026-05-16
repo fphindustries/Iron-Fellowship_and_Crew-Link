@@ -21,29 +21,29 @@ export const generateCharacterPortraits = onCall<
       return null;
     }
 
-    const { look, act, wear, pronouns, paths, portraitStyleAnchor } = request.data;
+    const { look, wear, pronouns, role } = request.data;
 
     logger.info("generateCharacterPortraits called", { uid });
 
     const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
-    const pathsLine =
-      paths.length > 0 ? ` Character roles: ${paths.join(", ")}.` : "";
     const pronounsLine = pronouns ? ` Pronouns: ${pronouns}.` : "";
-    const styleAnchorLine = portraitStyleAnchor
-      ? ` Art style: ${portraitStyleAnchor}.`
-      : "";
 
     const prompt = [
-      "Ironsworn Starforged sci-fi RPG character portrait.",
-      "Close-up portrait, face clearly visible and centered, head and shoulders only.",
+      `Close-up mugshot portrait of a ${role ?? "character"} in a gritty cassette futurism sci-fi universe.`,
+      "Style: analog sci-fi, worn industrial aesthetic, retro-future, practical tech, tactile materials, no sleek modern design.",
+      "Framing: tight head, centered composition, subject facing camera.",
+      "Lighting: strong directional lighting with high contrast, dramatic shadows, face clearly readable.",
+      "Background: simple, bright, slightly textured or blurred spaceship interior, minimal detail.",
+      "Design priority for small thumbnail (64x64): bold silhouette, clear facial structure, one or two distinctive visual features, no clutter, no busy background.",
+      "Details: visible wear, scratches, fabric texture, subtle grime, realistic materials.",
+      "Color palette: muted tones with one accent color.",
+      "Camera: portrait lens, shallow depth of field, cinematic.",
       `Appearance: ${look}.`,
-      `Personality: ${act}.`,
       `Wearing: ${wear}.`,
-      pathsLine,
       pronounsLine,
-      styleAnchorLine,
-      "Digital art, dramatic lighting, square composition, no text, no watermarks.",
+      // styleAnchorLine,
+      "--no full body, no complex background, no multiple characters, no text, no logos",
     ]
       .filter(Boolean)
       .join(" ");

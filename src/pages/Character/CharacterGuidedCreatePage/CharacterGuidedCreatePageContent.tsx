@@ -10,6 +10,7 @@ import {
   StepLabel,
   Stepper,
   Paper,
+  Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { PageContent, PageHeader } from "components/shared/Layout";
@@ -17,8 +18,9 @@ import { useAppName } from "hooks/useAppName";
 import { Head } from "providers/HeadProvider/Head";
 import { useFieldArray, useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "stores/store";
+import { CampaignDocument } from "api-calls/campaign/_campaign.type";
 import { AssetDocument } from "api-calls/assets/_asset.type";
 import { addCharacterToCampaign } from "api-calls/campaign/addCharacterToCampaign";
 import {
@@ -31,9 +33,9 @@ import { addNote } from "api-calls/notes/addNote";
 import { updateNote } from "api-calls/notes/updateNote";
 import * as Y from "yjs";
 import { TiptapTransformer } from "@hocuspocus/transformer";
-import { ChoosePathsStep } from "pages/Character/CharacterCreatePage/components/guided/ChoosePathsStep";
-import { CreateBackstoryStep } from "pages/Character/CharacterCreatePage/components/guided/CreateBackstoryStep";
-import { CreateBackgroundVowStep } from "pages/Character/CharacterCreatePage/components/guided/CreateBackgroundVowStep";
+import { ChoosePathsStep } from "./components/ChoosePathsStep";
+import { CreateBackstoryStep } from "./components/CreateBackstoryStep";
+import { CreateBackgroundVowStep } from "./components/CreateBackgroundVowStep";
 import { ChooseFinalAssetStep } from "./components/ChooseFinalAssetStep";
 import { SetStatsStep } from "./components/SetStatsStep";
 import { EnvisionCharacterStep } from "./components/EnvisionCharacterStep";
@@ -80,6 +82,8 @@ export function CharacterGuidedCreatePageContent() {
   const worldMap = useStore((s) => s.worlds.worldMap);
   const worldTruthDefs = useStore((s) => s.rules.worldTruths);
   const createCharacter = useStore((store) => store.characters.createCharacter);
+  const campaignMap = useStore((s) => s.campaigns.campaignMap);
+  const getCampaign = useStore((s) => s.campaigns.getCampaign);
 
   const { control } = useForm<GuidedForm>();
   const { append } = useFieldArray({
@@ -88,9 +92,35 @@ export function CharacterGuidedCreatePageContent() {
     keyName: "hook-form-id",
   });
 
+  // Campaign context
+  const [campaign, setCampaign] = useState<CampaignDocument | null>(null);
+
+  useEffect(() => {
+    if (!campaignId) return;
+    const cached = campaignMap[campaignId];
+    if (cached) {
+      setCampaign(cached);
+    } else {
+      getCampaign(campaignId)
+        .then(setCampaign)
+        .catch(() => {});
+    }
+  }, [campaignId, campaignMap, getCampaign]);
+
+  const campaignWorldId = campaign?.worldId ?? null;
+  const campaignWorld = campaignWorldId ? worldMap[campaignWorldId] : null;
+
   // World selection state
   const [selectedWorldId, setSelectedWorldId] = useState<string | null>(null);
   const [worldContext, setWorldContext] = useState<WorldContext | undefined>(undefined);
+
+  // Auto-select the campaign's world when it becomes available
+  useEffect(() => {
+    if (campaignWorldId) {
+      handleWorldChange(campaignWorldId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignWorldId]);
 
   const handleWorldChange = async (worldId: string | null) => {
     setSelectedWorldId(worldId);
@@ -136,6 +166,7 @@ export function CharacterGuidedCreatePageContent() {
     name: string;
     callsign: string;
     characteristics: string;
+    role: string;
   }>({
     assets: [],
     backstory: "",
@@ -148,17 +179,18 @@ export function CharacterGuidedCreatePageContent() {
     name: "",
     callsign: "",
     characteristics: "",
+    role: "",
   });
 
   const advance = () => setActiveStep((s) => s + 1);
   const goBack = () => setActiveStep((s) => s - 1);
 
-  const handlePathsComplete = (assets: AssetDocument[]) => {
+  const handlePathsComplete = (assets: AssetDocument[], role: string) => {
     assets.forEach((a) => append(a));
     setCompletedPathNames(
       assets.map((a) => assetMap[a.id]?.name ?? "").filter(Boolean)
     );
-    setFormData((prev) => ({ ...prev, assets: [...prev.assets, ...assets] }));
+    setFormData((prev) => ({ ...prev, assets: [...prev.assets, ...assets], role }));
     advance();
   };
 
@@ -279,7 +311,8 @@ export function CharacterGuidedCreatePageContent() {
       formData.backgroundVow || undefined,
       formData.pronouns || undefined,
       formData.callsign || undefined,
-      formData.characteristics || undefined
+      formData.characteristics || undefined,
+      formData.role || undefined
     )
       .then((characterId) => {
         const afterSummary = () => {
@@ -331,7 +364,30 @@ export function CharacterGuidedCreatePageContent() {
       />
       <PageHeader label={"Guided Character Creation"} />
       <PageContent isPaper>
-        {worldOptions.length > 0 && (
+        {campaign && (
+          <Box
+            sx={{
+              mb: 3,
+              p: 2,
+              bgcolor: "background.default",
+              borderRadius: 1,
+              border: 1,
+              borderColor: "divider",
+            }}
+          >
+            <Typography variant="subtitle2" color="text.secondary">
+              Creating character for campaign
+            </Typography>
+            <Typography variant="h6">{campaign.name}</Typography>
+            {campaignWorld && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                World: {campaignWorld.name}
+              </Typography>
+            )}
+          </Box>
+        )}
+
+        {worldOptions.length > 0 && !campaignWorldId && (
           <FormControl size="small" sx={{ mb: 3, minWidth: 280 }}>
             <InputLabel>World (optional)</InputLabel>
             <Select
@@ -372,6 +428,8 @@ export function CharacterGuidedCreatePageContent() {
             {activeStep === 1 && (
               <CreateBackstoryStep
                 onComplete={handleBackstoryComplete}
+                pathNames={completedPathNames}
+                role={formData.role || undefined}
                 worldContext={worldContext}
               />
             )}
@@ -380,6 +438,7 @@ export function CharacterGuidedCreatePageContent() {
                 onComplete={handleVowComplete}
                 pathNames={completedPathNames}
                 backstory={completedBackstory}
+                role={formData.role || undefined}
                 worldContext={worldContext}
               />
             )}
@@ -412,6 +471,7 @@ export function CharacterGuidedCreatePageContent() {
                 pathNames={completedPathNames}
                 backstory={completedBackstory}
                 backgroundVow={completedBackgroundVow}
+                role={formData.role || undefined}
                 initialLook={formData.look || undefined}
                 initialAct={formData.act || undefined}
                 initialWear={formData.wear || undefined}

@@ -20,11 +20,12 @@ export const createCharacter = createApiFunction<
     pronouns?: string;
     callsign?: string;
     characteristics?: string;
+    role?: string;
   },
   string
 >((params) => {
   return new Promise((resolve, reject) => {
-    const { uid, name, stats, assets, expansionIds, backstory, pronouns, callsign, characteristics } = params;
+    const { uid, name, stats, assets, expansionIds, backstory, pronouns, callsign, characteristics, role } = params;
     const character: CharacterDocument = {
       uid: uid,
       name: name,
@@ -47,6 +48,9 @@ export const createCharacter = createApiFunction<
     }
     if (characteristics) {
       character.characteristics = characteristics;
+    }
+    if (role) {
+      character.role = role;
     }
 
     addDoc(getCharacterCollection(), character)

@@ -62,4 +62,5 @@ export interface CharacterDocument {
   pronouns?: string;
   callsign?: string;
   characteristics?: string;
+  role?: string;
 }

@@ -35,7 +35,8 @@ export interface CharacterSliceActions {
     backgroundVow?: string,
     pronouns?: string,
     callsign?: string,
-    characteristics?: string
+    characteristics?: string,
+    role?: string
   ) => Promise<string>;
   deleteCharacter: (characterId: string) => Promise<void>;
   loadCharacterPortrait: (

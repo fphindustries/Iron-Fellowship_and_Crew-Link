@@ -30,6 +30,7 @@ export interface CreateBackgroundVowStepProps {
   onComplete: (vow: string) => void;
   pathNames: string[];
   backstory: string;
+  role?: string;
   worldContext?: WorldContext;
 }
 
@@ -48,6 +49,7 @@ export function CreateBackgroundVowStep({
   onComplete,
   pathNames,
   backstory,
+  role,
   worldContext,
 }: CreateBackgroundVowStepProps) {
   const showAi = useAiGuide();
@@ -79,6 +81,7 @@ export function CreateBackgroundVowStep({
         paths: pathNames,
         backstory,
         prompt,
+        role,
         worldContext,
       });
       setVowText(result?.vow ?? "");
@@ -128,7 +131,11 @@ export function CreateBackgroundVowStep({
         value={method}
         exclusive
         onChange={handleMethodChange}
-        sx={{ flexWrap: "wrap", gap: 1, mb: 3 }}
+        sx={(theme) => ({
+          ["& button"]: {
+            borderColor: theme.palette.grey[500],
+          },
+        })}
       >
         <ToggleButton value="write" sx={{ gap: 0.5 }}>
           <EditIcon fontSize="small" />
@@ -319,14 +326,7 @@ export function CreateBackgroundVowStep({
       {/* AI-generated editable result */}
       {method !== "write" && showAi && (
         <Box mt={2}>
-          {aiLoading ? (
-            <Stack direction="row" alignItems="center" spacing={1} mb={2}>
-              <CircularProgress size={16} />
-              <Typography variant="body2" color="text.secondary">
-                Generating vow…
-              </Typography>
-            </Stack>
-          ) : (
+          {
             vowText && (
               <>
                 <Typography variant="subtitle2" gutterBottom>
@@ -342,7 +342,7 @@ export function CreateBackgroundVowStep({
                 />
               </>
             )
-          )}
+          }
         </Box>
       )}
 
