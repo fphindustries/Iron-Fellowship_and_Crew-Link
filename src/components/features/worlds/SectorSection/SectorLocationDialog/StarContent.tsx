@@ -2,7 +2,7 @@ import { Grid } from "@mui/material";
 import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import { useStore } from "stores/store";
 import { StarforgedLocationStar } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface StarContentProps {
   locationId: string;

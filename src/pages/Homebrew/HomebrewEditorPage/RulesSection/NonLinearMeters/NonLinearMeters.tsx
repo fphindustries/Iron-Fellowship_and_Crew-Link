@@ -18,7 +18,7 @@ import { useConfirm } from "material-ui-confirm";
 import { NonLinearMeterDialog } from "./NonLinearMeterDialog";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { NonLinearMeterPreviewDialog } from "./NonLinearMeterPreviewDialog";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface NonLinearMetersProps {
   homebrewId: string;

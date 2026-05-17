@@ -1,11 +1,16 @@
 import { CreateSliceType } from "stores/store.type";
 import { CharacterTracksSlice } from "./characterTracks.slice.type";
 import { defaultCharacterTracksSlice } from "./characterTracks.slice.default";
-import { listenToProgressTracks } from "api-calls/tracks/listenToProgressTracks";
-import { TrackStatus } from "types/Track.type";
-import { addProgressTrack } from "api-calls/tracks/addProgressTrack";
-import { updateProgressTrack } from "api-calls/tracks/updateProgressTrack";
-import { removeProgressTrack } from "api-calls/tracks/removeProgressTrack";
+import { TrackStatus, Track } from "types/Track.type";
+import { api } from "config/api.config";
+
+function toTrack(row: any): Track {
+  const data = row.dataJson ?? {};
+  return {
+    ...data,
+    createdDate: row.createdAt ? new Date(row.createdAt) : new Date(),
+  } as Track;
+}
 
 export const createCharacterTracksSlice: CreateSliceType<
   CharacterTracksSlice
@@ -13,52 +18,80 @@ export const createCharacterTracksSlice: CreateSliceType<
   ...defaultCharacterTracksSlice,
 
   subscribe: (characterId, status = TrackStatus.Active) => {
-    const unsubscribe = listenToProgressTracks(
-      undefined,
-      characterId,
-      status,
-      (tracks) => {
+    let active = true;
+    api
+      .get<any[]>(`/api/characters/${characterId}/tracks?status=${status}`)
+      .then((rows) => {
+        if (!active) return;
         set((store) => {
-          Object.keys(tracks).forEach((trackId) => {
-            const track = tracks[trackId];
+          rows.forEach((row) => {
+            const track = toTrack(row);
             store.characters.currentCharacter.tracks.trackMap[status][
               track.type
-            ][trackId] = track;
+            ][row.id] = track as any;
           });
         });
-      },
-      (trackId, type) => {
-        set((store) => {
-          delete store.characters.currentCharacter.tracks.trackMap[status][
-            type
-          ][trackId];
-        });
-      },
-      (error) => {
-        console.error(error);
-      }
-    );
-
-    if (!unsubscribe) {
-      return () => {};
-    }
-    return unsubscribe;
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   },
 
   addTrack: (track) => {
-    const characterId =
-      getState().characters.currentCharacter.currentCharacterId;
-    return addProgressTrack({ characterId, track });
+    const characterId = getState().characters.currentCharacter.currentCharacterId;
+    const { createdDate, ...rest } = track as any;
+    return api
+      .post<any>(`/api/characters/${characterId}/tracks`, {
+        dataJson: rest,
+        createdAt: (createdDate ?? new Date()).toISOString(),
+      })
+      .then((row) => {
+        const saved = toTrack(row);
+        set((store) => {
+          store.characters.currentCharacter.tracks.trackMap[
+            saved.status
+          ][saved.type][row.id] = saved as any;
+        });
+      });
   },
+
   updateTrack: (trackId, track) => {
-    const characterId =
-      getState().characters.currentCharacter.currentCharacterId;
-    return updateProgressTrack({ characterId, trackId, track });
+    const characterId = getState().characters.currentCharacter.currentCharacterId;
+    const existing = Object.values(TrackStatus).flatMap((status) =>
+      Object.values(getState().characters.currentCharacter.tracks.trackMap[status]).flatMap((typeMap) =>
+        Object.entries(typeMap as Record<string, Track>)
+          .filter(([id]) => id === trackId)
+          .map(([, t]) => t)
+      )
+    )[0];
+    const merged = { ...(existing ?? {}), ...track };
+    return api
+      .patch<any>(`/api/characters/${characterId}/tracks/${trackId}`, { dataJson: merged })
+      .then(() => {
+        set((store) => {
+          if (existing) {
+            store.characters.currentCharacter.tracks.trackMap[
+              existing.status
+            ][existing.type][trackId] = merged as any;
+          }
+        });
+      });
   },
+
   deleteTrack: (trackId) => {
-    const characterId =
-      getState().characters.currentCharacter.currentCharacterId;
-    return removeProgressTrack({ characterId, id: trackId });
+    const characterId = getState().characters.currentCharacter.currentCharacterId;
+    return api.del<void>(`/api/characters/${characterId}/tracks/${trackId}`).then(() => {
+      set((store) => {
+        Object.values(TrackStatus).forEach((status) => {
+          Object.values(store.characters.currentCharacter.tracks.trackMap[status]).forEach(
+            (typeMap: any) => {
+              delete typeMap[trackId];
+            }
+          );
+        });
+      });
+    });
   },
 
   setLoadCompletedTracks: () => {

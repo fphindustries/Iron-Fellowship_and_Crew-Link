@@ -4,7 +4,7 @@ import EarnedIcon from "@mui/icons-material/HighlightOff";
 import EmptyIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { ExperienceButtons } from "./ExperienceButtons";
 import { useStore } from "stores/store";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 const defaultTotalExp = 30;
 

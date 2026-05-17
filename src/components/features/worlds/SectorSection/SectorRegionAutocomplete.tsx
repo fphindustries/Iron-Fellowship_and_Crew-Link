@@ -1,7 +1,7 @@
 import { Autocomplete, TextField } from "@mui/material";
 import { useStore } from "stores/store";
 import { Regions } from "types/Sector.type";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface SectorRegionAutocompleteProps {}
 

@@ -19,12 +19,11 @@ import { useSnackbar } from "providers/SnackbarProvider";
 import { constructHomebrewEditorPath } from "pages/Homebrew/routes";
 import { UserList } from "./UserList";
 import { useConfirm } from "material-ui-confirm";
-import { arrayRemove } from "firebase/firestore";
-import { removeSelfAsEditor } from "api-calls/homebrew/editorFunction/removeSelfAsEditor";
+import { api } from "config/api.config";
 import { useNavigate } from "react-router-dom";
 import { BASE_ROUTES, basePaths } from "routes";
 import { Description } from "./Description";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface AboutSectionProps {
   id: string;
@@ -64,7 +63,8 @@ export function AboutSection(props: AboutSectionProps) {
   const deleteCollection = useStore((store) => store.homebrew.deleteExpansion);
   const updateExpansion = useStore((store) => store.homebrew.updateExpansion);
 
-  const uid = useStore((store) => store.auth.uid);
+  const uid = useStore((store) => store.auth.user?.id);
+  const homebrewCollections = useStore((store) => store.homebrew.collections);
 
   const navigate = useNavigate();
 
@@ -73,10 +73,11 @@ export function AboutSection(props: AboutSectionProps) {
   const removeSelf = () => {
     const promises: Promise<unknown>[] = [];
     if (isViewer) {
-      promises.push(updateExpansion(id, { viewers: arrayRemove(uid) }));
+      const currentViewers = homebrewCollections[id]?.base?.viewers ?? [];
+      promises.push(updateExpansion(id, { viewers: currentViewers.filter((v) => v !== uid) }));
     }
     if (isEditor) {
-      promises.push(removeSelfAsEditor(id));
+      promises.push(api.del(`/api/homebrew/${id}/editors/${uid}`));
     }
     Promise.all(promises)
       .then(() => {

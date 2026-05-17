@@ -2,7 +2,7 @@ import { TextField } from "@mui/material";
 import { SectionHeading } from "components/shared/SectionHeading";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "stores/store";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export function WorldNameSection() {
   const worldName = useStore(

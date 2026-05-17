@@ -18,7 +18,7 @@ import { GAME_SYSTEMS } from "types/GameSystems.type";
 import EditIcon from "@mui/icons-material/Edit";
 import { useState } from "react";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export function Debilities() {
   const [dialogOpen, setDialogOpen] = useState(false);

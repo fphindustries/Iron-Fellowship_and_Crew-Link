@@ -18,7 +18,7 @@ import { useConfirm } from "material-ui-confirm";
 import { ConditionMeterDialog } from "./ConditionMeterDialog";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { ConditionMeterPreviewDialog } from "./ConditionMeterPreviewDialog";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface ConditionMetersProps {
   homebrewId: string;

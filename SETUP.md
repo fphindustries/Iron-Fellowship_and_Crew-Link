@@ -1,88 +1,258 @@
 # Setup
 
-## Steps
+## Prerequisites
 
-1. Clone this project `git clone https://github.com/scottbenton/Iron-Fellowship.git`
-1. Install dependencies `npm i`
-1. Create an `.env.local` file (see `.env.local` below)
-1. Set up firebase (see Firebase Setup below, or contact Scott to get credentials to the dev instance)
-1. Run `npm run dev` and go to your browser to see the output.
+- **Node.js 20+** and **pnpm** (`npm install -g pnpm`)
+- **PostgreSQL 15+** running locally or accessible via connection string
+- **MinIO** (or any S3-compatible object store) for image storage
+- **Google OAuth 2.0 credentials** for authentication
+- **SMTP server** for magic-link email authentication (e.g. Mailpit locally, or any provider)
+- **OpenAI or Anthropic API key** (optional — only required for AI features)
 
-## .env.local
+## Repo Structure
 
-Create a new file in the root of this repository, named `.env.local`.
-This file will hold environment variables representing credentials needed to connect your instance with firebase.
-
-Copy the following into your project
+This is a pnpm monorepo:
 
 ```
-VITE_IRON_FELLOWSHIP_FIREBASE_APIKEY=
-VITE_IRON_FELLOWSHIP_FIREBASE_AUTHDOMAIN=
-VITE_IRON_FELLOWSHIP_FIREBASE_PROJECTID=
-VITE_IRON_FELLOWSHIP_FIREBASE_STORAGEBUCKET=
-VITE_IRON_FELLOWSHIP_FIREBASE_MESSAGINGSENDERID=
-VITE_IRON_FELLOWSHIP_FIREBASE_APPID=
+starforged/
+├── src/                    ← React frontend (Vite)
+├── api/                    ← NestJS backend
+│   └── src/
+├── packages/
+│   └── shared/             ← Shared TypeScript types (frontend + backend)
+├── pnpm-workspace.yaml
+└── package.json
+```
 
-VITE_CREW_LINK_FIREBASE_APIKEY=
-VITE_CREW_LINK_FIREBASE_AUTHDOMAIN=
-VITE_CREW_LINK_FIREBASE_PROJECTID=
-VITE_CREW_LINK_FIREBASE_STORAGEBUCKET=
-VITE_CREW_LINK_FIREBASE_MESSAGINGSENDERID=
-VITE_CREW_LINK_FIREBASE_APPID=
+## Steps
 
-# Default values for the environment.
+1. Clone the repo and install dependencies:
+   ```bash
+   git clone https://github.com/scottbenton/Iron-Fellowship.git
+   cd Iron-Fellowship
+   pnpm install
+   ```
+
+2. Create environment files (see sections below):
+   - `.env.local` — frontend Vite variables
+   - `api/.env` — backend NestJS variables
+
+3. Set up PostgreSQL and run migrations:
+   ```bash
+   pnpm --filter api run drizzle:migrate
+   ```
+
+4. Set up MinIO (see MinIO Setup below).
+
+5. Set up Google OAuth credentials (see Google OAuth Setup below).
+
+6. Start both servers together:
+   ```bash
+   pnpm dev:all
+   ```
+   Or in separate terminals if you want independent output:
+   ```bash
+   pnpm api:dev   # NestJS API on http://localhost:3001
+   pnpm dev       # Vite frontend on http://localhost:5173
+   ```
+
+## Frontend Environment (`.env.local`)
+
+Create `.env.local` at the repo root:
+
+```env
+# Backend API URL (defaults to http://localhost:3001 if omitted)
+VITE_API_URL=http://localhost:3001
+
+# Game system — controls which ruleset loads by default ("starforged" or "ironsworn")
+VITE_GAME_SYSTEM=starforged
+
+# App branding — match to whichever game system you set above
 VITE_TITLE="Starforged Crew Link"
 VITE_FAVICON_PATH=/theme/eidolon.svg
 VITE_OPENGRAPH_PATH=/assets/starforged/opengraph-default.png
+
+# Iron Fellowship variant:
+# VITE_GAME_SYSTEM=ironsworn
+# VITE_TITLE="Iron Fellowship"
+# VITE_FAVICON_PATH=/theme/oracle.svg
+# VITE_OPENGRAPH_PATH=/assets/ironsworn/opengraph-default.png
+
+# Optional: PostHog analytics (see PostHog Setup below)
+# VITE_POSTHOG_KEY=
+# VITE_POSTHOG_HOST=
 ```
 
-As you create firebase projects, you will get values to fill these config values in.
-You can also just ask me directly, and I will send you the values I use in development.
-Copy those values from into your `.env.local` file in the following properties:
+## Backend Environment (`api/.env`)
 
-## Firebase Setup
+Create `api/.env`:
 
-Firebase provides authentication, database, and image storage to this application.
+```env
+# Server
+PORT=3001
+NODE_ENV=development
 
-The first step is to create firebase projects for Ironsworn and Starforged. You can create a new project by going to the [firebase console](https://console.firebase.google.com/). Once you have created a project, you need to follow the following steps.
+# URLs
+APP_URL=http://localhost:3001
+FRONTEND_URL=http://localhost:5173
 
-### Add an App
+# PostgreSQL
+DATABASE_URL=postgresql://postgres:password@localhost:5432/starforged
 
-1. From the homepage, under the `Get started` section, click `</>`.
-1. Give your app a nickname, and if you plan on hosting your own version (and not just contributing to the existing deployments), click "Also set up Firebase Hosting"
-1. Click next, and copy the apiKey, authDomain, projectId, storageBucket, messagingSenderId, and appId values into your `.env.local` file you created earlier
-1. Complete your setup
+# JWT — generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+JWT_SECRET=your-jwt-secret-here
+JWT_REFRESH_SECRET=your-jwt-refresh-secret-here
 
-![Firebase Web App Setup](./readme_assets/FirebaseWeb.png)
+# Google OAuth (see Google OAuth Setup below)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CALLBACK_URL=http://localhost:3001/api/auth/google/callback
 
-### Authentication
+# MinIO / S3-compatible storage (see MinIO Setup below)
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=starforged
+# MINIO_REGION=us-east-1   # optional, defaults to us-east-1
 
-1. Under the `Build` tab on the left, select `Authentication`
-1. Click `Get Started`
-1. Select and enable `Google`
-1. Add a new provider, and enable `Email/Password` with `Email link` sign in
+# SMTP — for magic-link email auth (Mailpit example for local dev)
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_USER=
+SMTP_PASS=
 
-### Firestore
-
-1. Under the `Build` tab on the left, select `Firestore Database`
-1. Create a new database, choosing the location of your choice.
-1. Once your database has been provisioned, click the `rules` tab, and copy the contents of the `firestore.rules` file into the tab
-
-### Cloud Storage
-
-1. Under the `Build` tab on the left, select `Storage`
-1. Set up cloud storage, and wait for it to be created
-1. Once your storage has been created, click the `rules` tab, and copy the contents of the `storage.rules` file into the tab
-
-## Posthog Setup (OPTIONAL)
-
-Posthog gives us some light analytics (page views), and the ability to gate new features behind feature flags. If you need to set up posthog you can create a new project and then add the following to your `.env.local` file
-
+# AI features (optional — only needed if using AI character/world generation)
+# OPENAI_API_KEY=
+# ANTHROPIC_API_KEY=
 ```
-VITE_POSTHOG_KEY=
-VITE_POSTHOG_HOST=
+
+## PostgreSQL Setup
+
+1. Create a database owned by the user in your `DATABASE_URL` (this avoids schema permission issues on PostgreSQL 15+):
+   ```bash
+   # Replace 'myuser' with the user in your DATABASE_URL
+   psql -U postgres -c "CREATE DATABASE starforged OWNER myuser;"
+   ```
+
+   If the database already exists and you get `permission denied for schema public`, grant the user schema access:
+   ```bash
+   psql -U postgres -d starforged -c "GRANT ALL ON SCHEMA public TO myuser;"
+   ```
+
+2. Run Drizzle migrations to create all tables:
+   ```bash
+   pnpm --filter api run drizzle:migrate
+   ```
+
+   To generate new migrations after schema changes:
+   ```bash
+   pnpm --filter api run drizzle:generate
+   ```
+
+   To inspect your database with Drizzle Studio:
+   ```bash
+   pnpm --filter api run drizzle:studio
+   ```
+
+## MinIO Setup
+
+1. [Download and run MinIO](https://min.io/download) locally:
+   ```bash
+   minio server ~/minio-data --console-address :9001
+   ```
+   Default credentials: `minioadmin` / `minioadmin`
+
+2. Open the MinIO console at `http://localhost:9001` and create a bucket named `starforged`.
+
+3. Set the bucket's access policy to allow public reads if you want image URLs to be directly accessible without presigned URLs. Otherwise leave it private and the API will serve presigned URLs.
+
+Alternatively, point `MINIO_ENDPOINT` at any S3-compatible provider (AWS S3, Backblaze B2, Cloudflare R2, etc.).
+
+## Google OAuth Setup
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) and create or select a project.
+2. Navigate to **APIs & Services → Credentials**.
+3. Click **Create Credentials → OAuth 2.0 Client ID**.
+4. Choose **Web application**.
+5. Add `http://localhost:3001/api/auth/google/callback` to **Authorized redirect URIs**.
+6. Copy the **Client ID** and **Client Secret** into `api/.env` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+## SMTP / Magic Link Setup (Local Development)
+
+For local development, [Mailpit](https://mailpit.axllent.org/) is the easiest option — it captures all outgoing email without actually sending it:
+
+```bash
+# macOS
+brew install mailpit && mailpit
+
+# Linux / WSL
+curl -sL https://raw.githubusercontent.com/axllent/mailpit/develop/install.sh | bash
+mailpit
 ```
+
+Mailpit listens on SMTP port `1025` and exposes a web UI at `http://localhost:8025`.
+
+Set in `api/.env`:
+```env
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_USER=
+SMTP_PASS=
+```
+
+## AI Features (Optional)
+
+AI character and world generation is disabled by default if no API key is set. To enable it, add at least one key to `api/.env`:
+
+```env
+OPENAI_API_KEY=sk-...
+# or
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+The AI provider per world is configured in-app via **World Settings → AI Settings**.
+
+## PostHog Analytics (Optional)
+
+PostHog provides page-view analytics and remote feature flags. Create a project at [posthog.com](https://posthog.com) and add to `.env.local`:
+
+```env
+VITE_POSTHOG_KEY=phc_...
+VITE_POSTHOG_HOST=https://us.i.posthog.com
+```
+
+If these variables are omitted, analytics are silently disabled.
+
+## Scripts Reference
+
+### Root (run from repo root)
+
+| Script | Command | Description |
+|---|---|---|
+| `pnpm dev` | `vite` | Start the Vite frontend dev server (hot reload) |
+| `pnpm dev:all` | `concurrently …` | Start both the API and frontend together in watch mode |
+| `pnpm dev:monitored` | `concurrently …` | Like `dev:all` but wraps the API in the error monitor (auto-fix + markdown logs) |
+| `pnpm api:dev` | `nest start --watch` | Start the NestJS API in watch mode (restarts on file changes) |
+| `pnpm api:monitored` | `node scripts/monitor.mjs` | Start the NestJS API with the error monitor (auto-fix + markdown logs) |
+| `pnpm build` | `tsc && vite build` | Type-check and build the frontend for production |
+| `pnpm api:build` | `nest build` | Compile the NestJS API to `api/dist/` |
+| `pnpm lint` | `eslint ./src` | Lint the frontend source (zero warnings tolerance) |
+| `pnpm preview` | `vite preview` | Serve the last production frontend build locally |
+
+### API (run from repo root with `pnpm --filter api run <script>`, or from `api/` with `pnpm run <script>`)
+
+| Script | Description |
+|---|---|
+| `start:dev` | Start NestJS in watch mode (same as `pnpm api:dev` from root) |
+| `monitor` | Start NestJS via the error monitor — logs errors to `logs/errors/` and attempts AI-powered auto-fixes |
+| `start:prod` | Run the compiled production build (`node dist/main`) |
+| `build` | Compile TypeScript to `api/dist/` |
+| `drizzle:generate` | Generate a new SQL migration file from schema changes |
+| `drizzle:migrate` | Apply pending migrations to the database |
+| `drizzle:push` | Push schema directly to the database without a migration file (useful during early development) |
+| `drizzle:studio` | Open Drizzle Studio — a browser-based database inspector |
+| `lint` | Lint the API source |
 
 ---
 
-With that, you should be all set up and ready to develop locally!
+With that, you should be ready to develop locally. Visit `http://localhost:5173` after starting both servers.

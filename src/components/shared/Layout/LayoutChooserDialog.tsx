@@ -24,17 +24,17 @@ export function LayoutChooserDialog(props: LayoutChooserDialogProps) {
 
   const referenceSidebarLocation = useStore(
     (store) =>
-      store.auth.userDoc?.layout?.referenceSidebarLocation ??
+      store.auth.user?.layout?.referenceSidebarLocation ??
       ReferenceSidebarLocation.Left
   );
 
-  const updateUser = useStore((store) => store.auth.updateUserDoc);
+  const updateUser = useStore((store) => store.auth.updateUser);
   const setReferenceSidebarLocation = (value: string) => {
     let newValue = ReferenceSidebarLocation.Left;
     if (value === ReferenceSidebarLocation.Right) {
       newValue = ReferenceSidebarLocation.Right;
     }
-    updateUser({ "layout.referenceSidebarLocation": newValue });
+    updateUser({ layout: { referenceSidebarLocation: newValue } });
   };
 
   return (

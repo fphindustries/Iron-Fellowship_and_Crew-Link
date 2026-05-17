@@ -10,7 +10,7 @@ import { useStore } from "stores/store";
 import { ClockSection } from "components/features/charactersAndCampaigns/Clocks/ClockSection";
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export function TracksTab() {
   const isStarforged = useGameSystem().gameSystem === GAME_SYSTEMS.STARFORGED;

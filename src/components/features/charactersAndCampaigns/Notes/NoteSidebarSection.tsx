@@ -15,7 +15,7 @@ import { Note } from "types/Notes.type";
 import { StrictModeDroppable } from "./StrictModeDroppable";
 import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface NoteSidebarSectionProps {
   notes: Note[];

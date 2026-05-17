@@ -22,7 +22,7 @@ import { useUpdateQueryStringValueWithoutNavigation } from "hooks/useUpdateQuery
 import { useWorldPermissions } from "components/features/worlds/useWorldPermissions";
 import { LocationsSection } from "components/features/worlds/Locations";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 import { WorldAiSettingsSection } from "components/features/worlds/WorldAiSettingsSection";
 import { WorldAssumptionsSection } from "components/features/worlds/WorldAssumptionsSection";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
@@ -140,7 +140,7 @@ export function WorldSheetPage() {
       <PageHeader
         label={world.name}
         actions={
-          showGMFields && (
+          canEdit && (
             <Button
               color={"inherit"}
               variant={"outlined"}

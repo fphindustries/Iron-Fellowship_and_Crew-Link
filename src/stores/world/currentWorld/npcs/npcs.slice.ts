@@ -1,76 +1,61 @@
 import { CreateSliceType } from "stores/store.type";
 import { NPCsSlice } from "./npcs.slice.type";
 import { defaultNPCsSlice } from "./npcs.slice.default";
-import { listenToNPCs } from "api-calls/world/npcs/listenToNPCs";
-import { createNPC } from "api-calls/world/npcs/createNPC";
-import { deleteNPC } from "api-calls/world/npcs/deleteNPC";
-import { updateNPC } from "api-calls/world/npcs/updateNPC";
-import { updateNPCGMNotes } from "api-calls/world/npcs/updateNPCGMNotes";
-import { updateNPCGMProperties } from "api-calls/world/npcs/updateNPCGMProperties";
-import { updateNPCNotes } from "api-calls/world/npcs/updateNPCNotes";
-import { uploadNPCImage } from "api-calls/world/npcs/uploadNPCImage";
-import { listenToNPCNotes } from "api-calls/world/npcs/listenToNPCNotes";
-import { reportApiError } from "lib/analytics.lib";
-import { Unsubscribe } from "firebase/firestore";
-import { listenToNPCGMProperties } from "api-calls/world/npcs/listenToNPCGMProperties";
-import { updateNPCCharacterBond } from "api-calls/world/npcs/updateNPCCharacterBond";
-import { updateNPCCharacterConnection } from "api-calls/world/npcs/updateNPCCharacterConnection";
-import { updateNPCCharacterBondProgress } from "api-calls/world/npcs/updateNPCCharacterBond copy";
-import { removeNPCImage } from "api-calls/world/npcs/removeNPCImage";
+import { api } from "config/api.config";
+import { uploadImage, deleteImage, getImageUrl } from "lib/storage.lib";
+import { NPC } from "types/NPCs.type";
+
+function constructNPCImagePath(worldId: string, npcId: string) {
+  return `/worlds/${worldId}/npcs/${npcId}`;
+}
+
+function toNPC(row: any): NPC {
+  return {
+    name: row.name,
+    imageFilenames: row.imageFilenames ?? [],
+    updatedDate: row.updatedAt ? new Date(row.updatedAt) : new Date(),
+    createdDate: row.createdAt ? new Date(row.createdAt) : new Date(),
+    ...(row.dataJson ?? {}),
+  };
+}
 
 export const createNPCsSlice: CreateSliceType<NPCsSlice> = (set, getState) => ({
   ...defaultNPCsSlice,
-  subscribe: (currentWorldId: string, currentWorldOwnerIds: string[]) => {
-    const uid = getState().auth.uid;
-    const isWorldOwner = currentWorldOwnerIds.includes(uid);
 
-    return listenToNPCs(
-      currentWorldId,
-      isWorldOwner,
-      (npcId, npc) => {
+  subscribe: (worldId: string) => {
+    let active = true;
+
+    api
+      .get<any[]>(`/api/worlds/${worldId}/npcs`)
+      .then((rows) => {
+        if (!active) return;
         set((store) => {
-          if (
-            Array.isArray(npc.imageFilenames) &&
-            npc.imageFilenames?.length > 0
-          ) {
-            store.worlds.currentWorld.doAnyDocsHaveImages = true;
-          }
-          const existingNPC =
-            store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
-          const gmProperties = existingNPC?.gmProperties;
-          const notes = existingNPC?.notes;
-          const imageUrl =
-            (npc.imageFilenames?.length ?? 0) > 0
-              ? existingNPC?.imageUrl
-              : undefined;
-          store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId] = {
-            ...npc,
-            gmProperties,
-            notes,
-            imageUrl,
-          };
+          store.worlds.currentWorld.currentWorldNPCs.loading = false;
+          rows.forEach((row) => {
+            const npc = toNPC(row);
+            if ((npc.imageFilenames?.length ?? 0) > 0) {
+              store.worlds.currentWorld.doAnyDocsHaveImages = true;
+            }
+            const existing = store.worlds.currentWorld.currentWorldNPCs.npcMap[row.id];
+            store.worlds.currentWorld.currentWorldNPCs.npcMap[row.id] = {
+              ...npc,
+              gmProperties: existing?.gmProperties,
+              notes: existing?.notes,
+              imageUrl: (npc.imageFilenames?.length ?? 0) > 0 ? existing?.imageUrl : undefined,
+            };
+          });
         });
-      },
-      (npcId, imageUrl) => {
+      })
+      .catch((error) => {
+        if (!active) return;
         set((store) => {
-          if (store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId]) {
-            store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId].imageUrl =
-              imageUrl;
-          }
+          store.worlds.currentWorld.currentWorldNPCs.error = String(error);
         });
-      },
-      (npcId) => {
-        set((store) => {
-          delete store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
-        });
-      },
-      (error) => {
-        set((store) => {
-          store.worlds.currentWorld.currentWorldNPCs.error = error;
-        });
-      }
-    );
+      });
+
+    return () => { active = false; };
   },
+
   setOpenNPCId: (npcId) => {
     set((store) => {
       store.worlds.currentWorld.currentWorldNPCs.openNPCId = npcId;
@@ -82,186 +67,207 @@ export const createNPCsSlice: CreateSliceType<NPCsSlice> = (set, getState) => ({
     });
   },
 
-  createNPC: (npc) => {
+  createNPC: async (npc) => {
     const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return createNPC({ worldId, npc });
+    if (!worldId) return Promise.reject("No world found");
+    const { name, imageFilenames, updatedDate: _u, createdDate: _c, ...dataJson } = (npc ?? {}) as any;
+    const row = await api.post<any>(`/api/worlds/${worldId}/npcs`, {
+      name: name ?? "New NPC",
+      imageFilenames: imageFilenames ?? [],
+      dataJson: dataJson ?? {},
+    });
+    const npcDoc = toNPC(row);
+    set((store) => {
+      store.worlds.currentWorld.currentWorldNPCs.npcMap[row.id] = {
+        ...npcDoc,
+        gmProperties: undefined,
+        notes: undefined,
+      };
+    });
+    return row.id;
   },
-  deleteNPC: (npcId) => {
-    const currentWorld = getState().worlds.currentWorld;
-    const worldId = currentWorld.currentWorldId;
-    const npcImageFilename =
-      currentWorld.currentWorldNPCs.npcMap[npcId]?.imageFilenames?.[0];
 
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
+  deleteNPC: async (npcId) => {
+    const world = getState().worlds.currentWorld;
+    const worldId = world.currentWorldId;
+    if (!worldId) return Promise.reject("No world found");
+    const filename = world.currentWorldNPCs.npcMap[npcId]?.imageFilenames?.[0];
+    if (filename) {
+      await deleteImage(constructNPCImagePath(worldId, npcId), filename).catch(() => {});
     }
-    return deleteNPC({ worldId, npcId, imageFilename: npcImageFilename });
-  },
-  updateNPC: (npcId, partialNPC) => {
-    const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return updateNPC({ worldId, npcId, npc: partialNPC });
-  },
-  updateNPCGMNotes: (npcId, notes, isBeacon) => {
-    const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return updateNPCGMNotes({ worldId, npcId, notes, isBeacon });
-  },
-  updateNPCGMProperties: (npcId, npcGMProperties) => {
-    const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return updateNPCGMProperties({
-      worldId,
-      npcId,
-      npcGMProperties,
-    });
-  },
-  updateNPCNotes: (npcId, notes, isBeacon) => {
-    const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return updateNPCNotes({ worldId, npcId, notes, isBeacon });
-  },
-  updateNPCCharacterBond: (npcId, characterId, bonded) => {
-    const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return updateNPCCharacterBond({
-      worldId,
-      npcId,
-      characterId,
-      bonded,
-    });
-  },
-  updateNPCCharacterConnection: (npcId, characterId, isConnection) => {
-    const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return updateNPCCharacterConnection({
-      worldId,
-      npcId,
-      characterId,
-      isConnection,
+    await api.del(`/api/worlds/${worldId}/npcs/${npcId}`);
+    set((store) => {
+      delete store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
     });
   },
 
-  updateNPCCharacterBondValue: (npcId, characterId, progress) => {
+  updateNPC: async (npcId, partialNPC) => {
     const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return updateNPCCharacterBondProgress({
-      worldId,
-      npcId,
-      characterId,
-      progress,
+    if (!worldId) return Promise.reject("No world found");
+    const { name, imageFilenames, updatedDate: _u, createdDate: _c, ...dataJson } = partialNPC as any;
+    const patch: any = {};
+    if (name !== undefined) patch.name = name;
+    if (imageFilenames !== undefined) patch.imageFilenames = imageFilenames;
+    if (Object.keys(dataJson).length > 0) patch.dataJson = dataJson;
+    const row = await api.patch<any>(`/api/worlds/${worldId}/npcs/${npcId}`, patch);
+    const updated = toNPC(row);
+    set((store) => {
+      const existing = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+      if (existing) {
+        store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId] = { ...existing, ...updated };
+      }
     });
   },
-  uploadNPCImage: (npcId, image) => {
-    const currentWorld = getState().worlds.currentWorld;
-    const worldId = currentWorld.currentWorldId;
-    const oldNPCImageFilename =
-      currentWorld.currentWorldNPCs.npcMap[npcId]?.imageFilenames?.[0];
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return uploadNPCImage({
-      worldId,
-      npcId,
-      image,
-      oldImageFilename: oldNPCImageFilename,
+
+  updateNPCGMNotes: async (npcId, notes) => {
+    const worldId = getState().worlds.currentWorld.currentWorldId;
+    if (!worldId) return;
+    await api.patch(`/api/worlds/${worldId}/npcs/${npcId}/private-notes`, {
+      dataJson: { gmNotes: Array.from(notes) },
     });
   },
-  removeNPCImage: (npcId) => {
-    const currentWorld = getState().worlds.currentWorld;
-    const worldId = currentWorld.currentWorldId;
-    const filename =
-      currentWorld.currentWorldNPCs.npcMap[npcId]?.imageFilenames?.[0];
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    if (!filename) {
-      return new Promise((res, reject) => reject("No image found to remove"));
-    }
-    return removeNPCImage({
-      worldId,
-      npcId,
-      filename,
+
+  updateNPCGMProperties: async (npcId, gmProperties) => {
+    const worldId = getState().worlds.currentWorld.currentWorldId;
+    if (!worldId) return;
+    const { gmNotes: _gmNotes, ...rest } = gmProperties as any;
+    await api.patch(`/api/worlds/${worldId}/npcs/${npcId}/private-notes`, {
+      dataJson: rest,
+    });
+    set((store) => {
+      const npc = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+      if (npc) npc.gmProperties = { ...(npc.gmProperties ?? {}), ...gmProperties };
     });
   },
+
+  updateNPCNotes: async (npcId, notes) => {
+    const worldId = getState().worlds.currentWorld.currentWorldId;
+    if (!worldId) return;
+    await api.patch(`/api/worlds/${worldId}/npcs/${npcId}/notes`, {
+      content: Array.from(notes),
+    });
+  },
+
+  updateNPCCharacterBond: async (npcId, characterId, bonded) => {
+    const worldId = getState().worlds.currentWorld.currentWorldId;
+    if (!worldId) return;
+    const npc = getState().worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+    const characterBonds = { ...(npc?.characterBonds ?? {}), [characterId]: bonded };
+    await api.patch(`/api/worlds/${worldId}/npcs/${npcId}`, {
+      dataJson: { ...(npc as any)?.dataJson, characterBonds },
+    });
+    set((store) => {
+      const n = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+      if (n) n.characterBonds = characterBonds;
+    });
+  },
+
+  updateNPCCharacterConnection: async (npcId, characterId, connected) => {
+    const worldId = getState().worlds.currentWorld.currentWorldId;
+    if (!worldId) return;
+    const npc = getState().worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+    const characterConnections = { ...(npc?.characterConnections ?? {}), [characterId]: connected };
+    await api.patch(`/api/worlds/${worldId}/npcs/${npcId}`, {
+      dataJson: { ...(npc as any)?.dataJson, characterConnections },
+    });
+    set((store) => {
+      const n = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+      if (n) n.characterConnections = characterConnections;
+    });
+  },
+
+  updateNPCCharacterBondValue: async (npcId, characterId, value) => {
+    const worldId = getState().worlds.currentWorld.currentWorldId;
+    if (!worldId) return;
+    const npc = getState().worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+    const characterBondProgress = { ...(npc?.characterBondProgress ?? {}), [characterId]: value };
+    await api.patch(`/api/worlds/${worldId}/npcs/${npcId}`, {
+      dataJson: { ...(npc as any)?.dataJson, characterBondProgress },
+    });
+    set((store) => {
+      const n = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+      if (n) n.characterBondProgress = characterBondProgress;
+    });
+  },
+
+  uploadNPCImage: async (npcId, image) => {
+    const world = getState().worlds.currentWorld;
+    const worldId = world.currentWorldId;
+    if (!worldId) return Promise.reject("No world found");
+    const oldFilename = world.currentWorldNPCs.npcMap[npcId]?.imageFilenames?.[0];
+    const imagePath = constructNPCImagePath(worldId, npcId);
+    if (oldFilename) await deleteImage(imagePath, oldFilename).catch(() => {});
+    await uploadImage(imagePath, image);
+    const imageFilenames = [image.name];
+    await api.patch(`/api/worlds/${worldId}/npcs/${npcId}`, { imageFilenames });
+    const imageUrl = await getImageUrl(`${imagePath}/${image.name}`);
+    set((store) => {
+      const npc = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+      if (npc) {
+        npc.imageFilenames = imageFilenames;
+        npc.imageUrl = imageUrl;
+        store.worlds.currentWorld.doAnyDocsHaveImages = true;
+      }
+    });
+  },
+
+  removeNPCImage: async (npcId) => {
+    const world = getState().worlds.currentWorld;
+    const worldId = world.currentWorldId;
+    const filename = world.currentWorldNPCs.npcMap[npcId]?.imageFilenames?.[0];
+    if (!worldId) return Promise.reject("No world found");
+    if (!filename) return Promise.reject("No image found to remove");
+    await deleteImage(constructNPCImagePath(worldId, npcId), filename);
+    await api.patch(`/api/worlds/${worldId}/npcs/${npcId}`, { imageFilenames: [] });
+    set((store) => {
+      const npc = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+      if (npc) {
+        npc.imageFilenames = [];
+        npc.imageUrl = undefined;
+      }
+    });
+  },
+
   subscribeToOpenNPC: (npcId) => {
     const state = getState();
     const worldId = state.worlds.currentWorld.currentWorldId;
     const isWorldOwner =
-      state.worlds.currentWorld.currentWorld?.ownerIds.includes(
-        state.auth.uid
-      ) ?? false;
+      state.worlds.currentWorld.currentWorld?.ownerIds?.includes(state.auth.uid ?? "") ?? false;
+    if (!worldId) return () => {};
 
-    if (!worldId) {
-      return () => {};
-    }
-    const notesUnsubscribe = listenToNPCNotes(
-      worldId,
-      npcId,
-      (notes) => {
+    let active = true;
+
+    api
+      .get<any>(`/api/worlds/${worldId}/npcs/${npcId}/notes`)
+      .then((row) => {
+        if (!active || !row?.content) return;
+        const content = new Uint8Array(row.content.data ?? row.content);
         set((store) => {
-          if (store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId]) {
-            store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId].notes =
-              notes ?? null;
-          }
+          const npc = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+          if (npc) npc.notes = content;
         });
-      },
-      (error) => {
-        console.error(error);
-        reportApiError(error);
-      }
-    );
+      })
+      .catch(() => {});
 
-    let gmPropertiesUnsubscribe: Unsubscribe;
     if (isWorldOwner) {
-      gmPropertiesUnsubscribe = listenToNPCGMProperties(
-        worldId,
-        npcId,
-        (properties) => {
+      api
+        .get<any>(`/api/worlds/${worldId}/npcs/${npcId}/private-notes`)
+        .then((row) => {
+          if (!active) return;
           set((store) => {
-            if (store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId]) {
-              store.worlds.currentWorld.currentWorldNPCs.npcMap[
-                npcId
-              ].gmProperties = properties ?? null;
-            }
+            const npc = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+            if (npc) npc.gmProperties = row?.dataJson ?? null;
           });
-        },
-        (error) => {
-          console.error(error);
-          reportApiError(error);
-        }
-      );
+        })
+        .catch(() => {});
     } else {
       set((store) => {
-        if (store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId]) {
-          store.worlds.currentWorld.currentWorldNPCs.npcMap[
-            npcId
-          ].gmProperties = null;
-        }
+        const npc = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
+        if (npc) npc.gmProperties = null;
       });
     }
 
-    return () => {
-      notesUnsubscribe();
-      gmPropertiesUnsubscribe && gmPropertiesUnsubscribe();
-    };
+    return () => { active = false; };
   },
 
   resetStore: () => {

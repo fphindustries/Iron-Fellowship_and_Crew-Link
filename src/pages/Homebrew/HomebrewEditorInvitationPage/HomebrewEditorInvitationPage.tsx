@@ -1,7 +1,6 @@
 import { LoadingButton } from "@mui/lab";
 import { Box, LinearProgress } from "@mui/material";
-import { acceptEditorInvite } from "api-calls/homebrew/editorFunction/acceptEditorInvite";
-import { getHomebrewCollectionFromInviteUrl } from "api-calls/homebrew/editorFunction/getHomebrewCollectionFromInviteUrl";
+import { api } from "config/api.config";
 import { EmptyState } from "components/shared/EmptyState";
 import { PageContent, PageHeader } from "components/shared/Layout";
 import { useSnackbar } from "providers/SnackbarProvider";
@@ -17,9 +16,10 @@ export function HomebrewEditorInvitationPage() {
 
   useEffect(() => {
     if (editorInviteKey) {
-      getHomebrewCollectionFromInviteUrl(editorInviteKey)
-        .then((parsedHomebrewId) => {
-          setHomebrewId(parsedHomebrewId ?? undefined);
+      api
+        .get<{ collectionId: string }>(`/api/homebrew/invite/${editorInviteKey}`)
+        .then((invite) => {
+          setHomebrewId(invite?.collectionId ?? undefined);
         })
         .catch((e) => console.error(e));
     } else {
@@ -48,9 +48,10 @@ export function HomebrewEditorInvitationPage() {
   const handleAccept = useCallback(() => {
     if (homebrewId && editorInviteKey) {
       setAcceptLoading(true);
-      acceptEditorInvite(homebrewId, editorInviteKey)
+      api
+        .post<{ success: boolean; collectionId: string }>(`/api/homebrew/invite/${editorInviteKey}/accept`)
         .then((result) => {
-          if (result) {
+          if (result?.success) {
             success("You have been added as an editor");
             navigate(constructHomebrewEditorPath(homebrewId));
           } else {

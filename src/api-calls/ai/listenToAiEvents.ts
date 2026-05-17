@@ -1,49 +1,42 @@
-import { firestore } from "config/firebase.config";
-import {
-  collection,
-  onSnapshot,
-  orderBy,
-  query,
-  limit,
-  Timestamp,
-} from "firebase/firestore";
+import { api } from "config/api.config";
 import { AiEventDocument } from "./_ai.type";
+
+function toEvent(row: any): AiEventDocument {
+  return {
+    ...row,
+    createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+  } as AiEventDocument;
+}
 
 export function listenToAiEvents(params: {
   campaignId: string;
   onEvent: (eventId: string, event: AiEventDocument) => void;
   onRemove: (eventId: string) => void;
   onError: (error: string) => void;
-}) {
-  const { campaignId, onEvent, onRemove, onError } = params;
+}): () => void {
+  const { campaignId, onEvent, onError } = params;
+  let active = true;
+  const seen = new Set<string>();
 
-  const col = collection(
-    firestore,
-    `/campaigns/${campaignId}/ai-events`
-  );
-
-  return onSnapshot(
-    query(col, orderBy("createdAt", "desc"), limit(50)),
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added" || change.type === "modified") {
-          const data = change.doc.data();
-          const createdAt =
-            data.createdAt instanceof Timestamp
-              ? data.createdAt.toDate()
-              : new Date();
-          onEvent(change.doc.id, {
-            ...data,
-            createdAt,
-          } as AiEventDocument);
-        } else if (change.type === "removed") {
-          onRemove(change.doc.id);
-        }
+  const poll = () => {
+    api
+      .get<any[]>(`/api/ai/events?campaignId=${campaignId}`)
+      .then((rows) => {
+        if (!active) return;
+        rows.forEach((row) => {
+          seen.add(row.id);
+          onEvent(row.id, toEvent(row));
+        });
+      })
+      .catch(() => {
+        if (active) onError("Failed to load AI events.");
       });
-    },
-    (err) => {
-      console.error(err);
-      onError("Failed to load AI events.");
-    }
-  );
+  };
+
+  poll();
+  const interval = setInterval(poll, 10_000);
+  return () => {
+    active = false;
+    clearInterval(interval);
+  };
 }

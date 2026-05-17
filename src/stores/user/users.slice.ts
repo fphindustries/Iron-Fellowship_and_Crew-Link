@@ -1,7 +1,7 @@
 import { CreateSliceType } from "stores/store.type";
 import { UserSlice } from "./users.slice.type";
 import { defaultUserSlice } from "./users.slice.default";
-import { getUserDoc } from "api-calls/user/getUserDoc";
+import { api } from "config/api.config";
 
 export const createUsersSlice: CreateSliceType<UserSlice> = (
   set,
@@ -14,7 +14,8 @@ export const createUsersSlice: CreateSliceType<UserSlice> = (
       set((store) => {
         store.users.userMap[userId] = { loading: true };
       });
-      getUserDoc({ uid: userId })
+      api
+        .get<any>(`/api/users/${userId}`)
         .then((doc) => {
           set((store) => {
             store.users.userMap[userId] = { loading: false, doc };
@@ -31,22 +32,21 @@ export const createUsersSlice: CreateSliceType<UserSlice> = (
     userIds.forEach((uid) => {
       const existingDoc = getState().users.userMap[uid];
       if (!existingDoc) {
-        {
-          set((store) => {
-            store.users.userMap[uid] = { loading: true };
-          });
-          getUserDoc({ uid: uid })
-            .then((doc) => {
-              set((store) => {
-                store.users.userMap[uid] = { loading: false, doc };
-              });
-            })
-            .catch(() => {
-              set((store) => {
-                store.users.userMap[uid] = { loading: false };
-              });
+        set((store) => {
+          store.users.userMap[uid] = { loading: true };
+        });
+        api
+          .get<any>(`/api/users/${uid}`)
+          .then((doc) => {
+            set((store) => {
+              store.users.userMap[uid] = { loading: false, doc };
             });
-        }
+          })
+          .catch(() => {
+            set((store) => {
+              store.users.userMap[uid] = { loading: false };
+            });
+          });
       }
     });
   },

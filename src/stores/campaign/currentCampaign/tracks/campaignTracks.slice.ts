@@ -1,11 +1,16 @@
 import { CreateSliceType } from "stores/store.type";
 import { CampaignTracksSlice } from "./campaignTracks.slice.type";
 import { defaultCampaignTracksSlice } from "./campaignTracks.slice.default";
-import { listenToProgressTracks } from "api-calls/tracks/listenToProgressTracks";
-import { TrackStatus } from "types/Track.type";
-import { addProgressTrack } from "api-calls/tracks/addProgressTrack";
-import { updateProgressTrack } from "api-calls/tracks/updateProgressTrack";
-import { removeProgressTrack } from "api-calls/tracks/removeProgressTrack";
+import { TrackStatus, Track } from "types/Track.type";
+import { api } from "config/api.config";
+
+function toTrack(row: any): Track {
+  const data = row.dataJson ?? {};
+  return {
+    ...data,
+    createdDate: row.createdAt ? new Date(row.createdAt) : new Date(),
+  } as Track;
+}
 
 export const createCampaignTracksSlice: CreateSliceType<CampaignTracksSlice> = (
   set,
@@ -14,53 +19,95 @@ export const createCampaignTracksSlice: CreateSliceType<CampaignTracksSlice> = (
   ...defaultCampaignTracksSlice,
 
   subscribe: (campaignId, status = TrackStatus.Active) => {
-    const unsubscribe = listenToProgressTracks(
-      campaignId,
-      undefined,
-      status,
-      (tracks) => {
+    if (!campaignId) return () => {};
+    let active = true;
+    api
+      .get<any[]>(`/api/campaigns/${campaignId}/tracks?status=${status}`)
+      .then((rows) => {
+        if (!active) return;
         set((store) => {
-          Object.keys(tracks).forEach((trackId) => {
-            const track = tracks[trackId];
-            store.campaigns.currentCampaign.tracks.trackMap[status][track.type][
-              trackId
-            ] = track;
+          rows.forEach((row) => {
+            const track = toTrack(row);
+            store.campaigns.currentCampaign.tracks.trackMap[status][
+              track.type
+            ][row.id] = track as any;
           });
         });
-      },
-      (trackId, type) => {
-        set((store) => {
-          delete store.campaigns.currentCampaign.tracks.trackMap[status][type][
-            trackId
-          ];
-        });
-      },
-      (error) => {
-        console.error(error);
-      }
-    );
-
-    if (!unsubscribe) {
-      return () => {};
-    }
-    return unsubscribe;
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   },
 
   addTrack: (track) => {
     const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
-    return addProgressTrack({ campaignId, track });
+    const { createdDate, ...rest } = track as any;
+    return api
+      .post<any>(`/api/campaigns/${campaignId}/tracks`, {
+        dataJson: rest,
+        createdAt: (createdDate ?? new Date()).toISOString(),
+      })
+      .then((row) => {
+        const saved = toTrack(row);
+        set((store) => {
+          store.campaigns.currentCampaign.tracks.trackMap[
+            saved.status
+          ][saved.type][row.id] = saved as any;
+        });
+      });
   },
+
   updateTrack: (trackId, track) => {
     const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
-    return updateProgressTrack({ campaignId, trackId, track });
-  },
-  deleteTrack: (trackId) => {
-    const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
-    return removeProgressTrack({ campaignId, id: trackId });
+    const existing = Object.values(TrackStatus).flatMap((status) =>
+      Object.values(getState().campaigns.currentCampaign.tracks.trackMap[status]).flatMap((typeMap) =>
+        Object.entries(typeMap as Record<string, Track>)
+          .filter(([id]) => id === trackId)
+          .map(([, t]) => t)
+      )
+    )[0];
+    const merged = { ...(existing ?? {}), ...track };
+    return api
+      .patch<any>(`/api/campaigns/${campaignId}/tracks/${trackId}`, { dataJson: merged })
+      .then(() => {
+        set((store) => {
+          if (existing) {
+            store.campaigns.currentCampaign.tracks.trackMap[
+              existing.status
+            ][existing.type][trackId] = merged as any;
+          }
+        });
+      });
   },
 
   updateCharacterTrack: (characterId, trackId, track) => {
-    return updateProgressTrack({ characterId, trackId, track });
+    const existingState = getState();
+    const allCharTracks = existingState.campaigns.currentCampaign.characters.characterTracks[characterId];
+    const existing = allCharTracks
+      ? Object.values(allCharTracks).flatMap((typeMap: any) =>
+          Object.entries(typeMap as Record<string, Track>)
+            .filter(([id]) => id === trackId)
+            .map(([, t]) => t)
+        )[0]
+      : undefined;
+    const merged = { ...(existing ?? {}), ...track };
+    return api.patch<void>(`/api/characters/${characterId}/tracks/${trackId}`, { dataJson: merged });
+  },
+
+  deleteTrack: (trackId) => {
+    const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
+    return api.del<void>(`/api/campaigns/${campaignId}/tracks/${trackId}`).then(() => {
+      set((store) => {
+        Object.values(TrackStatus).forEach((status) => {
+          Object.values(store.campaigns.currentCampaign.tracks.trackMap[status]).forEach(
+            (typeMap: any) => {
+              delete typeMap[trackId];
+            }
+          );
+        });
+      });
+    });
   },
 
   setLoadCompletedTracks: () => {

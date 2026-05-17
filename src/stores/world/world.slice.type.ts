@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { World } from "api-calls/world/_world.type";
 import { CurrentWorldSlice } from "./currentWorld/currentWorld.slice.type";
 
@@ -11,11 +10,11 @@ export interface WorldSliceData {
 }
 
 export interface WorldSliceActions {
-  subscribeToOwnedWorlds: (uid?: string) => Unsubscribe | undefined;
+  subscribeToOwnedWorlds: (uid?: string) => (() => void) | undefined;
   subscribeToNonOwnedWorlds: (
     campaignWorldIds: string[],
     worldIdsUserOwns: string[]
-  ) => Unsubscribe | undefined;
+  ) => (() => void) | undefined;
 
   createWorld: () => Promise<string>;
   deleteWorld: (worldId: string) => Promise<void>;

@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { useEffect } from "react";
 import { useStore } from "stores/store";
 import { ROLL_LOG_ID } from "./notes.slice.type";
@@ -38,7 +37,7 @@ export function useListenToNotes() {
   }, [campaignId, characterId, subscribe, showAllCampaignDocs]);
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe;
+    let unsubscribe: (() => void) | undefined;
 
     if (openNote && openNote !== ROLL_LOG_ID) {
       subscribeToNoteContent(openNote);

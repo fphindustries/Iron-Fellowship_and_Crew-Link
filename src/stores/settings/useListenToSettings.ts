@@ -1,9 +1,8 @@
-import { Unsubscribe } from "firebase/firestore";
 import { useEffect } from "react";
 import { useStore } from "stores/store";
 
 export function useListenToSettings() {
-  const uid = useStore((store) => store.auth.user?.uid);
+  const uid = useStore((store) => store.auth.user?.id);
   const campaignGMIds = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaign?.gmIds
   );
@@ -20,7 +19,7 @@ export function useListenToSettings() {
   );
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe;
+    let unsubscribe: (() => void) | undefined;
     if (campaignId) {
       unsubscribe = subscribe(campaignGMIds ?? []);
     } else if (uid) {

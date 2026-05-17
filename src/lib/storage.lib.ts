@@ -1,90 +1,43 @@
-import { storage } from "config/firebase.config";
-import {
-  getDownloadURL,
-  ref,
-  uploadBytes,
-  deleteObject,
-} from "firebase/storage";
+import { api } from "../config/api.config";
 
 export const MAX_FILE_SIZE = 2 * 1024 * 1024;
 export const MAX_FILE_SIZE_LABEL = "2 MB";
 
-export function uploadImage(path: string, image: File): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    const imageRef = ref(storage, `${path}/${image.name}`);
-
-    uploadBytes(imageRef, image)
-      .then(() => {
-        resolve(true);
-      })
-      .catch((e) => {
-        console.error(e);
-        reject(`Failed to upload ${image.name}.`);
-      });
-  });
+export async function uploadImage(path: string, image: File): Promise<boolean> {
+  const key = `${path}/${image.name}`;
+  const { uploadUrl, fields } = await api.post<{ uploadUrl: string; fields: Record<string, string>; key: string }>(
+    "/api/storage/upload-url",
+    { key, contentType: image.type }
+  );
+  const formData = new FormData();
+  Object.entries(fields).forEach(([k, v]) => formData.append(k, v));
+  formData.append("file", image);
+  const res = await fetch(uploadUrl, { method: "POST", body: formData });
+  if (!res.ok) throw new Error(`Failed to upload ${image.name}.`);
+  return true;
 }
 
-export function deleteImage(path: string, filename: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const imageRef = ref(storage, `${path}/${filename}`);
-
-    deleteObject(imageRef)
-      .then(() => {
-        resolve();
-      })
-      .catch((e) => {
-        console.error(e);
-        reject(`Failed to delete ${filename}.`);
-      });
-  });
+export async function deleteImage(path: string, filename: string): Promise<void> {
+  await api.del("/api/storage/objects", { key: `${path}/${filename}` });
 }
 
-export function getImageUrl(path: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const imageRef = ref(storage, path);
-
-    getDownloadURL(imageRef)
-      .then((url) => resolve(url))
-      .catch((e) => {
-        console.error(e);
-        reject(e);
-      });
-  });
+export async function getImageUrl(key: string): Promise<string> {
+  const { url } = await api.get<{ url: string }>(
+    `/api/storage/url?key=${encodeURIComponent(key)}`
+  );
+  return url;
 }
 
-export function replaceImage(
+export async function replaceImage(
   folderPath: string,
   oldImageFilename: string | undefined,
   newImage: File
-) {
-  return new Promise<void>((resolve, reject) => {
-    let deleteImagePromise: Promise<void> | undefined;
-    if (oldImageFilename) {
-      deleteImagePromise = deleteImage(folderPath, oldImageFilename);
-    } else {
-      deleteImagePromise = Promise.resolve();
-    }
-
-    deleteImagePromise
-      .then(() => {
-        if (newImage) {
-          if (newImage.size > MAX_FILE_SIZE) {
-            reject(
-              `Image must be smaller than ${MAX_FILE_SIZE_LABEL} in size.`
-            );
-            return;
-          }
-
-          uploadImage(folderPath, newImage)
-            .then(() => resolve())
-            .catch((e) => reject(e));
-        } else {
-          resolve();
-        }
-      })
-      .catch((e) => {
-        console.error(e);
-        reject(e);
-      });
-  });
+): Promise<void> {
+  if (newImage.size > MAX_FILE_SIZE) {
+    throw new Error(`Image must be smaller than ${MAX_FILE_SIZE_LABEL} in size.`);
+  }
+  if (oldImageFilename) {
+    await deleteImage(folderPath, oldImageFilename);
+  }
+  await uploadImage(folderPath, newImage);
 }

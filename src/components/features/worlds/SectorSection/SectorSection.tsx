@@ -14,7 +14,7 @@ import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import { OpenSector } from "./OpenSector";
 import HiddenIcon from "@mui/icons-material/VisibilityOff";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface SectorSectionProps {
   showHiddenTag?: boolean;

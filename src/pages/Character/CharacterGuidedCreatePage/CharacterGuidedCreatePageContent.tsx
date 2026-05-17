@@ -20,15 +20,12 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { useStore } from "stores/store";
 import { AssetDocument } from "api-calls/assets/_asset.type";
-import { addCharacterToCampaign } from "api-calls/campaign/addCharacterToCampaign";
 import {
   CAMPAIGN_ROUTES,
   constructCampaignSheetPath,
 } from "pages/Campaign/routes";
 import { constructCharacterSheetPath } from "pages/Character/routes";
-import { ignoreApiError } from "api-calls/createApiFunction";
-import { addNote } from "api-calls/notes/addNote";
-import { updateNote } from "api-calls/notes/updateNote";
+import { api, ignoreApiError } from "config/api.config";
 import * as Y from "yjs";
 import { TiptapTransformer } from "@hocuspocus/transformer";
 import { ChoosePathsStep } from "pages/Character/CharacterCreatePage/components/guided/ChoosePathsStep";
@@ -39,9 +36,8 @@ import { SetStatsStep } from "./components/SetStatsStep";
 import { EnvisionCharacterStep } from "./components/EnvisionCharacterStep";
 import { NameCharacterStep } from "./components/NameCharacterStep";
 import { ReviewStep } from "./components/ReviewStep";
-import { WorldContext } from "api-calls/ai/_ai.type";
+import { WorldContext, WorldAiSettings } from "api-calls/ai/_ai.type";
 import { CUSTOM_TRUTH_INDEX } from "components/features/worlds/WorldTruths/customTruthIndex";
-import { getWorldAiSettings } from "api-calls/world/settings/getWorldAiSettings";
 
 interface GuidedForm {
   enabledExpansionMap: Record<string, boolean>;
@@ -63,7 +59,6 @@ const STEPS = [
 ];
 
 export function CharacterGuidedCreatePageContent() {
-  const uid = useStore((store) => store.auth.uid);
   const campaignId = useSearchParams()[0].get("campaignId");
   const navigate = useNavigate();
   const appName = useAppName();
@@ -80,6 +75,7 @@ export function CharacterGuidedCreatePageContent() {
   const worldMap = useStore((s) => s.worlds.worldMap);
   const worldTruthDefs = useStore((s) => s.rules.worldTruths);
   const createCharacter = useStore((store) => store.characters.createCharacter);
+  const addCharacterToCampaign = useStore((store) => store.campaigns.currentCampaign.addCharacter);
 
   const { control } = useForm<GuidedForm>();
   const { append } = useFieldArray({
@@ -118,7 +114,9 @@ export function CharacterGuidedCreatePageContent() {
       })
       .filter((t): t is { name: string; description: string } => t !== null);
 
-    const aiSettings = await getWorldAiSettings(worldId).catch(() => undefined);
+    const aiSettings = await api
+      .get<WorldAiSettings>(`/api/worlds/${worldId}/ai-settings`)
+      .catch(() => undefined);
     setWorldContext({ truths, assumptions: aiSettings?.assumptions });
   };
 
@@ -269,15 +267,18 @@ export function CharacterGuidedCreatePageContent() {
     const tiptapJson = { type: "doc", content: nodes };
     const ydoc = TiptapTransformer.toYdoc(tiptapJson, "default");
     const content = Y.encodeStateAsUpdate(ydoc);
-    return addNote({ characterId, order: 0 }).then((noteId) =>
-      updateNote({
-        characterId,
-        campaignId: undefined,
-        noteId,
+    return api
+      .post<{ id: string }>(`/api/notes?entityType=character&entityId=${characterId}`, {
         title: "Character Summary",
-        content,
+        sortOrder: 0,
+        shared: false,
       })
-    );
+      .then((row) =>
+        api.patch<void>(`/api/notes/${row.id}`, {
+          title: "Character Summary",
+          content: Array.from(content),
+        })
+      );
   };
 
   const handleAccept = () => {
@@ -294,13 +295,11 @@ export function CharacterGuidedCreatePageContent() {
       .then((characterId) => {
         const afterSummary = () => {
           if (campaignId) {
-            addCharacterToCampaign({ uid, campaignId, characterId }).finally(
-              () => {
-                navigate(
-                  constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
-                );
-              }
-            );
+            addCharacterToCampaign(characterId).finally(() => {
+              navigate(
+                constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
+              );
+            });
           } else {
             navigate(constructCharacterSheetPath(characterId));
           }

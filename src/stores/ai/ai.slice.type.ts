@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import {
   AiCampaignContext,
   AiGuideResponse,
@@ -29,7 +28,7 @@ export interface AiSliceData {
 }
 
 export interface AiSliceActions {
-  subscribe: (campaignId: string) => Unsubscribe;
+  subscribe: (campaignId: string) => () => void;
 
   requestAi: (params: {
     mode: AiMode;

@@ -9,7 +9,7 @@ import { WorldSheet } from "components/features/worlds/WorldSheet";
 import { WorldEmptyState } from "components/features/worlds/WorldEmptyState";
 import { useStore } from "stores/store";
 import { useState } from "react";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export function WorldSection() {
   const uid = useStore((store) => store.auth.uid);

@@ -18,7 +18,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ViewIcon from "@mui/icons-material/Visibility";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { StatViewerPreviewDialog } from "./StatViewerPreviewDialog";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface StatsProps {
   homebrewId: string;

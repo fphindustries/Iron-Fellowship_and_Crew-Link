@@ -9,7 +9,7 @@ import { useStore } from "stores/store";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "hooks/useIsMobile";
 import { useRoller } from "stores/appState/useRoller";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface StatComponentProps {
   label: string;

@@ -19,7 +19,7 @@ import { useConfirm } from "material-ui-confirm";
 import { ImpactDialog } from "./ImpactDialog";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { ImpactPreviewDialog } from "./ImpactCategoryPreviewDialog";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface ImpactsProps {
   homebrewId: string;

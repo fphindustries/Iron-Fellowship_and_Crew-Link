@@ -13,7 +13,7 @@ import { useStore } from "stores/store";
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { useCampaignType } from "hooks/useCampaignType";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface WorldEmptyStateProps {
   worldsToChooseFrom?: World[];

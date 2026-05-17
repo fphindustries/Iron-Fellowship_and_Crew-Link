@@ -6,7 +6,8 @@ import {
   Skeleton,
   Typography,
 } from "@mui/material";
-import { getEditorInviteUrl } from "api-calls/homebrew/editorFunction/getEditorInviteUrl";
+import { api } from "config/api.config";
+import { constructHomebrewEditorInvitePath } from "pages/Homebrew/routes";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { useSnackbar } from "providers/SnackbarProvider";
 import { useEffect, useState } from "react";
@@ -24,10 +25,11 @@ export function InviteEditorDialog(props: InviteEditorDialogProps) {
   const { success, error } = useSnackbar();
 
   useEffect(() => {
-    getEditorInviteUrl(homebrewId)
-      .then((url) => {
-        if (url) {
-          setInviteLink(location.origin + url);
+    api
+      .post<{ key: string }>(`/api/homebrew/${homebrewId}/invite-keys`)
+      .then((invite) => {
+        if (invite?.key) {
+          setInviteLink(location.origin + constructHomebrewEditorInvitePath(invite.key));
         } else {
           error("Failed to create invite link");
         }

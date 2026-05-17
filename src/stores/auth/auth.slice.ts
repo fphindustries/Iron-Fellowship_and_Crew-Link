@@ -1,70 +1,45 @@
 import { CreateSliceType } from "stores/store.type";
 import { AuthSlice, AUTH_STATE } from "./auth.slice.type";
 import { defaultAuthSlice } from "./auth.slice.default";
-import { onAuthStateChanged } from "firebase/auth";
-import { firebaseAuth } from "config/firebase.config";
-import { UserDocument } from "api-calls/user/_user.type";
-import { clearAnalyticsUser, setAnalyticsUser } from "lib/analytics.lib";
-import { updateUserDoc } from "api-calls/user/updateUserDoc";
-import { listenToUserDoc } from "api-calls/user/listenToUserDoc";
-import { updateUserDocNestedFields } from "api-calls/user/updateUserDocNestedFields";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { getUser, updateUser } from "lib/auth.lib";
 
-export const createAuthSlice: CreateSliceType<AuthSlice> = (set, getState) => ({
+export const createAuthSlice: CreateSliceType<AuthSlice> = (set, _getState) => ({
   ...defaultAuthSlice,
 
   subscribe: () => {
-    return onAuthStateChanged(
-      firebaseAuth,
-      (user) => {
+    let active = true;
+
+    const poll = async () => {
+      try {
+        const user = await getUser();
+        if (!active) return;
         set((state) => {
           if (user) {
-            if (!user.displayName) {
-              state.auth.userNameDialogOpen = true;
-            }
-
-            const userDoc: UserDocument = {
-              displayName: user.displayName ?? "Unknown User",
-            };
-
-            if (user.photoURL) {
-              userDoc.photoURL = user.photoURL;
-            }
-
-            setAnalyticsUser(user);
-            updateUserDoc({ uid: user.uid, user: userDoc }).catch((e) => {
-              console.error(e);
-            });
-
+            if (!user.displayName) state.auth.userNameDialogOpen = true;
             state.auth.user = user;
-            state.auth.uid = user?.uid;
+            state.auth.uid = user.id;
             state.auth.status = AUTH_STATE.AUTHENTICATED;
           } else {
-            clearAnalyticsUser();
             state.auth.user = undefined;
             state.auth.uid = "";
             state.auth.status = AUTH_STATE.UNAUTHENTICATED;
           }
         });
-      },
-      (error) => {
-        console.error(error);
+      } catch {
+        if (!active) return;
         set((state) => {
-          clearAnalyticsUser();
           state.auth.user = undefined;
           state.auth.uid = "";
           state.auth.status = AUTH_STATE.UNAUTHENTICATED;
         });
       }
-    );
-  },
+    };
 
-  subscribeToUser: (uid) => {
-    return listenToUserDoc(uid, (user) => {
-      set((state) => {
-        state.auth.userDoc = user;
-      });
-    });
+    poll();
+
+    return () => {
+      active = false;
+    };
   },
 
   closeUserNameDialog: () => {
@@ -73,9 +48,12 @@ export const createAuthSlice: CreateSliceType<AuthSlice> = (set, getState) => ({
     });
   },
 
-  updateUserDoc: (doc) => {
-    const uid = getState().auth.uid;
-
-    updateUserDocNestedFields({ uid, user: doc }).catch(ignoreApiError);
+  updateUser: async (patch) => {
+    await updateUser(patch);
+    set((state) => {
+      if (state.auth.user) {
+        Object.assign(state.auth.user, patch);
+      }
+    });
   },
 });

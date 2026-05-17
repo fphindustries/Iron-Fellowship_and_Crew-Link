@@ -11,7 +11,7 @@ import { MoveDialog } from "./MoveDialog";
 import { useStore } from "stores/store";
 import { useConfirm } from "material-ui-confirm";
 import { MoveCard } from "./MoveCard";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface MovesEditorPaneProps {
   homebrewId: string;

@@ -1,11 +1,20 @@
 import { CreateSliceType } from "stores/store.type";
 import { CampaignCharactersSlice } from "./campaignCharacters.slice.type";
 import { defaultCampaignCharactersSlice } from "./campaignCharacters.slice.default";
-import { listenToCampaignCharacters } from "api-calls/campaign/listenToCampaignCharacters";
-import { listenToAssets } from "api-calls/assets/listenToAssets";
-import { updateCharacter } from "api-calls/character/updateCharacter";
-import { listenToProgressTracks } from "api-calls/tracks/listenToProgressTracks";
-import { TrackStatus, TrackTypes } from "types/Track.type";
+import { TrackStatus, TrackTypes, Track } from "types/Track.type";
+import { api } from "config/api.config";
+import { AssetDocument } from "api-calls/assets/_asset.type";
+
+function toAsset(row: any): AssetDocument {
+  return { id: row.id, ...(row.dataJson ?? {}) };
+}
+
+function toTrack(row: any): Track {
+  return {
+    ...(row.dataJson ?? {}),
+    createdDate: row.createdAt ? new Date(row.createdAt) : new Date(),
+  } as Track;
+}
 
 export const createCampaignCharactersSlice: CreateSliceType<
   CampaignCharactersSlice
@@ -13,73 +22,53 @@ export const createCampaignCharactersSlice: CreateSliceType<
   ...defaultCampaignCharactersSlice,
 
   listenToCampaignCharacters: (characterIds: string[]) => {
-    const unsubscribes = listenToCampaignCharacters({
-      characterIdList: characterIds,
-      onDocChange: (id, character) => {
-        set((store) => {
-          if (character) {
-            store.campaigns.currentCampaign.characters.characterMap[id] =
-              character;
-          } else {
-            delete store.campaigns.currentCampaign.characters.characterMap[id];
-          }
-        });
-      },
-      onError: (error) => {
-        console.error(error);
-      },
-    });
-    return () => {
-      unsubscribes.forEach((unsubscribe) => {
-        unsubscribe();
-      });
-    };
-  },
-  listenToCampaignCharacterAssets: (characterIds: string[]) => {
-    const unsubscribes = characterIds.map((characterId) => {
-      return listenToAssets(
-        characterId,
-        undefined,
-        (assets) => {
+    let active = true;
+    const fetches = characterIds.map((characterId) =>
+      api
+        .get<any>(`/api/characters/${characterId}`)
+        .then((char) => {
+          if (!active || !char) return;
           set((store) => {
-            if (assets) {
-              store.campaigns.currentCampaign.characters.characterAssets[
-                characterId
-              ] = Object.values(assets);
-            } else {
-              delete store.campaigns.currentCampaign.characters.characterAssets[
-                characterId
-              ];
-            }
+            store.campaigns.currentCampaign.characters.characterMap[characterId] = char;
           });
-        },
-        (error) => {
-          console.error(error);
-        }
-      );
-    });
+        })
+        .catch(() => {})
+    );
+    void fetches;
     return () => {
-      unsubscribes.forEach((unsubscribe) => {
-        unsubscribe();
-      });
+      active = false;
     };
   },
-  listenToCampaignCharacterTracks: (characterIds: string[]) => {
-    const unsubscribes = characterIds.map((characterId) => {
-      return listenToProgressTracks(
-        undefined,
-        characterId,
-        TrackStatus.Active,
-        (tracks) => {
+
+  listenToCampaignCharacterAssets: (characterIds: string[]) => {
+    let active = true;
+    characterIds.forEach((characterId) => {
+      api
+        .get<any[]>(`/api/characters/${characterId}/assets`)
+        .then((rows) => {
+          if (!active) return;
           set((store) => {
-            if (
-              !store.campaigns.currentCampaign.characters.characterTracks[
-                characterId
-              ]
-            ) {
-              store.campaigns.currentCampaign.characters.characterTracks[
-                characterId
-              ] = {
+            store.campaigns.currentCampaign.characters.characterAssets[characterId] =
+              rows.map(toAsset);
+          });
+        })
+        .catch(() => {});
+    });
+    return () => {
+      active = false;
+    };
+  },
+
+  listenToCampaignCharacterTracks: (characterIds: string[]) => {
+    let active = true;
+    characterIds.forEach((characterId) => {
+      api
+        .get<any[]>(`/api/characters/${characterId}/tracks?status=${TrackStatus.Active}`)
+        .then((rows) => {
+          if (!active) return;
+          set((store) => {
+            if (!store.campaigns.currentCampaign.characters.characterTracks[characterId]) {
+              store.campaigns.currentCampaign.characters.characterTracks[characterId] = {
                 [TrackTypes.Fray]: {},
                 [TrackTypes.Journey]: {},
                 [TrackTypes.Vow]: {},
@@ -87,36 +76,23 @@ export const createCampaignCharactersSlice: CreateSliceType<
                 [TrackTypes.Clock]: {},
               };
             }
-            Object.keys(tracks).forEach((trackId) => {
-              const track = tracks[trackId];
+            rows.forEach((row) => {
+              const track = toTrack(row);
               store.campaigns.currentCampaign.characters.characterTracks[
                 characterId
-              ][track.type][trackId] = track;
+              ][track.type][row.id] = track as any;
             });
           });
-        },
-
-        (trackId, type) => {
-          set((store) => {
-            delete store.campaigns.currentCampaign.characters.characterTracks[
-              characterId
-            ][type][trackId];
-          });
-        },
-        (error) => {
-          console.error(error);
-        }
-      );
+        })
+        .catch(() => {});
     });
     return () => {
-      unsubscribes.forEach((unsubscribe) => {
-        unsubscribe && unsubscribe();
-      });
+      active = false;
     };
   },
 
   updateCharacter: (characterId, character) => {
-    return updateCharacter({ characterId, character });
+    return api.patch<void>(`/api/characters/${characterId}`, character);
   },
 
   resetStore: () => {

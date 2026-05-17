@@ -47,7 +47,7 @@ import MoveLocationIcon from "@mui/icons-material/ModeOfTravel";
 import { useState } from "react";
 import { MoveLocationDialog } from "./MoveLocationDialog";
 import { LocationBreadcrumbs } from "./LocationBreadcrumbs";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface OpenLocationProps {
   worldId: string;

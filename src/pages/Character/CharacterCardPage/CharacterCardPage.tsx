@@ -5,8 +5,7 @@ import HealthIcon from "@mui/icons-material/Favorite";
 import SpiritIcon from "@mui/icons-material/Whatshot";
 import { useEffect, useRef, useState } from "react";
 import { Roll } from "types/DieRolls.type";
-import { Unsubscribe } from "firebase/firestore";
-import { listenToMostRecentCharacterLog } from "api-calls/game-log/listenToMostRecentCharacterLog";
+import { api } from "config/api.config";
 import { RollCard } from "./components/RollCard";
 import { useSearchParams } from "react-router-dom";
 import { useInitiativeStatusText } from "components/features/characters/InitiativeStatusChip/useInitiativeStatusText";
@@ -24,25 +23,31 @@ export function CharacterCardPage() {
   const [latestRoll, setLatestRoll] = useState<Roll>();
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe;
+    if (!characterId) return;
+    let active = true;
+    const startTime = new Date().toISOString();
+    const entityType = campaignId ? "campaign" : "character";
+    const entityId = campaignId ?? characterId;
 
-    if (characterId) {
-      unsubscribe = listenToMostRecentCharacterLog({
-        isGM: false,
-        campaignId: campaignId ?? undefined,
-        characterId,
-        onRoll: (rollId, roll) => {
-          setLatestRoll(roll);
-          setIsRollVisible(true);
-        },
-        onError: (error) => {
-          console.error(error);
-        },
-      });
-    }
+    const checkForNewRolls = () => {
+      api
+        .get<any[]>(`/api/game-log/${entityType}/${entityId}?after=${startTime}&limit=1&characterId=${characterId}`)
+        .then((logs) => {
+          if (!active || !logs?.length) return;
+          const log = logs[0];
+          if (log?.dataJson?.type !== undefined) {
+            setLatestRoll(log.dataJson as Roll);
+            setIsRollVisible(true);
+          }
+        })
+        .catch(() => {});
+    };
+
+    const interval = setInterval(checkForNewRolls, 3_000);
 
     return () => {
-      unsubscribe && unsubscribe();
+      active = false;
+      clearInterval(interval);
     };
   }, [characterId, campaignId]);
 

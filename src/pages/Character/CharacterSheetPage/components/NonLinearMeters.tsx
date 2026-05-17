@@ -1,7 +1,7 @@
 import { Grid } from "@mui/material";
 import { NonLinearMeter } from "components/features/charactersAndCampaigns/NonLinearMeter";
 import { useStore } from "stores/store";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 const getMdSize = (optionLength: number): number => {
   if (optionLength <= 6) {

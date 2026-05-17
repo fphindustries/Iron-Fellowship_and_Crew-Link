@@ -10,7 +10,7 @@ import { SectionHeading } from "components/shared/SectionHeading";
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { useStore } from "stores/store";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export function DebilitiesOrImpacts() {
   const impacts = useStore((store) => store.rules.impacts);

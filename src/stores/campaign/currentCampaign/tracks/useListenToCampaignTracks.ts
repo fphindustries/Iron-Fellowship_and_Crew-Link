@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { useEffect } from "react";
 import { useStore } from "stores/store";
 import { TrackStatus } from "types/Track.type";
@@ -15,7 +14,7 @@ export function useListenToCampaignTracks() {
   );
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe;
+    let unsubscribe: () => void;
     if (campaignId) {
       unsubscribe = subscribe(campaignId);
     }
@@ -24,7 +23,7 @@ export function useListenToCampaignTracks() {
     };
   }, [campaignId, subscribe]);
   useEffect(() => {
-    let unsubscribe: Unsubscribe;
+    let unsubscribe: () => void;
     if (campaignId && loadCompletedTracks) {
       unsubscribe = subscribe(campaignId, TrackStatus.Completed);
     }

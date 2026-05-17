@@ -5,7 +5,7 @@ import { Clock } from "./Clock";
 import { useState } from "react";
 import { EmptyState } from "components/shared/EmptyState";
 import { ClockDialog } from "./ClockDialog";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface ClocksProps {
   isCampaignSection?: boolean;

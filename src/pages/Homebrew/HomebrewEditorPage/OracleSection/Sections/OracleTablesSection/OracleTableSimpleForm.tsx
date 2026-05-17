@@ -16,7 +16,7 @@ import { OracleTable } from "./OracleTable";
 import { HomebrewOracleTableDocument } from "api-calls/homebrew/oracles/tables/_homebrewOracleTable.type";
 import { useStore } from "stores/store";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 interface OracleTableBaseFormContents {
   name: string;

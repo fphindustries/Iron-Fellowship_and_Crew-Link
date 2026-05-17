@@ -12,7 +12,7 @@ import { Head } from "providers/HeadProvider/Head";
 import { useStore } from "stores/store";
 import { CampaignDocument } from "api-calls/campaign/_campaign.type";
 import { useAppName } from "hooks/useAppName";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export function CampaignJoinPage() {
   const { campaignId } = useParams();

@@ -17,7 +17,7 @@ import { MAX_FILE_SIZE, MAX_FILE_SIZE_LABEL } from "lib/storage.lib";
 import { useSnackbar } from "providers/SnackbarProvider";
 import { ChangeEvent, useCallback, useRef, useState } from "react";
 import { IconColors, IconDefinition } from "types/Icon.type";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface ImageEditorDialogProps {
   name: string;

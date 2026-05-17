@@ -12,13 +12,12 @@ import { Assets } from "./components/Assets";
 import { AssetDocument } from "api-calls/assets/_asset.type";
 import { Box, Button } from "@mui/material";
 import { useStore } from "stores/store";
-import { addCharacterToCampaign } from "api-calls/campaign/addCharacterToCampaign";
 import {
   CAMPAIGN_ROUTES,
   constructCampaignSheetPath,
 } from "pages/Campaign/routes";
 import { constructCharacterSheetPath } from "../routes";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface Form {
   name: string;
@@ -38,7 +37,6 @@ export interface Form {
 }
 
 export function CharacterCreatePageContent() {
-  const uid = useStore((store) => store.auth.uid);
   const campaignId = useSearchParams()[0].get("campaignId");
 
   const navigate = useNavigate();
@@ -49,6 +47,7 @@ export function CharacterCreatePageContent() {
 
   const stats = useStore((store) => store.rules.stats);
   const createCharacter = useStore((store) => store.characters.createCharacter);
+  const addCharacterToCampaign = useStore((store) => store.campaigns.currentCampaign.addCharacter);
 
   const { control, watch, handleSubmit } = useForm<Form>({
     disabled: loading,
@@ -76,13 +75,11 @@ export function CharacterCreatePageContent() {
     )
       .then((characterId) => {
         if (campaignId) {
-          addCharacterToCampaign({ uid, campaignId, characterId }).finally(
-            () => {
-              navigate(
-                constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
-              );
-            }
-          );
+          addCharacterToCampaign(characterId).finally(() => {
+            navigate(
+              constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
+            );
+          });
         } else {
           navigate(constructCharacterSheetPath(characterId));
         }

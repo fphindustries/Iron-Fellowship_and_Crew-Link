@@ -27,10 +27,10 @@ const updateComponents: Record<
 const appVersion = APP_VERSION;
 
 export function UpdateDialog() {
-  const user = useStore((store) => store.auth.userDoc);
+  const user = useStore((store) => store.auth.user);
   const [shouldOpenIfUpdateHasComponent, setShouldOpenIfUpdateHasComponent] =
     useState(false);
-  const updateUser = useStore((store) => store.auth.updateUserDoc);
+  const updateUser = useStore((store) => store.auth.updateUser);
 
   useEffect(() => {
     if (user && user.appVersion && appVersion !== user.appVersion) {

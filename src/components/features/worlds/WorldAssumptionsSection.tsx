@@ -2,7 +2,7 @@ import { Box, Button, TextField, Typography } from "@mui/material";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "stores/store";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 const DEFAULT_ASSUMPTIONS = `This is a perilous future. Two centuries ago, your people fled a cataclysm and settled a distant galaxy they call the Forge. This is a chaotic place full of dangers and mysteries.
 This is a lonely future. With some possible exceptions (that you'll identify as part of your own truths), humans are the only known intelligent life in this galaxy. Others once lived here, but only mysterious and perilous vaults remain to mark their legacy.

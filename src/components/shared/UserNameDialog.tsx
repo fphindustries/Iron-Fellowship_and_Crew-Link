@@ -16,7 +16,7 @@ import { updateUser } from "lib/auth.lib";
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
 import { UserAvatar } from "./UserAvatar";
-import { UserDocument } from "api-calls/user/_user.type";
+import type { UserProfile } from "@starforged/shared";
 import { DialogTitleWithCloseButton } from "./DialogTitleWithCloseButton";
 
 export interface UserNameDialogProps {
@@ -31,7 +31,7 @@ export function UserNameDialog(props: UserNameDialogProps) {
 
   const user = useStore((store) => store.auth.user);
   const hasHiddenPhotoUrl = useStore((store) =>
-    user?.uid ? store.users.userMap[user.uid]?.doc?.hidePhoto ?? false : false
+    user?.id ? store.users.userMap[user.id]?.doc?.hidePhoto ?? false : false
   );
 
   const [name, setName] = useState(user?.displayName ?? "");
@@ -45,12 +45,12 @@ export function UserNameDialog(props: UserNameDialogProps) {
 
   const handleSave = () => {
     if (name.trim().length > 0) {
-      const newUserDoc: UserDocument = {
+      const newUserDoc: Partial<UserProfile> = {
         displayName: name,
         hidePhoto: !showProfileImage,
       };
-      if (user?.photoURL) {
-        newUserDoc.photoURL = user.photoURL;
+      if (user?.photoUrl) {
+        newUserDoc.photoUrl = user.photoUrl;
       }
 
       setIsLoading(true);
@@ -92,10 +92,10 @@ export function UserNameDialog(props: UserNameDialogProps) {
             onChange={(evt) => setName(evt.currentTarget.value)}
             sx={{ mt: 4 }}
           />
-          {user?.photoURL && (
+          {user?.photoUrl && (
             <Stack direction={"row"} spacing={1}>
               <UserAvatar
-                uid={user.uid}
+                uid={user.id}
                 forceShowPhoto={showProfileImage}
                 forceName={name}
               />

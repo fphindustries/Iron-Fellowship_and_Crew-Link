@@ -3,7 +3,7 @@ import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithClo
 import { useEffect, useState } from "react";
 import { ExpansionSelector } from "./ExpansionSelector";
 import { useStore } from "stores/store";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface ExpansionSelectorDialogProps {
   open: boolean;

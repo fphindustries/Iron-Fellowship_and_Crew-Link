@@ -12,7 +12,7 @@ import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithClo
 import { useState } from "react";
 import { useStore } from "stores/store";
 import { HomebrewMoveCategoryDocument } from "api-calls/homebrew/moves/categories/_homebrewMoveCategory.type";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface MoveMoveDialogProps {
   open: boolean;

@@ -22,7 +22,7 @@ export function SectionWithSidebar(props: SectionWithSidebarProps) {
 
   const renderOnLeft = useStore((store) =>
     respectUserSetting
-      ? store.auth.userDoc?.layout?.referenceSidebarLocation !==
+      ? store.auth.user?.layout?.referenceSidebarLocation !==
         ReferenceSidebarLocation.Right
       : true
   );

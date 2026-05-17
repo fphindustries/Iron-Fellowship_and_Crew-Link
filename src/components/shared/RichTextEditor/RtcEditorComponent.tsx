@@ -1,5 +1,5 @@
 import { useEditor } from "@tiptap/react";
-import { WebrtcProvider } from "y-webrtc";
+import type { SocketIOProvider } from "lib/SocketIOProvider";
 import * as Y from "yjs";
 import { Editor } from "./Editor";
 import { EditorToolbar } from "./EditorToolbar";
@@ -7,7 +7,7 @@ import { useStore } from "stores/store";
 import { rtcExtensions } from "./rtcExtensions";
 
 export interface RtcRichTextEditorProps {
-  provider: WebrtcProvider;
+  provider: SocketIOProvider;
   doc: Y.Doc;
   saving: boolean;
   withHeading?: boolean;

@@ -1,15 +1,14 @@
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
 import { RtcEditorComponent } from "./RtcEditorComponent";
 import { TiptapTransformer } from "@hocuspocus/transformer";
 import { useCreateRefFrom } from "hooks/useCreateRefFrom";
-import { firebaseAuth } from "config/firebase.config";
+import { SocketIOProvider } from "lib/SocketIOProvider";
 
 export interface RtcRichTextEditorProps {
   id: string;
   roomPrefix: string;
-  documentPassword: string;
+  documentPassword?: string;
   onSave?: (
     documentId: string,
     notes: Uint8Array,
@@ -26,7 +25,6 @@ export function RtcRichTextEditor(props: RtcRichTextEditorProps) {
   const {
     id,
     roomPrefix,
-    documentPassword,
     onSave,
     onDelete,
     initialValue,
@@ -36,7 +34,7 @@ export function RtcRichTextEditor(props: RtcRichTextEditorProps) {
   const initialValueRef = useCreateRefFrom(initialValue);
 
   const [yDoc, setYDoc] = useState<Y.Doc>();
-  const [provider, setProvider] = useState<WebrtcProvider>();
+  const [provider, setProvider] = useState<SocketIOProvider>();
 
   const hasUnsavedChangesRef = useRef<boolean>(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
@@ -65,25 +63,20 @@ export function RtcRichTextEditor(props: RtcRichTextEditorProps) {
 
   useEffect(() => {
     const roomName = roomPrefix + id;
-    // Recreate our yDoc and Provider
     const newYDoc = new Y.Doc();
     if (initialValueRef.current) {
       Y.applyUpdate(newYDoc, initialValueRef.current);
     }
 
-    // Add update listener
-    newYDoc?.on("update", (message, origin) => {
+    newYDoc?.on("update", (_message, origin) => {
       // Only on changes we make, to prevent overcrowding our backend
-      if (!origin.peerId) {
+      if (!origin || origin.constructor?.name !== "SocketIOProvider") {
         setHasUnsavedChanges(true);
         hasUnsavedChangesRef.current = true;
       }
     });
 
-    const newProvider = new WebrtcProvider(roomName, newYDoc, {
-      password: documentPassword,
-      signaling: ["wss://y-webrtc-signalling-server.onrender.com"],
-    });
+    const newProvider = new SocketIOProvider(roomName, newYDoc);
 
     setProvider(newProvider);
     setYDoc(newYDoc);
@@ -103,7 +96,7 @@ export function RtcRichTextEditor(props: RtcRichTextEditorProps) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomPrefix, id, handleSave, documentPassword]);
+  }, [roomPrefix, id, handleSave]);
 
   // Handle save on page unload
   useEffect(() => {
@@ -114,12 +107,6 @@ export function RtcRichTextEditor(props: RtcRichTextEditorProps) {
         yDoc
       ) {
         handleSave(id, yDoc, true);
-        // Delay closing because firefox does not support keep-alive
-        // NOTE - this is a bad way of handling this, but I can't find a better way to check support for keep alive
-        // if (navigator.userAgent?.includes("Mozilla")) {
-        //   const time = Date.now();
-        //   while (Date.now() - time < 500) {}
-        // }
       }
     };
     document.addEventListener("visibilitychange", onUnloadFunction);
@@ -130,11 +117,8 @@ export function RtcRichTextEditor(props: RtcRichTextEditorProps) {
   }, [handleSave, yDoc, id]);
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    let timeout: ReturnType<typeof setTimeout>;
     if (yDoc && hasUnsavedChanges) {
-      firebaseAuth.currentUser?.getIdToken(true).then((token) => {
-        window.sessionStorage.setItem("id-token", token);
-      }); // Force refresh of token in case the user exits soon.
       timeout = setTimeout(() => {
         handleSave(id, yDoc);
       }, 30 * 1000);
@@ -147,9 +131,7 @@ export function RtcRichTextEditor(props: RtcRichTextEditorProps) {
 
   useEffect(() => {
     if (!hasUnsavedChangesRef.current && yDoc && initialValue) {
-      if (initialValue) {
-        Y.applyUpdate(yDoc, initialValue, { peerId: "local" });
-      }
+      Y.applyUpdate(yDoc, initialValue, { peerId: "local" });
     }
   }, [initialValue, yDoc, showTitle]);
 

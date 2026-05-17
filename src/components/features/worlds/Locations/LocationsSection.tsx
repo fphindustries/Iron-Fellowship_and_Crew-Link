@@ -10,7 +10,7 @@ import { LocationCard } from "./LocationCard";
 import { LocationsSidebar } from "./LocationsSidebar";
 import { useWorldPermissions } from "../useWorldPermissions";
 import { OpenLocation } from "./OpenLocation";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";

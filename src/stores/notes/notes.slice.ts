@@ -1,13 +1,16 @@
 import { CreateSliceType } from "stores/store.type";
 import { NoteSource, NotesSlice } from "./notes.slice.type";
 import { defaultNotesSlice } from "./notes.slice.default";
-import { listenToNotes } from "api-calls/notes/listenToNotes";
-import { listenToNoteContent } from "api-calls/notes/listenToNoteContent";
-import { addNote } from "api-calls/notes/addNote";
-import { updateNote } from "api-calls/notes/updateNote";
-import { updateNoteOrder } from "api-calls/notes/updateNoteOrder";
-import { removeNote } from "api-calls/notes/removeNote";
-import { updateNoteShared } from "api-calls/notes/updateNoteShared";
+import { api } from "config/api.config";
+
+function toNote(row: any) {
+  return {
+    noteId: row.id,
+    title: row.title ?? "",
+    order: row.sortOrder ?? 0,
+    shared: row.shared ?? false,
+  };
+}
 
 export const createNotesSlice: CreateSliceType<NotesSlice> = (
   set,
@@ -16,62 +19,96 @@ export const createNotesSlice: CreateSliceType<NotesSlice> = (
   ...defaultNotesSlice,
 
   subscribe: (campaignId, loadAllCampaignDocs, characterId) => {
-    if (!campaignId && !characterId) {
-      return () => {};
-    }
+    if (!campaignId && !characterId) return () => {};
+    let active = true;
 
     set((store) => {
       store.notes.loading = true;
     });
-    return listenToNotes(
-      campaignId,
-      characterId,
-      !loadAllCampaignDocs,
-      (source, notes) => {
+
+    const fetches: Promise<void>[] = [];
+
+    if (characterId) {
+      fetches.push(
+        api
+          .get<any[]>(`/api/notes?entityType=character&entityId=${characterId}`)
+          .then((rows) => {
+            if (!active) return;
+            set((store) => {
+              store.notes.notes[NoteSource.Character] = rows.map(toNote);
+            });
+          })
+          .catch(() => {})
+      );
+    }
+
+    if (campaignId && loadAllCampaignDocs) {
+      fetches.push(
+        api
+          .get<any[]>(`/api/notes?entityType=campaign&entityId=${campaignId}`)
+          .then((rows) => {
+            if (!active) return;
+            set((store) => {
+              store.notes.notes[NoteSource.Campaign] = rows.map(toNote);
+            });
+          })
+          .catch(() => {})
+      );
+    }
+
+    Promise.all(fetches)
+      .then(() => {
+        if (!active) return;
         set((store) => {
           store.notes.loading = false;
-          store.notes.notes[source] = notes;
-          store.notes.error = undefined;
         });
-      },
-      (error) => {
-        console.error(error);
+      })
+      .catch(() => {
+        if (!active) return;
         set((store) => {
           store.notes.loading = false;
           store.notes.error = "Failed to load notes.";
         });
-      }
-    );
+      });
+
+    return () => {
+      active = false;
+    };
   },
 
   subscribeToNoteContent: (note) => {
     const state = getState();
-
     const campaignId = state.campaigns.currentCampaign.currentCampaignId;
     const characterId = state.characters.currentCharacter.currentCharacterId;
+    if (!campaignId && !characterId) return () => {};
 
-    if (!campaignId && !characterId) {
-      return () => {};
-    }
+    const entityType = note.source === NoteSource.Campaign ? "campaign" : "character";
+    const entityId = note.source === NoteSource.Campaign ? campaignId : characterId;
+    if (!entityId) return () => {};
 
-    return listenToNoteContent(
-      note.source === NoteSource.Campaign ? campaignId : undefined,
-      note.source === NoteSource.Character ? characterId : undefined,
-      note.id,
-      (content) => {
+    let active = true;
+
+    api
+      .get<any>(`/api/notes/${note.id}/content?entityType=${entityType}&entityId=${entityId}`)
+      .then((row) => {
+        if (!active) return;
+        const content = row?.content
+          ? new Uint8Array(row.content.data ?? row.content)
+          : null;
         set((store) => {
           if (
             typeof store.notes.openNote !== "string" &&
             store.notes.openNote?.id === note.id
           ) {
-            store.notes.openNoteContent = content ?? null;
+            store.notes.openNoteContent = content;
           }
         });
-      },
-      (error) => {
-        console.error(error);
-      }
-    );
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
   },
 
   setOpenNoteId: (openNote) => {
@@ -100,9 +137,7 @@ export const createNotesSlice: CreateSliceType<NotesSlice> = (
       const noteIndex = store.notes.notes[note.source].findIndex(
         (noteItem) => note.id === noteItem.noteId
       );
-
       if (typeof noteIndex !== "number" || noteIndex < 0) return;
-
       store.notes.notes[note.source][noteIndex].order = order;
       store.notes.notes[note.source].sort((n1, n2) => n1.order - n2.order);
     });
@@ -112,81 +147,44 @@ export const createNotesSlice: CreateSliceType<NotesSlice> = (
     const state = getState();
     const campaignId = state.campaigns.currentCampaign.currentCampaignId;
     const characterId = state.characters.currentCharacter.currentCharacterId;
-
-    return addNote({
-      campaignId: source === NoteSource.Campaign ? campaignId : undefined,
-      characterId: source === NoteSource.Character ? characterId : undefined,
-      order,
-      shared,
-    });
+    const entityType = source === NoteSource.Campaign ? "campaign" : "character";
+    const entityId = source === NoteSource.Campaign ? campaignId : characterId;
+    if (!entityId) return Promise.reject("Entity ID not defined");
+    return api
+      .post<any>(
+        `/api/notes?entityType=${entityType}&entityId=${entityId}`,
+        { title: "", sortOrder: order, shared: shared ?? false }
+      )
+      .then((row) => row.id as string);
   },
 
-  updateNote: (
-    source,
-    campaignId,
-    characterId,
-    noteId,
-    title,
-    content,
-    isBeaconRequest
-  ) => {
-    return updateNote({
-      campaignId: source === NoteSource.Campaign ? campaignId : undefined,
-      characterId: source === NoteSource.Character ? characterId : undefined,
-      noteId,
-      title,
-      content,
-      isBeaconRequest,
-    });
+  updateNote: (source, campaignId, characterId, noteId, title, content, isBeaconRequest) => {
+    const body: any = { title };
+    if (content) {
+      body.content = Array.from(content);
+    }
+    if (isBeaconRequest) {
+      navigator.sendBeacon(`/api/notes/${noteId}`, JSON.stringify(body));
+      return Promise.resolve();
+    }
+    return api.patch<void>(`/api/notes/${noteId}`, body);
   },
 
   updateNoteOrder: (note, order) => {
-    const state = getState();
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId = state.characters.currentCharacter.currentCharacterId;
-
-    return updateNoteOrder({
-      campaignId: note.source === NoteSource.Campaign ? campaignId : undefined,
-      characterId:
-        note.source === NoteSource.Character ? characterId : undefined,
-      noteId: note.id,
-      order,
-    });
+    return api.patch<void>(`/api/notes/${note.id}`, { sortOrder: order });
   },
 
   removeNote: (note) => {
-    const state = getState();
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId = state.characters.currentCharacter.currentCharacterId;
-
-    return removeNote({
-      campaignId: note.source === NoteSource.Campaign ? campaignId : undefined,
-      characterId:
-        note.source === NoteSource.Character ? characterId : undefined,
-      noteId: note.id,
-    });
+    return api.del<void>(`/api/notes/${note.id}`);
   },
 
   updateNoteShared: (note, shared) => {
-    const state = getState();
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId = state.characters.currentCharacter.currentCharacterId;
-
-    return updateNoteShared({
-      campaignId: note.source === NoteSource.Campaign ? campaignId : undefined,
-      characterId:
-        note.source === NoteSource.Character ? characterId : undefined,
-      noteId: note.id,
-      shared,
-    });
+    return api.patch<void>(`/api/notes/${note.id}`, { shared });
   },
 
   resetStore: () => {
     set((store) => {
-      store.notes = {
-        ...store.notes,
-        ...defaultNotesSlice,
-      };
+      store.notes = { ...store.notes, ...defaultNotesSlice };
     });
   },
 });

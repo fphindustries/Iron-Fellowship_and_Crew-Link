@@ -1,17 +1,32 @@
 import { CreateSliceType } from "stores/store.type";
 import { CharacterSlice } from "./character.slice.type";
 import { defaultCharacterSlice } from "./character.slice.default";
-import { listenToUsersCharacters } from "api-calls/character/listenToUsersCharacters";
 import { getErrorMessage } from "functions/getErrorMessage";
-import { deleteCharacter } from "api-calls/character/deleteCharacter";
-import { createCharacter } from "api-calls/character/createCharacter";
-import { getCharacterPortraitUrl } from "api-calls/character/getCharacterPortrait";
 import { createCurrentCharacterSlice } from "./currentCharacter/currentCharacter.slice";
-import { updateCharacterPortrait } from "api-calls/character/updateCharacterPortrait";
 import { momentumTrack } from "data/defaultTracks";
-import { ignoreApiError } from "api-calls/createApiFunction";
-import { addProgressTrack } from "api-calls/tracks/addProgressTrack";
-import { Difficulty, TrackStatus, TrackTypes } from "types/Track.type";
+import { api } from "config/api.config";
+import { getImageUrl, uploadImage } from "lib/storage.lib";
+
+function toCharacterDocument(row: any): any {
+  return {
+    uid: row.userId,
+    name: row.name,
+    campaignId: row.campaignId ?? null,
+    worldId: row.worldId ?? null,
+    stats: row.statsJson ?? {},
+    conditionMeters: row.conditionMetersJson ?? {},
+    momentum: row.momentum ?? 2,
+    specialTracks: row.specialTracksJson ?? {},
+    experience: row.experienceJson ?? {},
+    debilities: row.debilitiesJson ?? {},
+    profileImage: row.profileImage ?? null,
+    expansionIds: row.expansionIds ?? [],
+    customTracks: row.customTracksJson ?? {},
+    theme: row.theme ?? undefined,
+    backstory: row.backstory ?? undefined,
+    initiativeStatus: row.initiativeStatus ?? "outOfCombat",
+  };
+}
 
 export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
   ...params
@@ -23,70 +38,34 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
     currentCharacter: createCurrentCharacterSlice(...params),
 
     subscribe: (uid?: string) => {
-      if (uid) {
-        return listenToUsersCharacters(
-          uid,
-          {
-            onDocChange: (characterId, characterDocument) => {
-              set((store) => {
-                store.characters.characterMap[characterId] = characterDocument;
-                if (
-                  store.characters.currentCharacter.currentCharacterId ===
-                  characterId
-                ) {
-                  store.characters.currentCharacter.currentCharacter =
-                    characterDocument;
+      if (!uid) return undefined;
 
-                  const numberOfActiveDebilities = Object.values(
-                    characterDocument.debilities ?? {}
-                  ).filter((debility) => debility).length;
+      let active = true;
 
-                  let momentumResetValue = momentumTrack.startingValue;
-
-                  if (numberOfActiveDebilities >= 2) {
-                    momentumResetValue = 0;
-                  } else if (numberOfActiveDebilities === 1) {
-                    momentumResetValue = 1;
-                  }
-
-                  store.characters.currentCharacter.momentumResetValue =
-                    momentumResetValue;
-                }
-              });
-            },
-            onDocRemove: (characterId) => {
-              set((store) => {
-                delete store.characters.characterMap[characterId];
-                if (
-                  store.characters.currentCharacter.currentCharacterId ===
-                  characterId
-                ) {
-                  store.characters.currentCharacter.currentCharacter =
-                    undefined;
-                  store.characters.currentCharacter.momentumResetValue =
-                    undefined;
-                }
-              });
-            },
-            onLoaded: () => {
-              set((store) => {
-                store.characters.loading = false;
-              });
-            },
-          },
-          (error) => {
-            set((store) => {
-              const errorMessage = getErrorMessage(
-                error,
-                "Failed to load your characters."
-              );
-              store.characters.error = errorMessage;
-              store.characters.loading = false;
+      api
+        .get<any[]>(`/api/characters?uid=${uid}`)
+        .then((rows) => {
+          if (!active) return;
+          set((store) => {
+            rows.forEach((row) => {
+              store.characters.characterMap[row.id] = toCharacterDocument(row);
             });
-          }
-        );
-      }
+            store.characters.loading = false;
+          });
+        })
+        .catch((e) => {
+          if (!active) return;
+          set((store) => {
+            store.characters.error = getErrorMessage(e, "Failed to load your characters.");
+            store.characters.loading = false;
+          });
+        });
+
+      return () => {
+        active = false;
+      };
     },
+
     loadCharacterPortrait: (uid, characterId, filename) => {
       const existingFilename =
         getState().characters.characterPortraitMap[characterId]?.filename;
@@ -102,7 +81,7 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
             filename: filename,
           };
         });
-        getCharacterPortraitUrl({ uid, characterId, filename })
+        getImageUrl(`characters/${uid}/characters/${characterId}/${filename}`)
           .then((url) => {
             set((state) => {
               state.characters.characterPortraitMap[characterId] = {
@@ -112,77 +91,66 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
               };
             });
           })
-          .catch(ignoreApiError);
+          .catch(() => {
+            set((state) => {
+              state.characters.characterPortraitMap[characterId] = {
+                loading: false,
+                filename: filename,
+              };
+            });
+          });
       }
     },
 
-    createCharacter: (name, stats, assets, portrait, expansionIds, backstory, backgroundVow) => {
-      const uid = getState().auth.user?.uid;
-      if (!uid) {
-        return new Promise((res, reject) =>
-          reject("You must be logged in to create a character")
-        );
-      }
-      return new Promise((resolve) => {
-        createCharacter({
-          uid,
-          name,
-          stats,
-          assets,
-          expansionIds,
-          backstory,
-        }).then((characterId) => {
-          const afterPortrait = () => {
-            if (backgroundVow) {
-              addProgressTrack({
-                characterId,
-                track: {
-                  label: backgroundVow,
-                  type: TrackTypes.Vow,
-                  difficulty: Difficulty.Epic,
-                  value: 0,
-                  status: TrackStatus.Active,
-                  createdDate: new Date(),
-                },
-              }).finally(() => resolve(characterId));
-            } else {
-              resolve(characterId);
-            }
-          };
+    createCharacter: async (name, stats, assets, portrait, expansionIds, backstory, backgroundVow) => {
+      const uid = getState().auth.user?.id;
+      if (!uid) throw new Error("You must be logged in to create a character");
 
-          if (
-            portrait &&
-            portrait.image &&
-            typeof portrait.image !== "string"
-          ) {
-            updateCharacterPortrait({
-              uid,
-              characterId,
-              portrait: portrait.image,
-              scale: portrait.scale,
-              position: portrait.position,
-            })
-              .then(afterPortrait)
-              .catch(afterPortrait);
-          } else {
-            afterPortrait();
-          }
-        });
+      const char = await api.post<any>("/api/characters", {
+        name,
+        system: "starforged",
+        statsJson: stats,
+        expansionIds: expansionIds ?? [],
+        backstory: backstory ?? null,
       });
-    },
-    deleteCharacter: (characterId) => {
-      const uid = getState().auth.uid;
-      const character = getState().characters.characterMap[characterId];
-      if (!character) {
-        return new Promise((res, reject) =>
-          reject("Could not find character in order to delete it.")
+
+      const postCreation: Promise<unknown>[] = [];
+
+      if (assets && assets.length > 0) {
+        assets.forEach((asset) => {
+          postCreation.push(api.post(`/api/characters/${char.id}/assets`, asset));
+        });
+      }
+
+      if (backgroundVow) {
+        postCreation.push(
+          api.post(`/api/characters/${char.id}/tracks`, {
+            type: "vow",
+            dataJson: {
+              label: backgroundVow,
+              difficulty: "epic",
+              value: 0,
+              status: "active",
+            },
+          })
         );
       }
-      return deleteCharacter({
-        uid,
-        characterId,
-        campaignId: character.campaignId ?? undefined,
-        portraitFilename: character.profileImage?.filename,
+
+      await Promise.all(postCreation);
+
+      if (portrait && portrait.image instanceof File) {
+        const portraitPath = `characters/${uid}/characters/${char.id}`;
+        await uploadImage(portraitPath, portrait.image);
+        await api.patch(`/api/characters/${char.id}`, { profileImage: portrait.image.name });
+      }
+
+      return char.id;
+    },
+
+    deleteCharacter: async (characterId) => {
+      await api.del(`/api/characters/${characterId}`);
+      set((store) => {
+        delete store.characters.characterMap[characterId];
       });
     },
   };

@@ -1,12 +1,7 @@
 import { CreateSliceType } from "stores/store.type";
 import { SectorLocationsSlice } from "./sectorLocations.slice.type";
 import { defaultSectorLocationsSlice } from "./sectorLocations.slice.default";
-import { createSectorLocation } from "api-calls/world/sectors/sectorLocations/createSectorLocation";
-import { listenToSectorLocations } from "api-calls/world/sectors/sectorLocations/listenToSectorLocations";
-import { updateSectorLocation } from "api-calls/world/sectors/sectorLocations/updateSectorLocation";
-import { deleteSectorLocation } from "api-calls/world/sectors/sectorLocations/deleteSectorLocation";
-import { listenToSectorLocationNotes } from "api-calls/world/sectors/sectorLocations/listenToSectorLocationNotes";
-import { updateSectorLocationNotes } from "api-calls/world/sectors/sectorLocations/updateSectorLocationNotes";
+import { api } from "config/api.config";
 
 export const createSectorLocationsSlice: CreateSliceType<
   SectorLocationsSlice
@@ -21,165 +16,115 @@ export const createSectorLocationsSlice: CreateSliceType<
   },
 
   subscribe: (worldId, sectorId) => {
-    return listenToSectorLocations(
-      worldId,
-      sectorId,
-      (locationId, location) => {
+    let active = true;
+
+    api
+      .get<any[]>(`/api/worlds/${worldId}/sectors/${sectorId}/locations`)
+      .then((rows) => {
+        if (!active) return;
         set((store) => {
-          store.worlds.currentWorld.currentWorldSectors.locations.locations[
-            locationId
-          ] = location;
+          rows.forEach((row) => {
+            store.worlds.currentWorld.currentWorldSectors.locations.locations[row.id] =
+              row.dataJson as any;
+          });
         });
-      },
-      (locationId) => {
-        set((store) => {
-          delete store.worlds.currentWorld.currentWorldSectors.locations
-            .locations[locationId];
-        });
-      },
-      () => {}
-    );
+      })
+      .catch(() => {});
+
+    return () => { active = false; };
   },
 
   subscribeToLocationNotes: (locationId, isPrivate) => {
+    // Sector location notes are loaded on-demand — no persistent subscription
+    return () => {};
+  },
+
+  createLocation: async (location) => {
     const worlds = getState().worlds.currentWorld;
     const worldId = worlds.currentWorldId;
     const sectorId = worlds.currentWorldSectors.openSectorId;
-
-    if (!worldId || !sectorId) {
-      return () => {};
-    }
-
-    return listenToSectorLocationNotes(
-      worldId,
-      sectorId,
-      locationId,
-      (notes) => {
-        set((store) => {
-          store.worlds.currentWorld.currentWorldSectors.locations[
-            isPrivate ? "openLocationGMNotes" : "openLocationNotes"
-          ] = notes;
-        });
-      },
-      (error) => console.error(error),
-      isPrivate
+    if (!worldId || !sectorId) return Promise.reject("World ID or Sector ID was not defined");
+    const row = await api.post<any>(
+      `/api/worlds/${worldId}/sectors/${sectorId}/locations`,
+      location
     );
+    set((store) => {
+      store.worlds.currentWorld.currentWorldSectors.locations.locations[row.id] = location;
+    });
+    return row.id;
   },
 
-  createLocation: (location) => {
+  updateLocation: async (locationId, location) => {
     const worlds = getState().worlds.currentWorld;
     const worldId = worlds.currentWorldId;
     const sectorId = worlds.currentWorldSectors.openSectorId;
-
-    if (!worldId || !sectorId) {
-      return new Promise((resolve, reject) =>
-        reject("World ID or Sector ID was not defined")
-      );
-    }
-
-    return createSectorLocation({ worldId, sectorId, location });
-  },
-
-  updateLocation: (locationId, location) => {
-    const worlds = getState().worlds.currentWorld;
-    const worldId = worlds.currentWorldId;
-    const sectorId = worlds.currentWorldSectors.openSectorId;
-
-    if (!worldId || !sectorId) {
-      return new Promise((resolve, reject) =>
-        reject("World ID or Sector ID was not defined")
-      );
-    }
-
-    return updateSectorLocation({
-      worldId,
-      sectorId,
-      locationId,
-      location,
+    if (!worldId || !sectorId) return Promise.reject("World ID or Sector ID was not defined");
+    await api.patch(
+      `/api/worlds/${worldId}/sectors/${sectorId}/locations/${locationId}`,
+      location
+    );
+    set((store) => {
+      const existing =
+        store.worlds.currentWorld.currentWorldSectors.locations.locations[locationId];
+      if (existing) {
+        store.worlds.currentWorld.currentWorldSectors.locations.locations[locationId] = {
+          ...existing,
+          ...(location as any),
+        };
+      }
     });
   },
-  deleteLocation: (locationId) => {
+
+  deleteLocation: async (locationId) => {
     const worlds = getState().worlds.currentWorld;
     const worldId = worlds.currentWorldId;
     const sectorId = worlds.currentWorldSectors.openSectorId;
+    if (!worldId || !sectorId) return Promise.reject("World ID or Sector ID was not defined");
 
-    if (!worldId || !sectorId) {
-      return new Promise((resolve, reject) =>
-        reject("World ID or Sector ID was not defined")
-      );
-    }
-
-    let foundRow: number | undefined = undefined;
-    let foundCol: number | undefined = undefined;
-
-    const map = worlds.currentWorldSectors.openSectorId
-      ? worlds.currentWorldSectors.sectors[
-          worlds.currentWorldSectors.openSectorId
-        ]?.map
-      : undefined;
-
+    // Remove hex from map if present
+    const map = sectorId ? worlds.currentWorldSectors.sectors[sectorId]?.map : undefined;
     if (map) {
-      Object.keys(map).forEach((row) => {
-        Object.keys(map[parseInt(row)] ?? {}).forEach((col) => {
-          if (map[parseInt(row)]?.[parseInt(col)]?.locationId === locationId) {
-            foundRow = parseInt(row);
-            foundCol = parseInt(col);
+      let foundRow: number | undefined;
+      let foundCol: number | undefined;
+      Object.keys(map).forEach((r) => {
+        Object.keys(map[parseInt(r)] ?? {}).forEach((c) => {
+          if (map[parseInt(r)]?.[parseInt(c)]?.locationId === locationId) {
+            foundRow = parseInt(r);
+            foundCol = parseInt(c);
           }
         });
       });
+      if (foundRow !== undefined && foundCol !== undefined) {
+        await worlds.currentWorldSectors.updateHex(foundRow, foundCol, undefined).catch(() => {});
+      }
     }
 
-    if (foundRow !== undefined && foundCol !== undefined) {
-      return new Promise((resolve, reject) => {
-        worlds.currentWorldSectors
-          .updateHex(foundRow as number, foundCol as number, undefined)
-          .then(() => {
-            deleteSectorLocation({
-              worldId,
-              sectorId,
-              locationId,
-            })
-              .then(resolve)
-              .catch(reject);
-          })
-          .catch(reject);
-      });
-    }
-
-    return deleteSectorLocation({
-      worldId,
-      sectorId,
-      locationId,
+    await api.del(`/api/worlds/${worldId}/sectors/${sectorId}/locations/${locationId}`);
+    set((store) => {
+      delete store.worlds.currentWorld.currentWorldSectors.locations.locations[locationId];
     });
   },
 
-  updateLocationNotes: (locationId, notes, isPrivate, isBeacon) => {
+  updateLocationNotes: async (locationId, notes, isPrivate) => {
     const worlds = getState().worlds.currentWorld;
     const worldId = worlds.currentWorldId;
     const sectorId = worlds.currentWorldSectors.openSectorId;
-
-    if (!worldId || !sectorId) {
-      return new Promise((resolve, reject) =>
-        reject("World ID or Sector ID was not defined")
-      );
-    }
-
-    return updateSectorLocationNotes({
-      worldId,
-      sectorId,
-      locationId,
-      notes,
-      isPrivate,
-      isBeacon,
+    if (!worldId || !sectorId) return Promise.reject("World ID or Sector ID was not defined");
+    await api.patch(
+      `/api/worlds/${worldId}/sectors/${sectorId}/locations/${locationId}`,
+      { [isPrivate ? "gmNotes" : "notes"]: Array.from(notes) }
+    );
+    set((store) => {
+      store.worlds.currentWorld.currentWorldSectors.locations[
+        isPrivate ? "openLocationGMNotes" : "openLocationNotes"
+      ] = notes;
     });
   },
 
   resetStoreNotes: () => {
     set((store) => {
-      store.worlds.currentWorld.currentWorldSectors.locations.openLocationNotes =
-        undefined;
-      store.worlds.currentWorld.currentWorldSectors.locations.openLocationGMNotes =
-        undefined;
+      store.worlds.currentWorld.currentWorldSectors.locations.openLocationNotes = undefined;
+      store.worlds.currentWorld.currentWorldSectors.locations.openLocationGMNotes = undefined;
     });
   },
 

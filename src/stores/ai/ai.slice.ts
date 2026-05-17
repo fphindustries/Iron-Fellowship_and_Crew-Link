@@ -1,10 +1,8 @@
 import { CreateSliceType } from "stores/store.type";
 import { AiSlice, BookkeeperApplyPayload } from "./ai.slice.type";
 import { defaultAiSlice } from "./ai.slice.default";
-import { listenToAiEvents } from "api-calls/ai/listenToAiEvents";
-import { callAiGuide } from "api-calls/ai/callAiCopilot";
-import { updateAiEventStatus } from "api-calls/ai/updateAiEventStatus";
 import { TrackStatus, TrackTypes } from "types/Track.type";
+import { api } from "config/api.config";
 
 export const createAiSlice: CreateSliceType<AiSlice> = (set, getState) => ({
   ...defaultAiSlice,
@@ -15,26 +13,38 @@ export const createAiSlice: CreateSliceType<AiSlice> = (set, getState) => ({
       store.ai.error = undefined;
     });
 
-    return listenToAiEvents({
-      campaignId,
-      onEvent: (eventId, event) => {
+    let active = true;
+
+    api
+      .get<any[]>(`/api/ai/events?campaignId=${campaignId}`)
+      .then((events) => {
+        if (!active) return;
         set((store) => {
           store.ai.loading = false;
-          store.ai.events[eventId] = event;
+          events.forEach((event) => {
+            store.ai.events[event.id] = {
+              type: event.type,
+              contextSnapshot: event.contextSnapshotJson ?? {},
+              response: event.responseJson ?? {},
+              status: event.status,
+              canonized: event.canonized,
+              createdAt: new Date(event.createdAt),
+              createdBy: event.createdBy,
+            } as any;
+          });
         });
-      },
-      onRemove: (eventId) => {
-        set((store) => {
-          delete store.ai.events[eventId];
-        });
-      },
-      onError: (error) => {
+      })
+      .catch((error) => {
+        if (!active) return;
         set((store) => {
           store.ai.loading = false;
-          store.ai.error = error;
+          store.ai.error = String(error);
         });
-      },
-    });
+      });
+
+    return () => {
+      active = false;
+    };
   },
 
   requestAi: async ({ mode, campaignId, context, worldId }) => {
@@ -44,7 +54,12 @@ export const createAiSlice: CreateSliceType<AiSlice> = (set, getState) => ({
     });
 
     try {
-      const response = await callAiGuide({ mode, campaignId, context, worldId });
+      const response = await api.post<any>("/api/ai/guide", {
+        mode,
+        campaignId,
+        context,
+        worldId,
+      });
       return response;
     } finally {
       set((store) => {
@@ -54,18 +69,12 @@ export const createAiSlice: CreateSliceType<AiSlice> = (set, getState) => ({
     }
   },
 
-  updateEventStatus: async ({ eventId, campaignId, status, editedText }) => {
+  updateEventStatus: async ({ eventId, campaignId: _campaignId, status, editedText }) => {
     const state = getState();
     const event = state.ai.events[eventId];
-
     if (!event) return;
 
-    const editedResponse =
-      editedText !== undefined
-        ? { ...event.response, text: editedText }
-        : undefined;
-
-    await updateAiEventStatus(campaignId, eventId, status, editedResponse);
+    await api.patch(`/api/ai/events/${eventId}`, { status, canonized: false });
   },
 
   setIsPanelOpen: (open) => {
@@ -116,11 +125,9 @@ export const createAiSlice: CreateSliceType<AiSlice> = (set, getState) => ({
           const changes = payload.data.changes;
           const gmProps: Record<string, string> = {};
           if (changes.role !== null) gmProps.role = changes.role;
-          if (changes.disposition !== null)
-            gmProps.disposition = changes.disposition;
+          if (changes.disposition !== null) gmProps.disposition = changes.disposition;
           if (changes.goal !== null) gmProps.goal = changes.goal;
-          if (changes.revealedAspect !== null)
-            gmProps.revealedAspect = changes.revealedAspect;
+          if (changes.revealedAspect !== null) gmProps.revealedAspect = changes.revealedAspect;
           await npcs.updateNPCGMProperties(entry[0], gmProps);
         }
         break;
@@ -129,8 +136,7 @@ export const createAiSlice: CreateSliceType<AiSlice> = (set, getState) => ({
         const npcId = await npcs.createNPC({ name: payload.data.name });
         const gmProps: Record<string, string> = {};
         if (payload.data.role !== null) gmProps.role = payload.data.role;
-        if (payload.data.disposition !== null)
-          gmProps.disposition = payload.data.disposition;
+        if (payload.data.disposition !== null) gmProps.disposition = payload.data.disposition;
         if (Object.keys(gmProps).length > 0) {
           await npcs.updateNPCGMProperties(npcId, gmProps);
         }

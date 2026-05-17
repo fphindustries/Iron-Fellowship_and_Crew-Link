@@ -8,7 +8,7 @@ import { useConfirm } from "material-ui-confirm";
 import { Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
 import { AssetCard } from "components/features/assets/AssetCard";
 import { AssetCardDialog } from "components/features/assets/AssetCardDialog";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export function AssetsPanel() {
   const isStarforged = useGameSystem().gameSystem === GAME_SYSTEMS.STARFORGED;

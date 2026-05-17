@@ -11,7 +11,7 @@ import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithClo
 import { useCampaignType } from "hooks/useCampaignType";
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface EditCampaignProps {
   open: boolean;

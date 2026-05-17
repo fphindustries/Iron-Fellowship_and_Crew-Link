@@ -1,12 +1,25 @@
 import { CreateSliceType } from "stores/store.type";
 import { CampaignSlice } from "./campaign.slice.type";
 import { defaultCampaignSlice } from "./campaign.slice.default";
-import { listenToUsersCampaigns } from "api-calls/campaign/listenToUsersCampaigns";
 import { getErrorMessage } from "functions/getErrorMessage";
-import { createCampaign } from "api-calls/campaign/createCampaign";
 import { createCurrentCampaignSlice } from "./currentCampaign/currentCampaign.slice";
-import { getCampaign } from "api-calls/campaign/getCampaign";
-import { addUserToCampaign } from "api-calls/campaign/addUserToCampaign";
+import { api } from "config/api.config";
+
+function toCampaignDocument(row: any): any {
+  return {
+    name: row.name,
+    users: row.users ?? [],
+    characters: row.characters ?? [],
+    gmIds: row.gmIds ?? [],
+    worldId: row.worldId ?? undefined,
+    expansionIds: row.expansionIds ?? [],
+    customTracks: row.customTracks ?? row.customTracksJson ?? {},
+    conditionMeters: row.conditionMeters ?? row.conditionMetersJson ?? {},
+    specialTracks: row.specialTracks ?? row.specialTracksJson ?? {},
+    type: row.type ?? "solo",
+    theme: row.theme ?? undefined,
+  };
+}
 
 export const createCampaignSlice: CreateSliceType<CampaignSlice> = (
   ...params
@@ -17,74 +30,52 @@ export const createCampaignSlice: CreateSliceType<CampaignSlice> = (
     currentCampaign: createCurrentCampaignSlice(...params),
 
     subscribe: (uid) => {
-      if (uid) {
-        return listenToUsersCampaigns(
-          uid,
-          {
-            onDocChange: (campaignId, campaignDocument) => {
-              set((store) => {
-                store.campaigns.campaignMap[campaignId] = campaignDocument;
-                store.campaigns.loading = false;
-              });
-              const state = getState();
-              if (
-                campaignId === state.campaigns.currentCampaign.currentCampaignId
-              ) {
-                state.campaigns.currentCampaign.setCurrentCampaign(
-                  campaignDocument
-                );
-              }
-            },
-            onDocRemove: (campaignId) => {
-              const state = getState();
+      if (!uid) return undefined;
 
-              set((store) => {
-                delete store.campaigns.campaignMap[campaignId];
-                store.campaigns.loading = false;
-              });
-              if (
-                campaignId === state.campaigns.currentCampaign.currentCampaignId
-              ) {
-                state.campaigns.currentCampaign.setCurrentCampaign(undefined);
-              }
-            },
-            onLoaded: () => {
-              set((store) => {
-                store.campaigns.loading = false;
-              });
-            },
-          },
-          (error) => {
-            set((store) => {
-              const errorMessage = getErrorMessage(
-                error,
-                "Failed to load your campaigns."
-              );
-              store.campaigns.error = errorMessage;
-              store.campaigns.loading = false;
+      let active = true;
+
+      api
+        .get<any[]>(`/api/campaigns?uid=${uid}`)
+        .then((rows) => {
+          if (!active) return;
+          set((store) => {
+            rows.forEach((row) => {
+              store.campaigns.campaignMap[row.id] = toCampaignDocument(row);
             });
-          }
-        );
-      }
+            store.campaigns.loading = false;
+          });
+        })
+        .catch((e) => {
+          if (!active) return;
+          set((store) => {
+            store.campaigns.error = getErrorMessage(e, "Failed to load your campaigns.");
+            store.campaigns.loading = false;
+          });
+        });
+
+      return () => {
+        active = false;
+      };
     },
 
-    createCampaign: (campaignName, campaignType) => {
-      const uid = getState().auth.uid;
-
-      return createCampaign({ uid, campaignName, campaignType });
-    },
-    getCampaign: (campaignId) => {
-      const campaign = getState().campaigns.campaignMap[campaignId];
-
-      if (campaign) {
-        return new Promise((res) => res(campaign));
-      } else {
-        return getCampaign(campaignId);
-      }
+    createCampaign: async (campaignName, campaignType) => {
+      const row = await api.post<any>("/api/campaigns", {
+        name: campaignName,
+        system: "starforged",
+        type: campaignType ?? "solo",
+      });
+      return row.id;
     },
 
-    addUserToCampaign: (userId, campaignId) => {
-      return addUserToCampaign({ userId, campaignId });
+    getCampaign: async (campaignId) => {
+      const existing = getState().campaigns.campaignMap[campaignId];
+      if (existing) return existing;
+      const row = await api.get<any>(`/api/campaigns/${campaignId}`);
+      return toCampaignDocument(row);
+    },
+
+    addUserToCampaign: async (userId, campaignId) => {
+      await api.post(`/api/campaigns/${campaignId}/members`, { userId });
     },
   };
 };

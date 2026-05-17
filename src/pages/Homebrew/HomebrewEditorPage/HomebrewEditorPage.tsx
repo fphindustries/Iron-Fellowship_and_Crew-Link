@@ -17,9 +17,8 @@ import { useUpdateQueryStringValueWithoutNavigation } from "hooks/useUpdateQuery
 import { OracleSection } from "./OracleSection";
 import { MovesSection } from "./MovesSection";
 import { AssetsSection } from "./AssetsSection";
-import { arrayUnion } from "firebase/firestore";
 import { useSnackbar } from "providers/SnackbarProvider";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 enum TABS {
   ABOUT = "about",
@@ -69,9 +68,10 @@ export function HomebrewEditorPage() {
   }, []);
 
   const uid = useStore(
-    (store) => store.auth.user?.uid,
+    (store) => store.auth.user?.id,
     (a, b) => a === b
   );
+  const homebrewCollections = useStore((store) => store.homebrew.collections);
 
   const { success } = useSnackbar();
 
@@ -80,7 +80,8 @@ export function HomebrewEditorPage() {
   );
   const addSelfAsViewer = useCallback(() => {
     if (homebrewId && uid) {
-      updateHomebrewCollection(homebrewId, { viewers: arrayUnion(uid) })
+      const currentViewers = homebrewCollections[homebrewId]?.base?.viewers ?? [];
+      updateHomebrewCollection(homebrewId, { viewers: [...currentViewers, uid] })
         .catch(ignoreApiError)
         .then(() => {
           success("Added collection to your homebrew");

@@ -1,71 +1,60 @@
 import { CreateSliceType } from "stores/store.type";
 import { LoreSlice } from "./lore.slice.type";
 import { defaultLoreSlice } from "./lore.slice.default";
-import { listenToLoreDocuments } from "api-calls/world/lore/listenToLoreDocuments";
-import { createLore } from "api-calls/world/lore/createLore";
-import { deleteLore } from "api-calls/world/lore/deleteLore";
-import { updateLore } from "api-calls/world/lore/updateLore";
-import { updateLoreGMNotes } from "api-calls/world/lore/updateLoreGMNotes";
-import { updateLoreGMProperties } from "api-calls/world/lore/updateLoreGMProperties";
-import { updateLoreNotes } from "api-calls/world/lore/updateLoreNotes";
-import { uploadLoreImage } from "api-calls/world/lore/uploadLoreImage";
-import { listenToLoreNotes } from "api-calls/world/lore/listenToLoreNotes";
-import { reportApiError } from "lib/analytics.lib";
-import { Unsubscribe } from "firebase/firestore";
-import { listenToLoreGMProperties } from "api-calls/world/lore/listenToLoreGMProperties";
-import { removeLoreImage } from "api-calls/world/lore/removeLoreImage";
+import { api } from "config/api.config";
+import { uploadImage, deleteImage, getImageUrl } from "lib/storage.lib";
+
+function constructLoreImagePath(worldId: string, loreId: string) {
+  return `/worlds/${worldId}/lore/${loreId}`;
+}
+
+function toLore(row: any) {
+  return {
+    name: row.name,
+    imageFilenames: row.imageFilenames ?? [],
+    updatedDate: row.updatedAt ? new Date(row.updatedAt) : new Date(),
+    createdDate: row.createdAt ? new Date(row.createdAt) : new Date(),
+    ...(row.dataJson ?? {}),
+  };
+}
 
 export const createLoreSlice: CreateSliceType<LoreSlice> = (set, getState) => ({
   ...defaultLoreSlice,
-  subscribe: (currentWorldId: string, currentWorldOwnerIds: string[]) => {
-    const uid = getState().auth.uid;
-    const isWorldOwner = currentWorldOwnerIds.includes(uid);
 
-    return listenToLoreDocuments(
-      currentWorldId,
-      isWorldOwner,
-      (loreId, lore) => {
+  subscribe: (worldId: string) => {
+    let active = true;
+
+    api
+      .get<any[]>(`/api/worlds/${worldId}/lore`)
+      .then((rows) => {
+        if (!active) return;
         set((store) => {
-          if (
-            Array.isArray(lore.imageFilenames) &&
-            lore.imageFilenames?.length > 0
-          ) {
-            store.worlds.currentWorld.doAnyDocsHaveImages = true;
-          }
-          const existingLore =
-            store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
-          const gmProperties = existingLore?.gmProperties;
-          const notes = existingLore?.notes;
-          const imageUrl =
-            (lore.imageFilenames?.length ?? 0) > 0
-              ? existingLore?.imageUrl
-              : undefined;
-          store.worlds.currentWorld.currentWorldLore.loreMap[loreId] = {
-            ...lore,
-            gmProperties,
-            notes,
-            imageUrl,
-          };
+          store.worlds.currentWorld.currentWorldLore.loading = false;
+          rows.forEach((row) => {
+            const lore = toLore(row);
+            if ((lore.imageFilenames?.length ?? 0) > 0) {
+              store.worlds.currentWorld.doAnyDocsHaveImages = true;
+            }
+            const existing = store.worlds.currentWorld.currentWorldLore.loreMap[row.id];
+            store.worlds.currentWorld.currentWorldLore.loreMap[row.id] = {
+              ...lore,
+              gmProperties: existing?.gmProperties,
+              notes: existing?.notes,
+              imageUrl: (lore.imageFilenames?.length ?? 0) > 0 ? existing?.imageUrl : undefined,
+            };
+          });
         });
-      },
-      (loreId, imageUrl) => {
+      })
+      .catch((error) => {
+        if (!active) return;
         set((store) => {
-          store.worlds.currentWorld.currentWorldLore.loreMap[loreId].imageUrl =
-            imageUrl;
+          store.worlds.currentWorld.currentWorldLore.error = String(error);
         });
-      },
-      (loreId) => {
-        set((store) => {
-          delete store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
-        });
-      },
-      (error) => {
-        set((store) => {
-          store.worlds.currentWorld.currentWorldLore.error = error;
-        });
-      }
-    );
+      });
+
+    return () => { active = false; };
   },
+
   setOpenLoreId: (loreId) => {
     set((store) => {
       store.worlds.currentWorld.currentWorldLore.openLoreId = loreId;
@@ -77,152 +66,165 @@ export const createLoreSlice: CreateSliceType<LoreSlice> = (set, getState) => ({
     });
   },
 
-  createLore: () => {
+  createLore: async () => {
     const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return createLore({ worldId });
+    if (!worldId) return Promise.reject("No world found");
+    const row = await api.post<any>(`/api/worlds/${worldId}/lore`, {
+      name: "New Lore",
+      dataJson: {},
+    });
+    const lore = toLore(row);
+    set((store) => {
+      store.worlds.currentWorld.currentWorldLore.loreMap[row.id] = {
+        ...lore,
+        gmProperties: undefined,
+        notes: undefined,
+      };
+    });
+    return row.id;
   },
-  deleteLore: (loreId) => {
+
+  deleteLore: async (loreId) => {
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
-    const imageFilename =
-      world.currentWorldLore.loreMap[loreId]?.imageFilenames?.[0];
-
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
+    if (!worldId) return Promise.reject("No world found");
+    const filename = world.currentWorldLore.loreMap[loreId]?.imageFilenames?.[0];
+    if (filename) {
+      await deleteImage(constructLoreImagePath(worldId, loreId), filename).catch(() => {});
     }
-    return deleteLore({ worldId, loreId, imageFilename });
-  },
-  updateLore: (loreId, partialLore) => {
-    const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return updateLore({ worldId, loreId, lore: partialLore });
-  },
-  updateLoreGMNotes: (loreId, notes, isBeacon) => {
-    const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return updateLoreGMNotes({ worldId, loreId, notes, isBeacon });
-  },
-  updateLoreGMProperties: (loreId, loreGMProperties) => {
-    const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return updateLoreGMProperties({
-      worldId,
-      loreId,
-      loreGMProperties,
+    await api.del(`/api/worlds/${worldId}/lore/${loreId}`);
+    set((store) => {
+      delete store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
     });
   },
-  updateLoreNotes: (loreId, notes, isBeacon) => {
+
+  updateLore: async (loreId, partialLore) => {
     const worldId = getState().worlds.currentWorld.currentWorldId;
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return updateLoreNotes({ worldId, loreId, notes, isBeacon });
+    if (!worldId) return Promise.reject("No world found");
+    const { name, imageFilenames, updatedDate: _u, createdDate: _c, ...dataJson } = partialLore as any;
+    const patch: any = {};
+    if (name !== undefined) patch.name = name;
+    if (imageFilenames !== undefined) patch.imageFilenames = imageFilenames;
+    if (Object.keys(dataJson).length > 0) patch.dataJson = dataJson;
+    const row = await api.patch<any>(`/api/worlds/${worldId}/lore/${loreId}`, patch);
+    const updated = toLore(row);
+    set((store) => {
+      const existing = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
+      if (existing) {
+        store.worlds.currentWorld.currentWorldLore.loreMap[loreId] = { ...existing, ...updated };
+      }
+    });
   },
-  uploadLoreImage: (loreId, image) => {
+
+  updateLoreGMNotes: async (loreId, notes) => {
+    const worldId = getState().worlds.currentWorld.currentWorldId;
+    if (!worldId) return;
+    await api.patch(`/api/worlds/${worldId}/lore/${loreId}/private-notes`, {
+      dataJson: { gmNotes: Array.from(notes) },
+    });
+  },
+
+  updateLoreGMProperties: async (loreId, loreGMProperties) => {
+    const worldId = getState().worlds.currentWorld.currentWorldId;
+    if (!worldId) return;
+    const { gmNotes: _gm, ...rest } = loreGMProperties as any;
+    await api.patch(`/api/worlds/${worldId}/lore/${loreId}/private-notes`, {
+      dataJson: rest,
+    });
+    set((store) => {
+      const lore = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
+      if (lore) lore.gmProperties = { ...(lore.gmProperties ?? {}), ...loreGMProperties };
+    });
+  },
+
+  updateLoreNotes: async (loreId, notes) => {
+    const worldId = getState().worlds.currentWorld.currentWorldId;
+    if (!worldId) return;
+    await api.patch(`/api/worlds/${worldId}/lore/${loreId}/notes`, {
+      content: Array.from(notes),
+    });
+  },
+
+  uploadLoreImage: async (loreId, image) => {
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
-    const imageFilename =
-      world.currentWorldLore.loreMap[loreId]?.imageFilenames?.[0];
-
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    return uploadLoreImage({
-      worldId,
-      loreId,
-      image,
-      oldImageFilename: imageFilename,
+    if (!worldId) return Promise.reject("No world found");
+    const oldFilename = world.currentWorldLore.loreMap[loreId]?.imageFilenames?.[0];
+    const imagePath = constructLoreImagePath(worldId, loreId);
+    if (oldFilename) await deleteImage(imagePath, oldFilename).catch(() => {});
+    await uploadImage(imagePath, image);
+    const imageFilenames = [image.name];
+    await api.patch(`/api/worlds/${worldId}/lore/${loreId}`, { imageFilenames });
+    const imageUrl = await getImageUrl(`${imagePath}/${image.name}`);
+    set((store) => {
+      const lore = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
+      if (lore) {
+        lore.imageFilenames = imageFilenames;
+        lore.imageUrl = imageUrl;
+        store.worlds.currentWorld.doAnyDocsHaveImages = true;
+      }
     });
   },
-  removeLoreImage: (loreId) => {
+
+  removeLoreImage: async (loreId) => {
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
-    const filename =
-      world.currentWorldLore.loreMap[loreId]?.imageFilenames?.[0];
-
-    if (!worldId) {
-      return new Promise((res, reject) => reject("No world found"));
-    }
-    if (!filename) {
-      return new Promise((res, reject) => reject("Lore did not have an image"));
-    }
-    return removeLoreImage({
-      worldId,
-      loreId,
-      filename,
+    const filename = world.currentWorldLore.loreMap[loreId]?.imageFilenames?.[0];
+    if (!worldId) return Promise.reject("No world found");
+    if (!filename) return Promise.reject("Lore did not have an image");
+    await deleteImage(constructLoreImagePath(worldId, loreId), filename);
+    await api.patch(`/api/worlds/${worldId}/lore/${loreId}`, { imageFilenames: [] });
+    set((store) => {
+      const lore = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
+      if (lore) {
+        lore.imageFilenames = [];
+        lore.imageUrl = undefined;
+      }
     });
   },
+
   subscribeToOpenLore: (loreId) => {
     const state = getState();
     const worldId = state.worlds.currentWorld.currentWorldId;
     const isWorldOwner =
-      state.worlds.currentWorld.currentWorld?.ownerIds.includes(
-        state.auth.uid
-      ) ?? false;
+      state.worlds.currentWorld.currentWorld?.ownerIds?.includes(state.auth.uid ?? "") ?? false;
+    if (!worldId) return () => {};
 
-    if (!worldId) {
-      return () => {};
-    }
-    const notesUnsubscribe = listenToLoreNotes(
-      worldId,
-      loreId,
-      (notes) => {
+    let active = true;
+
+    api
+      .get<any>(`/api/worlds/${worldId}/lore/${loreId}/notes`)
+      .then((row) => {
+        if (!active || !row?.content) return;
+        const content = new Uint8Array(row.content.data ?? row.content);
         set((store) => {
-          if (store.worlds.currentWorld.currentWorldLore.loreMap[loreId]) {
-            store.worlds.currentWorld.currentWorldLore.loreMap[loreId].notes =
-              notes ?? null;
-          }
+          const lore = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
+          if (lore) lore.notes = content;
         });
-      },
-      (error) => {
-        console.error(error);
-        reportApiError(error);
-      }
-    );
+      })
+      .catch(() => {});
 
-    let gmPropertiesUnsubscribe: Unsubscribe;
     if (isWorldOwner) {
-      gmPropertiesUnsubscribe = listenToLoreGMProperties(
-        worldId,
-        loreId,
-        (properties) => {
+      api
+        .get<any>(`/api/worlds/${worldId}/lore/${loreId}/private-notes`)
+        .then((row) => {
+          if (!active) return;
           set((store) => {
-            if (store.worlds.currentWorld.currentWorldLore.loreMap[loreId]) {
-              store.worlds.currentWorld.currentWorldLore.loreMap[
-                loreId
-              ].gmProperties = properties ?? null;
-            }
+            const lore = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
+            if (lore) lore.gmProperties = row?.dataJson ?? null;
           });
-        },
-        (error) => {
-          console.error(error);
-          reportApiError(error);
-        }
-      );
+        })
+        .catch(() => {});
     } else {
       set((store) => {
-        if (store.worlds.currentWorld.currentWorldLore.loreMap[loreId]) {
-          store.worlds.currentWorld.currentWorldLore.loreMap[
-            loreId
-          ].gmProperties = null;
-        }
+        const lore = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
+        if (lore) lore.gmProperties = null;
       });
     }
 
-    return () => {
-      notesUnsubscribe();
-      gmPropertiesUnsubscribe && gmPropertiesUnsubscribe();
-    };
+    return () => { active = false; };
   },
+
   resetStore: () => {
     set((store) => {
       store.worlds.currentWorld.currentWorldLore = {

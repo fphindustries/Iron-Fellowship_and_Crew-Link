@@ -25,7 +25,7 @@ import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useConfirm } from "material-ui-confirm";
 import { useCallback } from "react";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 interface OpenSectorProps {
   sectorId: string;

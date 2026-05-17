@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import {
   Clock,
   ProgressTrack,
@@ -25,7 +24,7 @@ export interface CampaignTracksSliceData {
 }
 
 export interface CampaignTracksSliceActions {
-  subscribe: (campaignId: string, status?: TrackStatus) => Unsubscribe;
+  subscribe: (campaignId: string, status?: TrackStatus) => () => void;
 
   addTrack: (track: Track) => Promise<void>;
   updateTrack: (trackId: string, track: Partial<Track>) => Promise<void>;

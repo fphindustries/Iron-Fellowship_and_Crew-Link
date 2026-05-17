@@ -1,4 +1,3 @@
-import { Unsubscribe, UpdateData } from "firebase/firestore";
 import { GMLocation, Location } from "types/Locations.type";
 
 export enum LocationTab {
@@ -24,7 +23,7 @@ export interface LocationsSliceData {
 }
 
 export interface LocationsSliceActions {
-  subscribe: (worldId: string, worldOwnerIds: string[]) => Unsubscribe;
+  subscribe: (worldId: string, worldOwnerIds?: string[]) => () => void;
   setOpenLocationId: (locationId?: string) => void;
   closeLocation: () => void;
   setLocationTab: (tab: LocationTab) => void;
@@ -35,7 +34,7 @@ export interface LocationsSliceActions {
   deleteLocation: (locationId: string) => Promise<void>;
   updateLocation: (
     locationId: string,
-    location: UpdateData<Location>
+    location: Partial<Location>
   ) => Promise<void>;
   moveLocation: (
     locationId: string,
@@ -74,7 +73,7 @@ export interface LocationsSliceActions {
   ) => void;
   removeLocationImage: (locationId: string) => Promise<void>;
   removeLocationMapBackground: (locationId: string) => Promise<void>;
-  subscribeToOpenLocation: (locationId: string) => Unsubscribe;
+  subscribeToOpenLocation: (locationId: string) => () => void;
   resetStore: () => void;
 }
 

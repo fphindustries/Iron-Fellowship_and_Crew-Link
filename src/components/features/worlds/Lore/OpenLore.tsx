@@ -22,7 +22,7 @@ import { mergeIcons } from "components/shared/GameIcons/mergeIcons";
 import { IconColors } from "types/Icon.type";
 import { PageWithImage } from "../common/PageWithImage";
 import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface OpenLoreProps {
   worldId: string;

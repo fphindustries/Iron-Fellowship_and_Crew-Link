@@ -3,7 +3,7 @@ import { useStore } from "stores/store";
 import { LocationCard } from "./LocationCard";
 import { EmptyState } from "components/shared/EmptyState";
 import { SectionHeading } from "components/shared/SectionHeading";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface SubLocationsProps {
   locationId: string;

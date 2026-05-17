@@ -9,7 +9,7 @@ import { useState } from "react";
 import MoveIcon from "@mui/icons-material/DriveFileMove";
 import ViewIcon from "@mui/icons-material/Visibility";
 import { MoveOracleTableDialog } from "./MoveOracleTableDialog";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface OracleTableCardProps {
   oracleId: string;

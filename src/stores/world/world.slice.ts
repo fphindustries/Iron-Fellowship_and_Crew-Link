@@ -1,14 +1,20 @@
 import { CreateSliceType } from "stores/store.type";
 import { WorldSlice } from "./world.slice.type";
 import { defaultWorldSlice } from "./world.slice.default";
-import { listenToUsersWorlds } from "api-calls/world/listenToUsersWorlds";
-import { listenToWorld } from "api-calls/world/listenToWorld";
-import { createWorld } from "api-calls/world/createWorld";
 import { createCurrentWorldSlice } from "./currentWorld/currentWorld.slice";
-import { deleteWorld } from "api-calls/world/deleteWorld";
-import { updateWorldGuide } from "api-calls/world/updateWorldGuide";
 import { getSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
+import { api } from "config/api.config";
+
+function toWorldDocument(row: any): any {
+  return {
+    name: row.name,
+    ownerIds: row.ownerIds ?? [],
+    settingKey: row.settingKey ?? undefined,
+    newTruths: row.newTruthsJson ?? {},
+    system: row.system ?? "starforged",
+  };
+}
 
 export const createWorldSlice: CreateSliceType<WorldSlice> = (...params) => {
   const [set, getState] = params;
@@ -17,95 +23,88 @@ export const createWorldSlice: CreateSliceType<WorldSlice> = (...params) => {
     currentWorld: createCurrentWorldSlice(...params),
 
     subscribeToOwnedWorlds: (uid) => {
-      if (!uid) {
-        return undefined;
-      }
-      return listenToUsersWorlds(
-        uid,
-        {
-          onDocChange: (worldId, world) => {
-            set((store) => {
-              store.worlds.worldMap[worldId] = world;
-              if (worldId === store.worlds.currentWorld.currentWorldId) {
-                store.worlds.currentWorld.currentWorld = world;
+      if (!uid) return undefined;
+
+      let active = true;
+
+      api
+        .get<any[]>(`/api/worlds?uid=${uid}`)
+        .then((rows) => {
+          if (!active) return;
+          set((store) => {
+            rows.forEach((row) => {
+              store.worlds.worldMap[row.id] = toWorldDocument(row);
+              if (row.id === store.worlds.currentWorld.currentWorldId) {
+                store.worlds.currentWorld.currentWorld = toWorldDocument(row);
               }
             });
-          },
-          onDocRemove: (worldId) => {
-            set((store) => {
-              delete store.worlds.worldMap[worldId];
-              if (worldId === store.worlds.currentWorld.currentWorldId) {
-                store.worlds.currentWorld.currentWorld = undefined;
-              }
-            });
-          },
-          onLoaded: () => {
-            set((store) => {
-              store.worlds.loading = false;
-            });
-          },
-        },
-        (error) => {
-          console.error(error);
+            store.worlds.loading = false;
+          });
+        })
+        .catch((e) => {
+          if (!active) return;
+          console.error(e);
           set((store) => {
             store.worlds.error = "Failed to load worlds.";
+            store.worlds.loading = false;
           });
-        }
-      );
+        });
+
+      return () => { active = false; };
     },
+
     subscribeToNonOwnedWorlds: (campaignWorldIds, userOwnedWorldIds) => {
       const worldIdsToLoad = campaignWorldIds.filter(
         (worldId) => !userOwnedWorldIds.includes(worldId)
       );
 
-      const unsubscribes = worldIdsToLoad.map((worldId) =>
-        listenToWorld(
-          worldId,
-          (world) => {
-            set((store) => {
-              if (world) {
-                store.worlds.worldMap[worldId] = world;
-                if (worldId === store.worlds.currentWorld.currentWorldId) {
-                  store.worlds.currentWorld.currentWorld = world;
-                }
-              } else {
-                delete store.worlds.worldMap[worldId];
-                if (worldId === store.worlds.currentWorld.currentWorldId) {
-                  store.worlds.currentWorld.currentWorld = undefined;
-                }
-              }
-            });
-          },
-          (error) => {
-            console.error(error);
-          }
-        )
-      );
+      const cleanups: (() => void)[] = [];
 
-      return () => {
-        unsubscribes.forEach((unsubscribe) => unsubscribe());
-      };
+      worldIdsToLoad.forEach((worldId) => {
+        let active = true;
+        cleanups.push(() => { active = false; });
+
+        api.get<any>(`/api/worlds/${worldId}`).then((row) => {
+          if (!active) return;
+          set((store) => {
+            store.worlds.worldMap[worldId] = toWorldDocument(row);
+            if (worldId === store.worlds.currentWorld.currentWorldId) {
+              store.worlds.currentWorld.currentWorld = toWorldDocument(row);
+            }
+          });
+        }).catch(console.error);
+      });
+
+      return () => cleanups.forEach((c) => c());
     },
-    createWorld: () => {
-      const uid = getState().auth.uid;
+
+    createWorld: async () => {
+      const uid = getState().auth.user?.id;
+      if (!uid) throw new Error("Not authenticated");
       const system = getSystem();
       const defaultSettingKey =
         system === GAME_SYSTEMS.IRONSWORN ? "ironlands" : "the_forge";
-      return createWorld({
+      const row = await api.post<any>("/api/worlds", {
         name: "New World",
-        ownerIds: [uid],
+        system: system === GAME_SYSTEMS.IRONSWORN ? "ironsworn" : "starforged",
         settingKey: defaultSettingKey,
       });
-    },
-    deleteWorld: (worldId) => {
-      return deleteWorld(worldId);
-    },
-    updateWorldGuide(worldId, guideId, shouldRemove) {
-      return updateWorldGuide({
-        worldId,
-        guideId,
-        shouldRemove,
+      set((store) => {
+        store.worlds.worldMap[row.id] = toWorldDocument({ ...row, ownerIds: [uid] });
       });
+      return row.id;
+    },
+
+    deleteWorld: async (worldId) => {
+      await api.del(`/api/worlds/${worldId}`);
+    },
+
+    updateWorldGuide: async (worldId, guideId, shouldRemove) => {
+      if (shouldRemove) {
+        await api.del(`/api/worlds/${worldId}/owners/${guideId}`);
+      } else {
+        await api.post(`/api/worlds/${worldId}/owners`, { userId: guideId });
+      }
     },
   };
 };

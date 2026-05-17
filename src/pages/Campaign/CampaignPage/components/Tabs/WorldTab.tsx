@@ -11,7 +11,7 @@ import { WorldEmptyState } from "components/features/worlds/WorldEmptyState";
 import { useStore } from "stores/store";
 import { useState } from "react";
 import { useCampaignType } from "hooks/useCampaignType";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export function WorldTab() {
   const confirm = useConfirm();

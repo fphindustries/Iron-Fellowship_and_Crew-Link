@@ -8,7 +8,12 @@
     "lint": "eslint ./src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "postinstall": "node scripts/patch-mui-scrollbar-size.mjs"
+    "postinstall": "node scripts/patch-mui-scrollbar-size.mjs",
+    "api:dev": "pnpm --filter api start:dev",
+    "api:monitored": "pnpm --filter api run monitor",
+    "api:build": "pnpm --filter api build",
+    "dev:all": "concurrently -n api,web -c cyan,green \"pnpm api:dev\" \"pnpm dev\"",
+    "dev:monitored": "concurrently -n api,web -c cyan,green \"pnpm --filter api run monitor\" \"pnpm dev\""
   },
   "dependencies": {
     "@datasworn/core": "^0.0.10",
@@ -24,13 +29,19 @@
     "@mui/icons-material": "^5.18.0",
     "@mui/lab": "^5.0.0-alpha.177",
     "@mui/material": "^5.18.0",
+    "@starforged/shared": "workspace:*",
+    "@tanstack/react-query": "^5.100.10",
+    "@tanstack/react-router": "^1.169.2",
+    "@tiptap/core": "^2.27.2",
     "@tiptap/extension-collaboration": "^2.4.0",
     "@tiptap/extension-collaboration-cursor": "^2.4.0",
+    "@tiptap/extension-document": "^2.27.2",
     "@tiptap/extension-link": "^2.4.0",
     "@tiptap/extension-placeholder": "^2.4.0",
     "@tiptap/pm": "^2.4.0",
     "@tiptap/react": "^2.4.0",
     "@tiptap/starter-kit": "^2.4.0",
+    "@types/react-transition-group": "^4.4.12",
     "core-js": "^3.39.0",
     "firebase": "^10.12.0",
     "immer": "^10.1.1",
@@ -48,11 +59,22 @@
     "react-transition-group": "^4.4.5",
     "react-virtuoso": "^4.7.10",
     "remark-gfm": "^4.0.0",
+    "socket.io-client": "^4.8.3",
     "tiptap-markdown": "^0.8.10",
     "y-prosemirror": "^1.2.5",
+    "y-protocols": "^1.0.7",
     "y-webrtc": "^10.3.0",
     "yjs": "^13.6.15",
     "zustand": "^4.5.2"
+  },
+  "pnpm": {
+    "allowBuilds": [
+      "@nestjs/core",
+      "core-js",
+      "esbuild",
+      "protobufjs",
+      "unrs-resolver"
+    ]
   },
   "overrides": {
     "@types/react": "^19.0.0",
@@ -65,6 +87,7 @@
     "@typescript-eslint/eslint-plugin": "^7.9.0",
     "@typescript-eslint/parser": "^7.9.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^9.2.1",
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.2",

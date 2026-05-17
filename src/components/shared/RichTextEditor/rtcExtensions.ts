@@ -1,9 +1,9 @@
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import StarterKit from "@tiptap/starter-kit";
-import { User } from "firebase/auth";
+import type { UserProfile } from "@starforged/shared";
 import { getHueFromString, hslToHex } from "functions/getHueFromString";
-import { WebrtcProvider } from "y-webrtc";
+import type { SocketIOProvider } from "lib/SocketIOProvider";
 import * as Y from "yjs";
 import Document from "@tiptap/extension-document";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -15,8 +15,8 @@ const CustomDocument = Document.extend({
 
 export const rtcExtensions = (params: {
   doc?: Y.Doc;
-  provider?: WebrtcProvider;
-  user?: User;
+  provider?: SocketIOProvider;
+  user?: UserProfile;
   withHeading?: boolean;
 }) => {
   const extensions: Extensions = [
@@ -26,11 +26,11 @@ export const rtcExtensions = (params: {
     }),
     Collaboration.configure({ document: params.doc }),
     CollaborationCursor.configure({
-      provider: params.provider,
+      provider: params.provider as any,
       user: {
         name: params.user?.displayName ?? "Unknown User",
         color: params.user
-          ? hslToHex(getHueFromString(params.user.uid), 70, 80)
+          ? hslToHex(getHueFromString(params.user.id), 70, 80)
           : "#d0d0d0",
       },
     }),
@@ -44,7 +44,6 @@ export const rtcExtensions = (params: {
           if (node.type.name === "heading") {
             return "Add a title";
           }
-
           return "";
         },
       })

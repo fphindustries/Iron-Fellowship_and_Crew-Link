@@ -3,7 +3,7 @@ import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import { useStore } from "stores/store";
 import { StarforgedLocationPlanet } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
 import { GuideOnlyHeader } from "../../common";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface PlanetContentProps {
   locationId: string;

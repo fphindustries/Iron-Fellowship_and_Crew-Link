@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { GMLore, Lore } from "types/Lore.type";
 
 export type LoreDocumentWithGMProperties = Lore & {
@@ -16,7 +15,7 @@ export interface LoreSliceData {
 }
 
 export interface LoreSliceActions {
-  subscribe: (worldId: string, worldOwnerIds: string[]) => Unsubscribe;
+  subscribe: (worldId: string, worldOwnerIds?: string[]) => () => void;
   setOpenLoreId: (loreId?: string) => void;
   setLoreSearch: (search: string) => void;
 
@@ -39,7 +38,7 @@ export interface LoreSliceActions {
   ) => Promise<void>;
   uploadLoreImage: (loreId: string, image: File) => Promise<void>;
   removeLoreImage: (loreId: string) => Promise<void>;
-  subscribeToOpenLore: (loreId: string) => Unsubscribe;
+  subscribeToOpenLore: (loreId: string) => () => void;
 
   resetStore: () => void;
 }

@@ -1,5 +1,4 @@
 import { useWorldPermissions } from "components/features/worlds/useWorldPermissions";
-import { Unsubscribe } from "firebase/firestore";
 import { useEffect } from "react";
 import { useStore } from "stores/store";
 
@@ -34,7 +33,7 @@ export function useListenToSectorLocations() {
   );
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe;
+    let unsubscribe: (() => void) | undefined;
     if (openWorldId && openSectorId) {
       unsubscribe = subscribe(openWorldId, openSectorId);
     }
@@ -45,7 +44,7 @@ export function useListenToSectorLocations() {
   }, [openWorldId, openSectorId, subscribe, resetStore]);
 
   useEffect(() => {
-    const unsubscribes: Unsubscribe[] = [];
+    const unsubscribes: (() => void)[] = [];
     if (openSectorLocationId) {
       if (showGMFields) {
         unsubscribes.push(

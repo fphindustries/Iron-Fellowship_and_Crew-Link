@@ -1,6 +1,4 @@
-import { UserDocument } from "api-calls/user/_user.type";
-import { Unsubscribe, User } from "firebase/auth";
-import { UpdateData } from "firebase/firestore";
+import type { UserProfile } from "@starforged/shared";
 
 export enum AUTH_STATE {
   LOADING,
@@ -9,18 +7,16 @@ export enum AUTH_STATE {
 }
 
 export interface AuthSliceData {
-  user?: User;
+  user?: UserProfile;
   uid: string;
   status: AUTH_STATE;
   userNameDialogOpen: boolean;
-  userDoc?: UserDocument;
 }
 
 export interface AuthSliceActions {
-  subscribe: () => Unsubscribe;
-  subscribeToUser: (uid: string) => Unsubscribe;
+  subscribe: () => () => void;
   closeUserNameDialog: () => void;
-  updateUserDoc: (doc: UpdateData<UserDocument>) => void;
+  updateUser: (patch: Partial<UserProfile>) => Promise<void>;
 }
 
 export type AuthSlice = AuthSliceData & AuthSliceActions;

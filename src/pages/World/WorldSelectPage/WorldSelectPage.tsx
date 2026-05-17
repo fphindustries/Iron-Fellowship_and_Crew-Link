@@ -9,7 +9,7 @@ import { Head } from "providers/HeadProvider/Head";
 import { useStore } from "stores/store";
 import { shallow } from "zustand/shallow";
 import { FooterFab } from "components/shared/Layout/FooterFab";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export function WorldSelectPage() {
   const worldIds = useStore(

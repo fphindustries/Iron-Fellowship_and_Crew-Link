@@ -1,5 +1,4 @@
 import { useWorldPermissions } from "components/features/worlds/useWorldPermissions";
-import { Unsubscribe } from "firebase/firestore";
 import { useEffect } from "react";
 import { useStore } from "stores/store";
 
@@ -27,7 +26,7 @@ export function useListenToSectors() {
   const { isGuidedGame, showGMFields } = useWorldPermissions();
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe;
+    let unsubscribe: (() => void) | undefined;
 
     if (worldId && worldOwnerIds) {
       unsubscribe = listenToSectors(worldId, worldOwnerIds ?? []);
@@ -39,7 +38,7 @@ export function useListenToSectors() {
   }, [worldId, worldOwnerIds, listenToSectors]);
 
   useEffect(() => {
-    const unsubscribes: Unsubscribe[] = [];
+    const unsubscribes: (() => void)[] = [];
     if (openSectorId) {
       if (showGMFields) {
         unsubscribes.push(listenToSectorNotes(openSectorId, true));

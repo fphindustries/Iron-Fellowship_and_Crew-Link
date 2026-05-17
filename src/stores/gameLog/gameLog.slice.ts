@@ -1,10 +1,7 @@
 import { CreateSliceType } from "stores/store.type";
 import { GameLogSlice } from "./gameLog.slice.type";
-import { addRoll } from "api-calls/game-log/addRoll";
 import { defaultGameLogSlice } from "./gameLog.slice.default";
-import { removeLog } from "api-calls/game-log/removeLog";
-import { updateLog } from "api-calls/game-log/updateLog";
-import { listenToLogs } from "api-calls/game-log/listenToLogs";
+import { api } from "config/api.config";
 
 export const createGameLogSlice: CreateSliceType<GameLogSlice> = (
   set,
@@ -14,80 +11,80 @@ export const createGameLogSlice: CreateSliceType<GameLogSlice> = (
 
   addRoll: ({ characterId, campaignId, roll }) => {
     if (!characterId && !campaignId) {
-      return new Promise((res, reject) =>
-        reject("Either character or campaign Id must be defined.")
-      );
+      return Promise.reject("Either character or campaign Id must be defined.");
     }
-    return addRoll({ characterId, campaignId, roll });
+    const entityType = campaignId ? "campaign" : "character";
+    const entityId = campaignId ?? characterId!;
+    return api
+      .post<any>(`/api/game-log?entityType=${entityType}&entityId=${entityId}`, roll)
+      .then((row) => row.id as string);
   },
+
   updateRoll: (id, roll) => {
     const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      getState().characters.currentCharacter.currentCharacterId;
-
-    if (!characterId && !campaignId) {
-      return new Promise((res, reject) =>
-        reject("Either character or campaign Id must be defined.")
-      );
-    }
-
-    return updateLog({ characterId, campaignId, logId: id, log: roll });
+    const entityType = campaignId ? "campaign" : "character";
+    if (!id) return Promise.reject("Log ID must be defined");
+    return api.patch<void>(`/api/game-log/${id}?entityType=${entityType}`, roll);
   },
+
   removeRoll: (id) => {
-    const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      getState().characters.currentCharacter.currentCharacterId;
-
-    if (!characterId && !campaignId) {
-      return new Promise((res, reject) =>
-        reject("Either character or campaign Id must be defined.")
-      );
-    }
-
-    return removeLog({ characterId, campaignId, logId: id });
-
+    return api.del<void>(`/api/game-log/${id}`);
   },
 
   loadMoreLogs: () => {
     const state = getState();
-    if (state.gameLog.loading) {
-      return;
-    }
-
+    if (state.gameLog.loading) return;
     set((store) => {
       store.gameLog.totalLogsToLoad += 20;
     });
   },
 
   subscribe: (params) => {
-    const state = getState();
+    const { campaignId, characterId, totalLogsToLoad } = params;
+    if (!campaignId && !characterId) return () => {};
 
+    const entityType = campaignId ? "campaign" : "character";
+    const entityId = campaignId ?? characterId!;
+
+    let active = true;
+
+    const state = getState();
     const isGM =
-      (!params.campaignId ||
+      (!campaignId ||
         state.campaigns.currentCampaign.currentCampaign?.gmIds?.includes(
           state.auth.uid
         )) ??
       false;
-    return listenToLogs({
-      ...params,
-      isGM,
-      updateLog: (logId, log) => {
-        set((store) => {
-          store.gameLog.logs[logId] = log;
-          if (store.appState.rolls[logId]) {
-            store.appState.rolls[logId] = log;
-          }
-        });
-      },
-      removeLog: (logId) => {
-        set((store) => {
-          delete store.gameLog.logs[logId];
-        });
-      },
-      onError: (error) => {
-        console.error(error);
-      },
+
+    set((store) => {
+      store.gameLog.loading = true;
     });
+
+    api
+      .get<any[]>(
+        `/api/game-log?entityType=${entityType}&entityId=${entityId}&limit=${totalLogsToLoad}`
+      )
+      .then((rows) => {
+        if (!active) return;
+        set((store) => {
+          store.gameLog.loading = false;
+          rows.forEach((row) => {
+            const roll = row.dataJson as any;
+            if (!isGM && roll?.gmsOnly) return;
+            store.gameLog.logs[row.id] = roll;
+          });
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        set((store) => {
+          store.gameLog.loading = false;
+        });
+      });
+
+    return () => {
+      active = false;
+    };
   },
 
   resetStore: () => {

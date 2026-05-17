@@ -17,7 +17,7 @@ import { DieRerollDialog } from "./DieRerollDialog";
 import { ROLL_RESULT, ROLL_TYPE, Roll } from "types/DieRolls.type";
 import { useStore } from "stores/store";
 import { useCampaignType } from "hooks/useCampaignType";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface NormalRollActionsProps {
   rollId: string;

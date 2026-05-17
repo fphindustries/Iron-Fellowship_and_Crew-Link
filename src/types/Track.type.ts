@@ -1,5 +1,4 @@
 import { AskTheOracle } from "config/system.config";
-import { Timestamp } from "firebase/firestore";
 
 export enum TrackTypes {
   Vow = "vow",
@@ -47,7 +46,7 @@ export interface BaseTrack {
 }
 
 export interface BaseTrackDocument extends Omit<BaseTrack, "createdDate"> {
-  createdTimestamp: Timestamp;
+  createdTimestamp: Date | string;
 }
 
 export interface ProgressTrack extends BaseTrack {

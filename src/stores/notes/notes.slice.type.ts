@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { Note } from "types/Notes.type";
 
 export const ROLL_LOG_ID = "roll-log";
@@ -27,11 +26,11 @@ export interface NotesSliceActions {
     campaignId: string | undefined,
     loadAllCampaignDocs: boolean,
     characterId: string | undefined
-  ) => Unsubscribe;
+  ) => () => void;
   subscribeToNoteContent: (note: {
     source: NoteSource;
     id: string;
-  }) => Unsubscribe;
+  }) => () => void;
 
   setOpenNoteId: (
     note?: typeof ROLL_LOG_ID | { source: NoteSource; id: string }

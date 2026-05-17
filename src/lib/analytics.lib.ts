@@ -1,15 +1,14 @@
 import { analyticsEnabled } from "config/posthog.config";
-import { User } from "firebase/auth";
+import type { UserProfile } from "@starforged/shared";
 import { posthog } from "posthog-js";
 
-export function setAnalyticsUser(user: User) {
+export function setAnalyticsUser(user: UserProfile) {
   if (!analyticsEnabled) return;
-  posthog.identify(user.uid, { email: user.email });
+  posthog.identify(user.id, { email: user.email });
 }
 
 export function clearAnalyticsUser() {
   if (!analyticsEnabled) return;
-
   posthog.reset();
 }
 
@@ -35,7 +34,6 @@ export function reportPageError(
   pathname: string
 ) {
   if (!analyticsEnabled) return;
-
   posthog.capture("error-crash", {
     message: errorMessage,
     trace,

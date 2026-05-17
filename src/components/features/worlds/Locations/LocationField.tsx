@@ -6,7 +6,7 @@ import {
 } from "config/locations.config";
 import { useStore } from "stores/store";
 import { LocationWithGMProperties } from "stores/world/currentWorld/locations/locations.slice.type";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface LocationFieldProps {
   locationId: string;

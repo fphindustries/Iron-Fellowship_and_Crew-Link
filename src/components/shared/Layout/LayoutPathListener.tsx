@@ -1,8 +1,6 @@
 import { useContinueUrl } from "hooks/useContinueUrl";
 import { sendPageViewEvent } from "lib/analytics.lib";
-import { completeMagicLinkSignupIfPresent } from "lib/auth.lib";
-import { useSnackbar } from "providers/SnackbarProvider";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { matchPath, useLocation } from "react-router-dom";
 import {
   BASE_ROUTES,
@@ -16,9 +14,7 @@ import { useStore } from "stores/store";
 export function LayoutPathListener() {
   const { pathname } = useLocation();
   const state = useStore((store) => store.auth.status);
-  const { error } = useSnackbar();
 
-  const previousMagicLinkPathnameChecked = useRef<string | undefined>(undefined);
   const { redirectWithContinueUrl, navigateToContinueURL } = useContinueUrl();
 
   useEffect(() => {
@@ -38,13 +34,6 @@ export function LayoutPathListener() {
   useEffect(() => {
     sendPageViewEvent();
   }, [pathname]);
-
-  useEffect(() => {
-    if (previousMagicLinkPathnameChecked.current !== pathname) {
-      previousMagicLinkPathnameChecked.current = pathname;
-      completeMagicLinkSignupIfPresent().catch((e) => error(e));
-    }
-  }, [pathname, error]);
 
   return null;
 }

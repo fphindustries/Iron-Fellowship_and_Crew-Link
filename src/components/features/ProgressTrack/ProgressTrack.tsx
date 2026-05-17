@@ -17,7 +17,7 @@ import { GAME_SYSTEMS, GameSystemChooser } from "types/GameSystems.type";
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { useStore } from "stores/store";
 import { DebouncedClockCircle } from "../charactersAndCampaigns/Clocks/DebouncedClockCircle";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 const trackMoveIdSystemValues: GameSystemChooser<{
   [key in ProgressTracks | TrackTypes.SceneChallenge]: string;

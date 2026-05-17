@@ -9,7 +9,7 @@ import { OracleTableSharedResults } from "./OracleTableSharedResults";
 import { OracleCollection } from "./OracleCollection";
 import { OracleRollableColumn } from "./OracleRollableColumn";
 import { OracleButton } from "components/features/charactersAndCampaigns/OracleSection/OracleButton";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface OracleDialogContentProps {
   id: string;

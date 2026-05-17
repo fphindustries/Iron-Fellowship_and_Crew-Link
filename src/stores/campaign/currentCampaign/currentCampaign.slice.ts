@@ -1,16 +1,10 @@
 import { CreateSliceType } from "stores/store.type";
 import { CurrentCampaignSlice } from "./currentCampaign.slice.type";
 import { defaultCurrentCampaignSlice } from "./currentCampaign.slice.default";
-import { updateCampaignGM } from "api-calls/campaign/updateCampaignGM";
-import { deleteCampaign } from "api-calls/campaign/deleteCampaign";
-import { leaveCampaign } from "api-calls/campaign/leaveCampaign";
-import { removeCharacterFromCampaign } from "api-calls/campaign/removeCharacterFromCampaign";
-import { addCharacterToCampaign } from "api-calls/campaign/addCharacterToCampaign";
-import { updateCampaign } from "api-calls/campaign/updateCampaign";
 import { createCampaignTracksSlice } from "./tracks/campaignTracks.slice";
 import { createCampaignCharactersSlice } from "./characters/campaignCharacters.slice";
-import { updateCampaignWorld } from "api-calls/campaign/updateCampaignWorld";
 import { createSharedAssetsSlice } from "./sharedAssets/sharedAssets.slice";
+import { api } from "config/api.config";
 
 export const createCurrentCampaignSlice: CreateSliceType<
   CurrentCampaignSlice
@@ -43,6 +37,7 @@ export const createCurrentCampaignSlice: CreateSliceType<
       }
       state.worlds.currentWorld.setCurrentWorldId(campaign?.worldId);
     },
+
     setCurrentCampaign: (campaign) => {
       const state = getState();
       if (campaign) {
@@ -56,9 +51,7 @@ export const createCurrentCampaignSlice: CreateSliceType<
         set((store) => {
           loadedCharacterIds.forEach((characterId) => {
             if (!campaignCharacterIds.includes(characterId)) {
-              delete store.campaigns.currentCampaign.characters.characterMap[
-                characterId
-              ];
+              delete store.campaigns.currentCampaign.characters.characterMap[characterId];
             }
           });
         });
@@ -71,98 +64,112 @@ export const createCurrentCampaignSlice: CreateSliceType<
       state.worlds.currentWorld.setCurrentWorldId(campaign?.worldId);
     },
 
-    updateCampaignWorld: (worldId) => {
+    updateCampaignWorld: async (worldId) => {
       const state = getState();
       const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-      const gmIds =
-        state.campaigns.currentCampaign.currentCampaign?.gmIds ?? [];
+      if (!campaignId) return Promise.reject("Campaign Id not found");
 
-      if (!campaignId) {
-        return new Promise((res, reject) => reject("Campaign Id not found"));
+      if (worldId) {
+        const gmIds = state.campaigns.currentCampaign.currentCampaign?.gmIds ?? [];
+        await api.patch<void>(`/api/campaigns/${campaignId}`, { worldId });
+        // Add all GMs as world owners
+        for (const gmId of gmIds) {
+          await api
+            .post<void>(`/api/worlds/${worldId}/owners`, { userId: gmId })
+            .catch(() => {});
+        }
+      } else {
+        await api.patch<void>(`/api/campaigns/${campaignId}`, { worldId: null });
       }
-      return updateCampaignWorld({ campaignId, gmIds, worldId });
     },
-    updateCampaignGM: (gmId, shouldRemove) => {
+
+    updateCampaignGM: async (gmId, shouldRemove) => {
       const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
-      const worldId =
-        getState().campaigns.currentCampaign.currentCampaign?.worldId;
-      if (!campaignId) {
-        return new Promise((res, reject) => reject("Campaign Id not found"));
+      const worldId = getState().campaigns.currentCampaign.currentCampaign?.worldId;
+      if (!campaignId) return Promise.reject("Campaign Id not found");
+
+      if (shouldRemove) {
+        await api.del<void>(`/api/campaigns/${campaignId}/gms/${gmId}`);
+      } else {
+        await api.post<void>(`/api/campaigns/${campaignId}/gms`, { userId: gmId });
+        if (worldId) {
+          await api
+            .post<void>(`/api/worlds/${worldId}/owners`, { userId: gmId })
+            .catch(() => {});
+        }
       }
-      return updateCampaignGM({ campaignId, worldId, gmId, shouldRemove });
     },
 
     deleteCampaign: () => {
       const state = getState();
       const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-      const characterIds =
-        state.campaigns.currentCampaign.currentCampaign?.characters.map(
-          (character) => character.characterId
-        );
-
-      if (!campaignId || characterIds === undefined) {
-        return new Promise((res, reject) => reject("Campaign is not open"));
-      }
-      return deleteCampaign({ campaignId, characterIds });
+      if (!campaignId) return Promise.reject("Campaign is not open");
+      return api.del<void>(`/api/campaigns/${campaignId}`);
     },
-    leaveCampaign: () => {
+
+    leaveCampaign: async () => {
       const state = getState();
       const uid = state.auth.uid;
       const campaignId = state.campaigns.currentCampaign.currentCampaignId;
       const campaign = state.campaigns.currentCampaign.currentCampaign;
+      if (!campaign || !campaignId) return Promise.reject("Campaign is not open");
 
-      if (!campaign || !campaignId) {
-        return new Promise((res, reject) => reject("Campaign is not open"));
+      if (campaign.gmIds?.includes(uid)) {
+        await api.del<void>(`/api/campaigns/${campaignId}/gms/${uid}`).catch(() => {});
       }
-
-      return leaveCampaign({ uid, campaignId, campaign });
+      const userCharacters = campaign.characters.filter((c) => c.uid === uid);
+      for (const { characterId } of userCharacters) {
+        await api
+          .del<void>(`/api/campaigns/${campaignId}/characters/${characterId}`)
+          .catch(() => {});
+      }
+      await api.del<void>(`/api/campaigns/${campaignId}/members/${uid}`);
     },
-    removePlayerFromCampaign: (uid: string) => {
+
+    removePlayerFromCampaign: async (uid) => {
       const state = getState();
       const campaignId = state.campaigns.currentCampaign.currentCampaignId;
       const campaign = state.campaigns.currentCampaign.currentCampaign;
+      if (!campaign || !campaignId) return Promise.reject("Campaign is not open");
 
-      if (!campaign || !campaignId) {
-        return new Promise((res, reject) => reject("Campaign is not open"));
+      if (campaign.gmIds?.includes(uid)) {
+        await api.del<void>(`/api/campaigns/${campaignId}/gms/${uid}`).catch(() => {});
       }
-
-      return leaveCampaign({ uid, campaignId, campaign });
+      const userCharacters = campaign.characters.filter((c) => c.uid === uid);
+      for (const { characterId } of userCharacters) {
+        await api
+          .del<void>(`/api/campaigns/${campaignId}/characters/${characterId}`)
+          .catch(() => {});
+      }
+      await api.del<void>(`/api/campaigns/${campaignId}/members/${uid}`);
     },
+
     addCharacter: (characterId) => {
       const state = getState();
       const uid = state.auth.uid;
       const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-
-      if (!campaignId) {
-        return new Promise((res, reject) => reject("No campaign found."));
-      }
-      return addCharacterToCampaign({ uid, characterId, campaignId });
+      if (!campaignId) return Promise.reject("No campaign found.");
+      return api.post<void>(`/api/campaigns/${campaignId}/characters`, { characterId, userId: uid });
     },
+
     removeCharacter: (uid, characterId) => {
-      const state = getState();
-      const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-
-      if (!campaignId) {
-        return new Promise((res, reject) => reject("No campaign found."));
-      }
-      return removeCharacterFromCampaign({ uid, campaignId, characterId });
+      const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
+      if (!campaignId) return Promise.reject("No campaign found.");
+      return api.del<void>(`/api/campaigns/${campaignId}/characters/${characterId}`);
     },
+
     updateCampaignConditionMeter: (conditionMeterKey, value) => {
       const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
-      if (!campaignId) {
-        return new Promise((res, reject) => reject("No campaign found."));
-      }
-      return updateCampaign({
-        campaignId,
-        campaign: { [`conditionMeters.${conditionMeterKey}`]: value },
-      });
+      if (!campaignId) return Promise.reject("No campaign found.");
+      const existing = getState().campaigns.currentCampaign.currentCampaign;
+      const conditionMeters = { ...(existing?.conditionMeters ?? {}), [conditionMeterKey]: value };
+      return api.patch<void>(`/api/campaigns/${campaignId}`, { conditionMeters });
     },
+
     updateCampaign: (campaign) => {
       const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
-      if (!campaignId) {
-        return new Promise((res, reject) => reject("No campaign found."));
-      }
-      return updateCampaign({ campaignId, campaign });
+      if (!campaignId) return Promise.reject("No campaign found.");
+      return api.patch<void>(`/api/campaigns/${campaignId}`, campaign);
     },
 
     resetStore: () => {

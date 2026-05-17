@@ -9,7 +9,7 @@ import { PropsWithChildren } from "react";
 export const AnalyticsProvider = (props: PropsWithChildren) => {
   if (analyticsEnabled) {
     return (
-      <PostHogProvider apiKey={posthogApiKey} options={posthogConfig}>
+      <PostHogProvider apiKey={posthogApiKey as string} options={posthogConfig}>
         {props.children}
       </PostHogProvider>
     );

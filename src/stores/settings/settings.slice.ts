@@ -1,21 +1,7 @@
 import { CreateSliceType } from "stores/store.type";
 import { SettingsSlice } from "./settings.slice.type";
 import { defaultSettings } from "./settings.slice.default";
-import { Unsubscribe } from "firebase/firestore";
-import { listenToCustomMoves } from "api-calls/user/custom-moves/listenToCustomMoves";
-import { listenToCustomOracles } from "api-calls/user/custom-oracles/listenToCustomOracles";
-import { listenToSettings } from "api-calls/character-campaign-settings/listenToSettings";
-import { listenToOracleSettings } from "api-calls/user/settings/listenToOracleSettings";
-import { showOrHideCustomMove } from "api-calls/character-campaign-settings/showOrHideCustomMove";
-import { showOrHideCustomOracle } from "api-calls/character-campaign-settings/showOrHideCustomOracle";
-import { addCustomMove } from "api-calls/user/custom-moves/addCustomMove";
-import { updateCustomMove } from "api-calls/user/custom-moves/updateCustomMove";
-import { removeCustomMove } from "api-calls/user/custom-moves/removeCustomMove";
-import { addCustomOracle } from "api-calls/user/custom-oracles/addCustomOracle";
-import { updateCustomOracle } from "api-calls/user/custom-oracles/updateCustomOracle";
-import { removeCustomOracle } from "api-calls/user/custom-oracles/removeCustomOracle";
-import { updatePinnedOracle } from "api-calls/user/settings/updatePinnedOracle";
-import { updateSettings } from "api-calls/character-campaign-settings/updateSettings";
+import { api } from "config/api.config";
 
 export const createSettingsSlice: CreateSliceType<SettingsSlice> = (
   set,
@@ -25,157 +11,92 @@ export const createSettingsSlice: CreateSliceType<SettingsSlice> = (
 
   subscribe: (uids) => {
     getState().users.loadUserDocuments(uids);
-    const unsubscribes: Unsubscribe[] = [];
+    let active = true;
 
     uids.forEach((uid) => {
-      unsubscribes.push(
-        listenToCustomMoves(
-          uid,
-          (moves) => {
-            set((store) => {
-              store.settings.customMoves[uid] = moves;
-            });
-          },
-          (error) => {
-            console.error(error);
-          }
-        )
-      );
+      api.get<any[]>("/api/settings/custom-moves").then((moves) => {
+        if (!active) return;
+        set((store) => {
+          store.settings.customMoves[uid] = moves.map((m) => m.dataJson) as any;
+        });
+      }).catch(console.error);
 
-      unsubscribes.push(
-        listenToCustomOracles(
-          uid,
-          (oracles) => {
-            set((store) => {
-              store.settings.customOracles[uid] = oracles;
-            });
-          },
-          (error) => {
-            console.error(error);
-          }
-        )
-      );
+      api.get<any[]>("/api/settings/custom-oracles").then((oracles) => {
+        if (!active) return;
+        set((store) => {
+          store.settings.customOracles[uid] = oracles.map((o) => o.dataJson) as any;
+        });
+      }).catch(console.error);
     });
+
     return () => {
-      unsubscribes.forEach((unsubscribe) => unsubscribe());
+      active = false;
       getState().settings.resetStore();
     };
   },
 
   subscribeToSettings: ({ characterId, campaignId }) => {
-    if (characterId || campaignId) {
-      return listenToSettings(
-        campaignId,
-        characterId,
-        (settings) => {
-          set((store) => {
-            store.settings.hiddenCustomMoveIds = settings.hiddenCustomMoveIds;
-            store.settings.hiddenCustomOracleIds =
-              settings.hiddenCustomOraclesIds;
-            store.settings.delve = {
-              showDelveMoves: !settings.hideDelveMoves,
-              showDelveOracles: !settings.hideDelveOracles,
-            };
-
-            store.settings.customStats = settings.customStats;
-            store.settings.customTracks = Object.values(
-              settings.customTracks
-            ).sort((ct1, ct2) => ct1.order - ct2.order);
-          });
-        },
-        (error) => {
-          console.error(error);
-        }
-      );
-    }
+    // Entity settings are loaded per-page; stub returns empty cleanup
     return () => {};
   },
 
   subscribeToPinnedOracleSettings: (uid) => {
-    return listenToOracleSettings(
-      uid,
-      (settings) => {
-        set((store) => {
-          store.settings.pinnedOraclesIds = settings.pinnedOracleSections ?? {};
-        });
-      },
-      (error) => {
-        console.error(error);
-      }
-    );
+    let active = true;
+
+    api.get<any>("/api/settings/oracle").then((row) => {
+      if (!active) return;
+      set((store) => {
+        store.settings.pinnedOraclesIds = row?.pinnedOracleIdsJson ?? {};
+      });
+    }).catch(console.error);
+
+    return () => { active = false; };
   },
 
-  toggleCustomMoveVisibility: (moveId, hidden) => {
-    const state = getState();
-
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId = state.characters.currentCharacter.currentCharacterId;
-
-    return showOrHideCustomMove({ campaignId, characterId, moveId, hidden });
+  toggleCustomMoveVisibility: async (moveId, hidden) => {
+    // TODO: implement via /api/settings entity settings
   },
-  toggleCustomOracleVisibility: (oracleId, hidden) => {
-    const state = getState();
+  toggleCustomOracleVisibility: async (oracleId, hidden) => {
+    // TODO: implement via /api/settings entity settings
+  },
 
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId = state.characters.currentCharacter.currentCharacterId;
+  addCustomMove: async (customMove) => {
+    const row = await api.post<any>("/api/settings/custom-moves", customMove);
+    return row.id;
+  },
+  updateCustomMove: async (moveId, customMove) => {
+    await api.patch(`/api/settings/custom-moves/${moveId}`, customMove);
+  },
+  removeCustomMove: async (moveId) => {
+    await api.del(`/api/settings/custom-moves/${moveId}`);
+  },
 
-    return showOrHideCustomOracle({
-      campaignId,
-      characterId,
-      oracleId,
-      hidden,
+  addCustomOracle: async (customOracle) => {
+    const row = await api.post<any>("/api/settings/custom-oracles", customOracle);
+    return row.id;
+  },
+  updateCustomOracle: async (oracleId, customOracle) => {
+    await api.patch(`/api/settings/custom-oracles/${oracleId}`, customOracle);
+  },
+  removeCustomOracle: async (oracleId) => {
+    await api.del(`/api/settings/custom-oracles/${oracleId}`);
+  },
+  togglePinnedOracle: async (oracleId, pinned) => {
+    const current = getState().settings.pinnedOraclesIds ?? {};
+    const updated = { ...current };
+    if (pinned) {
+      updated[oracleId] = true;
+    } else {
+      delete updated[oracleId];
+    }
+    await api.patch("/api/settings/oracle", updated);
+    set((store) => {
+      store.settings.pinnedOraclesIds = updated;
     });
   },
 
-  addCustomMove: (customMove) => {
-    const uid = getState().auth.uid;
-
-    return addCustomMove({ uid, customMove });
-  },
-  updateCustomMove: (moveId, customMove) => {
-    const uid = getState().auth.uid;
-
-    return updateCustomMove({ uid, moveId, customMove });
-  },
-  removeCustomMove: (moveId) => {
-    const uid = getState().auth.uid;
-
-    return removeCustomMove({ uid, moveId });
-  },
-
-  addCustomOracle: (customOracle) => {
-    const uid = getState().auth.uid;
-
-    return addCustomOracle({ uid, customOracle });
-  },
-  updateCustomOracle: (oracleId, customOracle) => {
-    const uid = getState().auth.uid;
-
-    return updateCustomOracle({ uid, oracleId, customOracle });
-  },
-  removeCustomOracle: (oracleId) => {
-    const uid = getState().auth.uid;
-
-    return removeCustomOracle({ uid, oracleId });
-  },
-  togglePinnedOracle: (oracleId, pinned) => {
-    const uid = getState().auth.uid;
-
-    return updatePinnedOracle({ uid, oracleId, pinned });
-  },
-
-  updateSettings: (settings, useUpdate) => {
-    const state = getState();
-
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId = state.characters.currentCharacter.currentCharacterId;
-
-    return updateSettings({
-      campaignId,
-      characterId,
-      settings,
-      useUpdate,
-    });
+  updateSettings: async (_settings, _useUpdate) => {
+    // TODO: implement via /api/settings entity settings
   },
 
   resetStore: () => {

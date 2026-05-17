@@ -10,7 +10,7 @@ import {
 import { ProgressTrack } from "./ProgressTrack";
 import { EmptyState } from "components/shared/EmptyState";
 import { EditOrCreateTrackDialog } from "./EditOrCreateTrackDialog";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface ProgressTracksProps {
   isCampaign?: boolean;

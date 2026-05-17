@@ -15,7 +15,7 @@ import { useStore } from "stores/store";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { constructHomebrewEditorPath } from "../routes";
 import { PackageTypes } from "api-calls/homebrew/_homebrewCollection.type";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface CreateExpansionDialogProps {
   open: boolean;

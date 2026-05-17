@@ -16,7 +16,7 @@ import { AssetDialog } from "./Assets/AssetDialog";
 import { useConfirm } from "material-ui-confirm";
 import { AssetPreviewCard } from "./AssetPreviewCard";
 import { MoveAssetDialog } from "./Assets/MoveAssetDialog";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface AssetsSectionProps {
   homebrewId: string;

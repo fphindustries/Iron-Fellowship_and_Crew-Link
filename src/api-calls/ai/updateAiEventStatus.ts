@@ -1,18 +1,13 @@
-import { firestore } from "config/firebase.config";
-import { doc, updateDoc } from "firebase/firestore";
+import { api } from "config/api.config";
 import { AiGuideResponse, AiEventStatus } from "./_ai.type";
 
 export function updateAiEventStatus(
-  campaignId: string,
+  _campaignId: string,
   eventId: string,
   status: AiEventStatus,
   editedResponse?: AiGuideResponse
 ): Promise<void> {
-  const ref = doc(
-    firestore,
-    `/campaigns/${campaignId}/ai-events/${eventId}`
-  );
-  return updateDoc(ref, {
+  return api.patch<void>(`/api/ai/events/${eventId}`, {
     status,
     ...(editedResponse !== undefined ? { response: editedResponse } : {}),
   });

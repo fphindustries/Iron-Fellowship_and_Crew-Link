@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import { useEffect } from "react";
 import { useStore } from "stores/store";
 
@@ -11,7 +10,7 @@ export function useListenToSharedAssets() {
   );
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe;
+    let unsubscribe: () => void;
     if (currentCampaignId) {
       unsubscribe = subscribe(currentCampaignId);
     }

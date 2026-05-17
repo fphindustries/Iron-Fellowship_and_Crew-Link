@@ -32,7 +32,7 @@ import { mergeIcons } from "components/shared/GameIcons/mergeIcons";
 import { IconColors } from "types/Icon.type";
 import { PageWithImage } from "../common/PageWithImage";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 import { AiTriggerButton } from "components/shared/AiTriggerButton";
 
 const defaultNPCSpeciesOptions: {

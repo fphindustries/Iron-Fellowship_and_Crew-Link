@@ -16,7 +16,7 @@ import { useStore } from "stores/store";
 import { LocationWithGMProperties } from "stores/world/currentWorld/locations/locations.slice.type";
 import { LocationItemAvatar } from "./LocationMap/LocationItemAvatar";
 import { useState } from "react";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface MoveLocationDialogProps {
   open: boolean;

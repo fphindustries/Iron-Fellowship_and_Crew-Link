@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import {
   CampaignDocument,
   CampaignType,
@@ -12,7 +11,7 @@ export interface CampaignSliceData {
 }
 
 export interface CampaignSliceActions {
-  subscribe: (uid?: string) => Unsubscribe | undefined;
+  subscribe: (uid?: string) => (() => void) | undefined;
 
   createCampaign: (
     campaignName: string,

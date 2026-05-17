@@ -16,7 +16,7 @@ import DieIcon from "@mui/icons-material/Casino";
 import { useRoller } from "stores/appState/useRoller";
 import { useSystemOracles } from "hooks/useSystemOracle";
 import { AskTheOracle } from "config/system.config";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface ClockProps {
   clock: IClock;

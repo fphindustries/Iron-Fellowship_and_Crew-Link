@@ -14,7 +14,7 @@ import { Themes } from "providers/ThemeProvider/themes/theme.types";
 import { useToggleTheme } from "providers/ThemeProvider";
 import CheckIcon from "@mui/icons-material/CheckCircle";
 import { useStore } from "stores/store";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface ThemeChooserDialogProps {
   open: boolean;

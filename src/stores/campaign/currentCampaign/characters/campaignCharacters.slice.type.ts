@@ -1,5 +1,4 @@
 import { CharacterDocument } from "api-calls/character/_character.type";
-import { Unsubscribe } from "firebase/firestore";
 import { AssetDocument } from "api-calls/assets/_asset.type";
 import {
   Clock,
@@ -33,9 +32,9 @@ export interface CampaignCharactersSliceData {
   };
 }
 export interface CampaignCharactersSliceActions {
-  listenToCampaignCharacters: (characterIds: string[]) => Unsubscribe;
-  listenToCampaignCharacterAssets: (characterIds: string[]) => Unsubscribe;
-  listenToCampaignCharacterTracks: (characterIds: string[]) => Unsubscribe;
+  listenToCampaignCharacters: (characterIds: string[]) => () => void;
+  listenToCampaignCharacterAssets: (characterIds: string[]) => () => void;
+  listenToCampaignCharacterTracks: (characterIds: string[]) => () => void;
 
   updateCharacter: (
     characterId: string,

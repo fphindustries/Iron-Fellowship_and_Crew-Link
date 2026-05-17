@@ -2,14 +2,10 @@ import { CreateSliceType } from "stores/store.type";
 import { CurrentWorldSlice } from "./currentWorld.slice.type";
 import { defaultCurrentWorldSlice } from "./currentWorld.default.type";
 import { createLocationsSlice } from "./locations/locations.slice";
-import { updateWorld } from "api-calls/world/updateWorld";
-import { updateWorldDescription } from "api-calls/world/updateWorldDescription";
 import { createNPCsSlice } from "./npcs/npcs.slice";
 import { createLoreSlice } from "./lore/lore.slice";
 import { createSectorSlice } from "./sector/sector.slice";
-import { updateWorldTruth } from "api-calls/world/updateWorldTruth";
-import { listenToWorldAiSettings } from "api-calls/world/settings/listenToWorldAiSettings";
-import { updateWorldAiSettings as updateWorldAiSettingsApi } from "api-calls/world/settings/updateWorldAiSettings";
+import { api } from "config/api.config";
 
 export const createCurrentWorldSlice: CreateSliceType<CurrentWorldSlice> = (
   ...params
@@ -35,54 +31,53 @@ export const createCurrentWorldSlice: CreateSliceType<CurrentWorldSlice> = (
         store.worlds.currentWorld.resetStore();
       }
     },
-    updateCurrentWorld: (partialWorld) => {
+    updateCurrentWorld: async (partialWorld) => {
       const worldId = getState().worlds.currentWorld.currentWorldId;
-      if (worldId) {
-        return updateWorld({ worldId, partialWorld });
-      } else
-        return new Promise((res, reject) => {
-          reject("No world id defined.");
-        });
+      if (!worldId) return Promise.reject("No world id defined.");
+      await api.patch(`/api/worlds/${worldId}`, partialWorld);
     },
-    updateCurrentWorldDescription: (worldId, description, isBeaconRequest) => {
-      return updateWorldDescription({
-        worldId,
-        description,
-        isBeaconRequest,
-      });
+    updateCurrentWorldDescription: async (worldId, description) => {
+      await api.patch(`/api/worlds/${worldId}`, { worldDescription: description });
     },
-    updateCurrentWorldTruth: (truthKey, truth) => {
+    updateCurrentWorldTruth: async (truthKey, truth) => {
       const worldId = getState().worlds.currentWorld.currentWorldId;
-      if (worldId) {
-        return updateWorldTruth({
-          worldId,
-          truthKey,
-          truth,
-        });
-      } else {
-        return new Promise((res, reject) => reject("No world id defined."));
-      }
+      if (!worldId) return Promise.reject("No world id defined.");
+      const current = getState().worlds.currentWorld.currentWorld;
+      const newTruths = { ...(current?.newTruths ?? {}), [truthKey]: truth };
+      await api.patch(`/api/worlds/${worldId}`, { newTruths });
     },
 
     subscribeToWorldAiSettings: (worldId) => {
+      let active = true;
       set((store) => {
         store.worlds.currentWorld.worldAiSettingsLoading = true;
       });
 
-      return listenToWorldAiSettings(worldId, (settings) => {
-        set((store) => {
-          store.worlds.currentWorld.worldAiSettings = settings;
-          store.worlds.currentWorld.worldAiSettingsLoading = false;
+      api
+        .get<any>(`/api/worlds/${worldId}/ai-settings`)
+        .then((settings) => {
+          if (!active) return;
+          set((store) => {
+            store.worlds.currentWorld.worldAiSettings = settings ?? undefined;
+            store.worlds.currentWorld.worldAiSettingsLoading = false;
+          });
+        })
+        .catch(() => {
+          if (!active) return;
+          set((store) => {
+            store.worlds.currentWorld.worldAiSettingsLoading = false;
+          });
         });
-      });
+
+      return () => {
+        active = false;
+      };
     },
 
-    updateWorldAiSettings: (settings) => {
+    updateWorldAiSettings: async (settings) => {
       const worldId = getState().worlds.currentWorld.currentWorldId;
-      if (!worldId) {
-        return Promise.reject("No world id defined.");
-      }
-      return updateWorldAiSettingsApi({ worldId, settings });
+      if (!worldId) return Promise.reject("No world id defined.");
+      await api.patch(`/api/worlds/${worldId}/ai-settings`, settings);
     },
 
     resetStore: () => {

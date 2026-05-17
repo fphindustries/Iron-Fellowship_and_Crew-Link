@@ -13,7 +13,6 @@ import AccountIcon from "@mui/icons-material/Person";
 import { GoogleIcon } from "assets/GoogleIcon";
 import { useState } from "react";
 import { loginWithGoogle, sendMagicEmailLink } from "lib/auth.lib";
-import { FirebaseError } from "firebase/app";
 import { Link } from "react-router-dom";
 import { BASE_ROUTES, basePaths } from "routes";
 import { useSnackbar } from "providers/SnackbarProvider/useSnackbar";
@@ -54,7 +53,7 @@ export function LoginOrSignupPage(props: LoginOrSignupPageProps) {
         setLinkSent(true);
         setErrorMessage(undefined);
       })
-      .catch((e: FirebaseError) => {
+      .catch((e: Error) => {
         setErrorMessage("Error sending email link: " + e.message);
       })
       .finally(() => {
@@ -72,7 +71,7 @@ export function LoginOrSignupPage(props: LoginOrSignupPageProps) {
               <Box
                 sx={(theme) => ({
                   display: "inline-flex",
-                  borderRadius: 999 || `${theme.shape.borderRadius}px`,
+                  borderRadius: 999,
                   alignItems: "center",
                   justifyContent: "center",
                   p: 0.5,
@@ -127,11 +126,7 @@ export function LoginOrSignupPage(props: LoginOrSignupPageProps) {
                   },
                 })}
                 startIcon={<GoogleIcon />}
-                onClick={() =>
-                  loginWithGoogle().catch((e) =>
-                    error(getErrorMessage(e, "Failed to log in"))
-                  )
-                }
+                onClick={() => loginWithGoogle()}
               >
                 {isLoginPage ? "Login with" : "Sign Up using"} Google
               </Button>

@@ -11,7 +11,6 @@ import { LocationHexagon, LocationHexagonProps } from "./LocationHexagon";
 import {
   LocationMap as ILocationMap,
   MapBackgroundImageFit,
-  MapEntryBackgroundColors,
   MapEntryType,
   MapStrokeColors,
 } from "types/Locations.type";
@@ -19,7 +18,6 @@ import { useStore } from "stores/store";
 import { useState } from "react";
 import { MapTool, MapTools, draggableMapTools } from "./MapTools.enum";
 import { MapToolChooser } from "./MapToolChooser";
-import { arrayUnion } from "firebase/firestore";
 import { LocationItemAvatar } from "./LocationItemAvatar";
 import { checkIsLocationCell, getValidLocations } from "./checkIsLocationCell";
 import { LocationWithGMProperties } from "stores/world/currentWorld/locations/locations.slice.type";
@@ -29,7 +27,7 @@ import { locationConfigs } from "config/locations.config";
 import { useRoller } from "stores/appState/useRoller";
 import { useImageDimensions } from "./useImageDimensions";
 import { MapOverflowOptionsMenu } from "./MapOverflowOptionsMenu";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export interface LocationMapProps {
   locationId: string;
@@ -127,10 +125,12 @@ export function LocationMap(props: LocationMapProps) {
       if (
         !checkIsLocationCell(currentCell ?? undefined, locationId, locationMap)
       ) {
-        updateLocation(locationId, {
-          [`map.${row}.${col}.type`]:
-            currentCell?.type === MapEntryType.Path ? null : MapEntryType.Path,
-        }).catch(ignoreApiError);
+        const newType = currentCell?.type === MapEntryType.Path ? null : MapEntryType.Path;
+        const newMap: ILocationMap = {
+          ...map,
+          [row]: { ...(map[row] ?? {}), [col]: { ...(currentCell ?? {}), type: newType } as any },
+        };
+        updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
       }
     } else if (mapTool?.type === MapTools.AddLocation) {
       const type = mapTool.locationType;
@@ -147,10 +147,16 @@ export function LocationMap(props: LocationMapProps) {
         ...(configCreateLocation ? configCreateLocation(rollOracleTable) : {}),
       })
         .then((id) => {
-          updateLocation(locationId, {
-            [`map.${row}.${col}.type`]: MapEntryType.Location,
-            [`map.${row}.${col}.locationIds`]: arrayUnion(id),
-          }).catch(ignoreApiError);
+          const currentCell = map[row]?.[col];
+          const existingIds = currentCell?.type === MapEntryType.Location ? currentCell.locationIds : [];
+          const newMap: ILocationMap = {
+            ...map,
+            [row]: {
+              ...(map[row] ?? {}),
+              [col]: { type: MapEntryType.Location, locationIds: [...existingIds, id] },
+            },
+          };
+          updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
         })
         .catch(ignoreApiError);
       setMapTool(undefined);
@@ -168,9 +174,12 @@ export function LocationMap(props: LocationMapProps) {
       }
     } else if (mapTool?.type === MapTools.BackgroundPaint) {
       const color = mapTool.color;
-      updateLocation(locationId, {
-        [`map.${row}.${col}.background.color`]: color,
-      }).catch(ignoreApiError);
+      const currentCell = map[row]?.[col];
+      const newMap: ILocationMap = {
+        ...map,
+        [row]: { ...(map[row] ?? {}), [col]: { ...(currentCell ?? {}), background: { color } } as any },
+      };
+      updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
     } else if (!mapTool && locationIds) {
       const filteredLocationIds = getValidLocations(
         locationId,
@@ -187,31 +196,40 @@ export function LocationMap(props: LocationMapProps) {
         });
       }
     } else if (mapTool?.type === MapTools.BackgroundEraser) {
-      updateLocation(locationId, {
-        [`map.${row}.${col}.background`]: null,
-      }).catch(ignoreApiError);
+      const currentCell = map[row]?.[col];
+      const { background: _bg, ...restCell } = (currentCell ?? {}) as any;
+      const newMap: ILocationMap = {
+        ...map,
+        [row]: { ...(map[row] ?? {}), [col]: restCell as any },
+      };
+      updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
     }
   };
 
   const handleFillBackground = () => {
     if (mapTool?.type === MapTools.BackgroundPaint) {
       const color = mapTool.color;
-      const updates: Record<string, MapEntryBackgroundColors> = {};
+      const newMap: ILocationMap = { ...map };
       for (let row = 0; row < rows; row++) {
+        newMap[row] = { ...(newMap[row] ?? {}) };
         for (let col = 0; col < cols - (row % 2 === 1 ? 1 : 0); col++) {
-          updates[`map.${row}.${col}.background.color`] = color;
+          const cell = newMap[row][col];
+          newMap[row][col] = { ...(cell ?? {}), background: { color } } as any;
         }
       }
-      updateLocation(locationId, updates).catch(ignoreApiError);
+      updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
       setMapTool(undefined);
     } else if (mapTool?.type === MapTools.BackgroundEraser) {
-      const updates: Record<string, null> = {};
+      const newMap: ILocationMap = { ...map };
       for (let row = 0; row < rows; row++) {
+        newMap[row] = { ...(newMap[row] ?? {}) };
         for (let col = 0; col < cols - (row % 2 === 1 ? 1 : 0); col++) {
-          updates[`map.${row}.${col}.background`] = null;
+          const cell = newMap[row][col];
+          const { background: _bg, ...restCell } = (cell ?? {}) as any;
+          newMap[row][col] = restCell as any;
         }
       }
-      updateLocation(locationId, updates).catch(ignoreApiError);
+      updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
       setMapTool(undefined);
     }
   };

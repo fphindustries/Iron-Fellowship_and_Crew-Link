@@ -1,10 +1,9 @@
-import { Unsubscribe } from "firebase/firestore";
 import { useEffect } from "react";
 import { useStore } from "stores/store";
 import { shallow } from "zustand/shallow";
 
 export function useListenToWorlds() {
-  const uid = useStore((store) => store.auth.user?.uid);
+  const uid = useStore((store) => store.auth.user?.id);
   const subscribeToOwnedWorlds = useStore(
     (store) => store.worlds.subscribeToOwnedWorlds
   );
@@ -19,32 +18,28 @@ export function useListenToWorlds() {
   const campaignsLoading = useStore((store) => store.campaigns.loading);
   const campaignWorldIds = useStore((store) => {
     const worldIds = new Set<string>();
-
     Object.values(store.campaigns.campaignMap).forEach((campaign) => {
       if (campaign.worldId) {
         worldIds.add(campaign.worldId);
       }
     });
-
     return Array.from(worldIds);
   }, shallow);
 
   useEffect(() => {
     const unsubscribe = subscribeToOwnedWorlds(uid);
-
     return () => {
-      unsubscribe && unsubscribe();
+      unsubscribe?.();
     };
   }, [uid, subscribeToOwnedWorlds]);
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe | undefined;
+    let unsubscribe: (() => void) | undefined;
     if (!ownedWorldsLoading && !campaignsLoading) {
       unsubscribe = subscribeToNonOwnedWorlds(campaignWorldIds, ownedWorldIds);
     }
-
     return () => {
-      unsubscribe && unsubscribe();
+      unsubscribe?.();
     };
   }, [
     ownedWorldIds,
