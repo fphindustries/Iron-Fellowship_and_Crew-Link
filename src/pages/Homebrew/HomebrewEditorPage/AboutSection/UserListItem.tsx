@@ -5,8 +5,7 @@ import {
   Skeleton,
 } from "@mui/material";
 import { UserAvatar } from "components/shared/UserAvatar";
-import { useEffect } from "react";
-import { useStore } from "stores/store";
+import { useUserQuery } from "hooks/queries/useUsersQuery";
 
 export interface UserListItemProps {
   uid: string;
@@ -15,12 +14,7 @@ export interface UserListItemProps {
 export function UserListItem(props: UserListItemProps) {
   const { uid } = props;
 
-  const user = useStore((store) => store.users.userMap[uid]?.doc);
-  const loadPlayer = useStore((store) => store.users.loadUserDocument);
-
-  useEffect(() => {
-    loadPlayer(uid);
-  }, [uid, loadPlayer]);
+  const { data: user } = useUserQuery(uid);
 
   return (
     <ListItem>

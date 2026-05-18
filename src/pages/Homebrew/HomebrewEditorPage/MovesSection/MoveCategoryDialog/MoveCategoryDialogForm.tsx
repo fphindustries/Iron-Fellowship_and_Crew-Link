@@ -11,7 +11,7 @@ import { convertIdPart } from "functions/dataswornIdEncoder";
 import { useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { useStore } from "stores/store";
-import { HomebrewMoveCategoryDocument } from "api-calls/homebrew/moves/categories/_homebrewMoveCategory.type";
+import { HomebrewMoveCategoryDocument } from "types/homebrew/HomebrewMoveCategory.type";
 import { MoveCategoryAutocomplete } from "../MoveCategoryAutocomplete";
 
 export interface MoveCategoryFormDialogProps {

@@ -1,23 +1,10 @@
-import { World } from "api-calls/world/_world.type";
 import { CurrentWorldSlice } from "./currentWorld/currentWorld.slice.type";
 
 export interface WorldSliceData {
-  worldMap: { [worldId: string]: World };
-  error?: string;
-  loading: boolean;
-
   currentWorld: CurrentWorldSlice;
 }
 
 export interface WorldSliceActions {
-  subscribeToOwnedWorlds: (uid?: string) => (() => void) | undefined;
-  subscribeToNonOwnedWorlds: (
-    campaignWorldIds: string[],
-    worldIdsUserOwns: string[]
-  ) => (() => void) | undefined;
-
-  createWorld: () => Promise<string>;
-  deleteWorld: (worldId: string) => Promise<void>;
   updateWorldGuide: (
     worldId: string,
     guideId: string,

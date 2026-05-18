@@ -1,20 +1,20 @@
 import { Datasworn } from "@datasworn/core";
-import { HomebrewAssetDocument } from "api-calls/homebrew/assets/assets/_homebrewAssets.type";
-import { HomebrewAssetCollectionDocument } from "api-calls/homebrew/assets/collections/_homebrewAssetCollection.type";
+import { HomebrewAssetDocument } from "types/homebrew/HomebrewAssets.type";
+import { HomebrewAssetCollectionDocument } from "types/homebrew/HomebrewAssetCollection.type";
 import {
   ExpansionDocument,
   HomebrewCollectionDocument,
-} from "api-calls/homebrew/_homebrewCollection.type";
-import { HomebrewMoveDocument } from "api-calls/homebrew/moves/moves/_homebrewMove.type";
-import { HomebrewMoveCategoryDocument } from "api-calls/homebrew/moves/categories/_homebrewMoveCategory.type";
-import { HomebrewOracleTableDocument } from "api-calls/homebrew/oracles/tables/_homebrewOracleTable.type";
-import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
-import { HomebrewStatDocument } from "api-calls/homebrew/rules/stats/_homebrewStat.type";
-import { HomebrewNonLinearMeterDocument } from "api-calls/homebrew/rules/nonLinearMeters/_homebrewNonLinearMeter.type";
-import { HomebrewImpact } from "api-calls/homebrew/rules/impacts/_homebrewImpacts.type";
-import { HomebrewLegacyTrackDocument } from "api-calls/homebrew/rules/legacyTracks/_homebrewLegacyTrack.type";
-import { HomebrewImpactCategoryDocument } from "api-calls/homebrew/rules/impacts/_homebrewImpacts.type";
-import { HomebrewConditionMeterDocument } from "api-calls/homebrew/rules/conditionMeters/_homebrewConditionMeters.type";
+} from "types/homebrew/HomebrewCollection.type";
+import { HomebrewMoveDocument } from "types/homebrew/HomebrewMove.type";
+import { HomebrewMoveCategoryDocument } from "types/homebrew/HomebrewMoveCategory.type";
+import { HomebrewOracleTableDocument } from "types/homebrew/HomebrewOracleTable.type";
+import { HomebrewOracleCollectionDocument } from "types/homebrew/HomebrewOracleCollection.type";
+import { HomebrewStatDocument } from "types/homebrew/HomebrewStat.type";
+import { HomebrewNonLinearMeterDocument } from "types/homebrew/HomebrewNonLinearMeter.type";
+import { HomebrewImpact } from "types/homebrew/HomebrewImpacts.type";
+import { HomebrewLegacyTrackDocument } from "types/homebrew/HomebrewLegacyTrack.type";
+import { HomebrewImpactCategoryDocument } from "types/homebrew/HomebrewImpacts.type";
+import { HomebrewConditionMeterDocument } from "types/homebrew/HomebrewConditionMeters.type";
 
 export interface HomebrewData<T> {
   data?: Record<string, T>;

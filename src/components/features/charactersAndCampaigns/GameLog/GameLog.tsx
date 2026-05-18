@@ -3,30 +3,53 @@ import { useStore } from "stores/store";
 import { Virtuoso } from "react-virtuoso";
 import { Box, LinearProgress } from "@mui/material";
 import { GameLogEntry } from "./GameLogEntry";
+import { useGameLogQuery } from "hooks/queries/useGameLogQuery";
 
 const MAX_ITEMS = 1000000000;
+const PAGE_SIZE = 20;
 
 export function GameLog() {
-  const loading = useStore((store) => store.gameLog.loading);
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
+  const isGM = useStore(
+    (store) =>
+      store.campaigns.currentCampaign.currentCampaign?.gmIds?.includes(
+        store.auth.uid
+      ) ?? !campaignId
+  );
 
-  const logs = useStore((store) => store.gameLog.logs);
+  const entityType = campaignId ? "campaign" : "character";
+  const entityId = campaignId ?? characterId ?? "";
 
-  const orderedLogKeys = useMemo(() => {
-    return Object.keys(logs).sort(
-      (l1, l2) => logs[l1].timestamp.getTime() - logs[l2].timestamp.getTime()
-    );
-  }, [logs]);
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
-  const logLength = orderedLogKeys.length;
+  const { data = [], isFetching } = useGameLogQuery({
+    entityType,
+    entityId: entityId || undefined,
+    limit,
+    isGM,
+  });
 
-  const getLogs = useStore((store) => store.gameLog.loadMoreLogs);
+  const orderedEntries = useMemo(
+    () =>
+      [...data].sort(
+        (a, b) => a.roll.timestamp.getTime() - b.roll.timestamp.getTime()
+      ),
+    [data]
+  );
 
+  const logLength = orderedEntries.length;
   const hasLogs = logLength > 0;
+
   const loadMoreLogs = useCallback(() => {
     if (hasLogs) {
-      getLogs();
+      setLimit((l) => l + PAGE_SIZE);
     }
-  }, [getLogs, hasLogs]);
+  }, [hasLogs]);
 
   const [firstItemIndex, setFirstItemIndex] = useState(MAX_ITEMS);
 
@@ -36,14 +59,14 @@ export function GameLog() {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      {loading && <LinearProgress />}
+      {isFetching && <LinearProgress />}
       <Virtuoso
         firstItemIndex={firstItemIndex}
         initialTopMostItemIndex={MAX_ITEMS - 1}
-        data={orderedLogKeys}
+        data={orderedEntries}
         startReached={loadMoreLogs}
-        itemContent={(index, logId) => (
-          <GameLogEntry logId={logId} log={logs[logId]} />
+        itemContent={(index, entry) => (
+          <GameLogEntry logId={entry.id} log={entry.roll} />
         )}
       />
     </Box>

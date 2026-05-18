@@ -12,6 +12,7 @@ import { useStore } from "stores/store";
 import { useState } from "react";
 import { useCampaignType } from "hooks/useCampaignType";
 import { ignoreApiError } from "config/api.config";
+import { useWorldsQuery } from "hooks/queries/useWorldsQuery";
 
 export function WorldTab() {
   const confirm = useConfirm();
@@ -22,17 +23,11 @@ export function WorldTab() {
   const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
   const world = useStore((store) => store.worlds.currentWorld.currentWorld);
 
-  const worldIds = useStore((store) =>
-    Object.keys(store.worlds.worldMap)
-      .filter((w) => store.worlds.worldMap[w].ownerIds.includes(uid))
-      .sort((w1, w2) =>
-        store.worlds.worldMap[w2].name.localeCompare(
-          store.worlds.worldMap[w1].name
-        )
-      )
-  );
-  const worlds = useStore((store) => store.worlds.worldMap);
-  const sortedWorlds = worldIds.map((worldId) => worlds[worldId]);
+  const { data: ownedWorlds } = useWorldsQuery(uid);
+  const sortedWorlds = (ownedWorlds ?? [])
+    .slice()
+    .sort((a, b) => b.name.localeCompare(a.name));
+  const worldIds = sortedWorlds.map((w) => w.id);
 
   const updateCampaignWorld = useStore(
     (store) => store.campaigns.currentCampaign.updateCampaignWorld

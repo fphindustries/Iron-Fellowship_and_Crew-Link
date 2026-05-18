@@ -2,7 +2,7 @@ import { ChipProps, Chip, Box, Menu, MenuItem } from "@mui/material";
 import DropdownIcon from "@mui/icons-material/ExpandMore";
 import { useState } from "react";
 import { useInitiativeStatusText } from "./useInitiativeStatusText";
-import { InitiativeStatus } from "api-calls/character/_character.type";
+import { InitiativeStatus } from "types/Character.type";
 
 export interface InitiativeStatusChipProps {
   status: InitiativeStatus;

@@ -8,8 +8,10 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
-import { useStore } from "stores/store";
-import { ignoreApiError } from "config/api.config";
+import {
+  useAccessibilitySettingsQuery,
+  useUpdateAccessibilitySettingsMutation,
+} from "hooks/queries/useSettingsQuery";
 
 export interface AccessibilitySettingsDialogProps {
   open?: boolean;
@@ -21,13 +23,8 @@ export function AccessibilitySettingsDialog(
 ) {
   const { open, onClose } = props;
 
-  const accessibilitySettings = useStore(
-    (store) => store.accessibilitySettings.settings
-  );
-
-  const updateSettings = useStore(
-    (store) => store.accessibilitySettings.updateSettings
-  );
+  const { data: accessibilitySettings = {} } = useAccessibilitySettingsQuery();
+  const updateMutation = useUpdateAccessibilitySettingsMutation();
 
   return (
     <Dialog open={open ?? false} onClose={onClose}>
@@ -41,7 +38,8 @@ export function AccessibilitySettingsDialog(
               <Checkbox
                 checked={accessibilitySettings.verboseRollResults ?? false}
                 onChange={(evt, value) =>
-                  updateSettings({ verboseRollResults: value }).catch(ignoreApiError)
+                  updateMutation
+                    .mutate({ verboseRollResults: value })
                 }
               />
             }

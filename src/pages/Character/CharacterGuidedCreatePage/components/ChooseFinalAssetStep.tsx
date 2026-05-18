@@ -14,11 +14,11 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useState } from "react";
 import { useStore } from "stores/store";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { AssetCard } from "components/features/assets/AssetCard";
 import { AssetCardDialog } from "components/features/assets/AssetCardDialog";
-import { recommendFinalAsset } from "api-calls/ai/recommendFinalAsset";
-import { AssetRecommendation, WorldContext } from "api-calls/ai/_ai.type";
+import { recommendFinalAsset } from "api/ai/recommendFinalAsset";
+import { AssetRecommendation, WorldContext } from "types/AI.type";
 import { Datasworn } from "@datasworn/core";
 
 export interface ChooseFinalAssetStepProps {

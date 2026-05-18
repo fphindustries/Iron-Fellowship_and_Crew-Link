@@ -16,6 +16,7 @@ import React, { useState } from "react";
 import { getRoll } from "stores/appState/useRoller";
 import { useSnackbar } from "providers/SnackbarProvider";
 import { useStore } from "stores/store";
+import { useUpdateRollMutation } from "hooks/queries/useGameLogQuery";
 
 export interface DieRerollDialogProps {
   open: boolean;
@@ -32,7 +33,10 @@ export function DieRerollDialog(props: DieRerollDialogProps) {
   );
 
   const { info } = useSnackbar();
-  const updateRoll = useStore((store) => store.gameLog.updateRoll);
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
+  const { mutateAsync: updateRoll } = useUpdateRollMutation();
   const [loading, setLoading] = useState(false);
 
   const [action, setAction] = useState(roll.action);
@@ -75,7 +79,11 @@ export function DieRerollDialog(props: DieRerollDialogProps) {
 
   const handleSave = () => {
     setLoading(true);
-    updateRoll(rollId, updatedRoll)
+    updateRoll({
+      id: rollId,
+      entityType: campaignId ? "campaign" : "character",
+      roll: updatedRoll,
+    })
       .then(() => {
         setLoading(false);
         handleClose();

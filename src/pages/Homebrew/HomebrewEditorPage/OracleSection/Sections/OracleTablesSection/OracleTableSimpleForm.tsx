@@ -13,7 +13,7 @@ import { useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { OracleTableRollableAutocomplete } from "../../OracleTableRollableAutocomplete";
 import { OracleTable } from "./OracleTable";
-import { HomebrewOracleTableDocument } from "api-calls/homebrew/oracles/tables/_homebrewOracleTable.type";
+import { HomebrewOracleTableDocument } from "types/homebrew/HomebrewOracleTable.type";
 import { useStore } from "stores/store";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { ignoreApiError } from "config/api.config";

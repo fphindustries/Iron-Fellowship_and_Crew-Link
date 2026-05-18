@@ -7,46 +7,38 @@ import { PageContent, PageHeader } from "components/shared/Layout";
 import { WorldCard } from "./components/WorldCard";
 import { Head } from "providers/HeadProvider/Head";
 import { useStore } from "stores/store";
-import { shallow } from "zustand/shallow";
 import { FooterFab } from "components/shared/Layout/FooterFab";
 import { ignoreApiError } from "config/api.config";
+import { useAllWorldsQuery, useCreateWorldMutation } from "hooks/queries/useWorldsQuery";
 
 export function WorldSelectPage() {
-  const worldIds = useStore(
-    (store) =>
-      Object.keys(store.worlds.worldMap).sort((w1, w2) => {
-        const world1 = store.worlds.worldMap[w1];
-        const world2 = store.worlds.worldMap[w2];
-        const uid = store.auth.uid;
+  const uid = useStore((store) => store.auth.uid);
+  const { data: worlds, isLoading, error } = useAllWorldsQuery();
 
-        const isWorldOwnerOfW1 = world1.ownerIds.includes(uid);
-        const isWorldOwnerOfW2 = world2.ownerIds.includes(uid);
-
-        if (isWorldOwnerOfW1 && !isWorldOwnerOfW2) {
-          return -1;
-        } else if (!isWorldOwnerOfW1 && isWorldOwnerOfW2) {
-          return 1;
-        } else {
-          return world1.name.localeCompare(world2.name);
-        }
-      }),
-    shallow
-  );
-  const loading = useStore((store) => store.worlds.loading);
-  const error = useStore((store) => store.worlds.error);
+  const sortedWorldIds = (worlds ?? [])
+    .slice()
+    .sort((a, b) => {
+      const isOwnerA = a.ownerIds.includes(uid);
+      const isOwnerB = b.ownerIds.includes(uid);
+      if (isOwnerA && !isOwnerB) return -1;
+      if (!isOwnerA && isOwnerB) return 1;
+      return a.name.localeCompare(b.name);
+    })
+    .map((w) => w.id);
 
   const navigate = useNavigate();
+  const createMutation = useCreateWorldMutation();
 
-  const createWorld = useStore((store) => store.worlds.createWorld);
   const handleWorldCreate = () => {
-    createWorld()
-      .then((worldId) => {
-        navigate(constructWorldSheetPath(worldId));
+    createMutation
+      .mutateAsync()
+      .then((row) => {
+        navigate(constructWorldSheetPath(row.id));
       })
       .catch(ignoreApiError);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <LinearProgress
         sx={{
@@ -80,9 +72,9 @@ export function WorldSelectPage() {
           </Hidden>
         }
       />
-      <PageContent isPaper={!worldIds || worldIds.length === 0}>
-        {error && <Alert>Error loading your worlds.</Alert>}
-        {!worldIds || worldIds.length === 0 ? (
+      <PageContent isPaper={!sortedWorldIds || sortedWorldIds.length === 0}>
+        {error && <Alert severity="error">Error loading your worlds.</Alert>}
+        {!sortedWorldIds || sortedWorldIds.length === 0 ? (
           <EmptyState
             showImage
             title={"No Worlds Found"}
@@ -109,7 +101,7 @@ export function WorldSelectPage() {
             my={0}
             sx={{ listStyle: "none" }}
           >
-            {worldIds.map((worldId) => (
+            {sortedWorldIds.map((worldId) => (
               <Box
                 component={"li"}
                 gridColumn={{

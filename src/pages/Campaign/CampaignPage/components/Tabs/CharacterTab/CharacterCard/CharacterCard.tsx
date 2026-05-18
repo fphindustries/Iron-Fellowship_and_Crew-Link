@@ -15,6 +15,7 @@ import { AssetCard } from "components/features/assets/AssetCard";
 import { InitiativeStatusChip } from "components/features/characters/InitiativeStatusChip";
 import { PortraitAvatar } from "components/features/characters/PortraitAvatar/PortraitAvatar";
 import { useStore } from "stores/store";
+import { useUserQuery } from "hooks/queries/useUsersQuery";
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { IronswornTracks } from "./IronswornTracks";
@@ -22,7 +23,7 @@ import { LegacyTracks } from "./LegacyTracks";
 import {
   CharacterDocument,
   InitiativeStatus,
-} from "api-calls/character/_character.type";
+} from "types/Character.type";
 import { LinkComponent } from "components/shared/LinkComponent";
 import { constructCharacterSheetPath } from "pages/Character/routes";
 import { useCampaignType } from "hooks/useCampaignType";
@@ -60,7 +61,7 @@ export function CharacterCard(props: CharacterCardProps) {
       store.campaigns.currentCampaign.characters.characterAssets[characterId]
   );
 
-  const user = useStore((store) => store.users.userMap[uid]?.doc);
+  const { data: user } = useUserQuery(uid);
   const updateCharacter = useStore(
     (store) => store.campaigns.currentCampaign.characters.updateCharacter
   );

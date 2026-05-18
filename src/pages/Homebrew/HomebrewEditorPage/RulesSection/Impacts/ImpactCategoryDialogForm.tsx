@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { HomebrewImpactCategoryDocument } from "api-calls/homebrew/rules/impacts/_homebrewImpacts.type";
+import { HomebrewImpactCategoryDocument } from "types/homebrew/HomebrewImpacts.type";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import {
   Button,

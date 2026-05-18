@@ -13,15 +13,18 @@ import {
   AiEventDocument,
   AiEventStatus,
   AiMode,
-} from "api-calls/ai/_ai.type";
+} from "types/AI.type";
 
-import { CampaignType } from "api-calls/campaign/_campaign.type";
+import { CampaignType } from "types/Campaign.type";
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
+import { useAiEventsQuery, useUpdateAiEventStatusMutation } from "hooks/queries/useAiEventsQuery";
 import { TrackStatus, TrackTypes } from "types/Track.type";
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { useYjsToText } from "hooks/useYjsToText";
+import { useNoteContentQuery } from "hooks/queries/useNotesQuery";
+import { NoteSource } from "stores/notes/notes.slice.type";
 import { AiModeSelector } from "./AiModeSelector";
 import { AiSuggestionCard } from "./AiSuggestionCard";
 import { StoryGeneratorForm } from "./modes/StoryGeneratorForm";
@@ -90,16 +93,29 @@ export function AiGuidePanel() {
     (store) => store.campaigns.currentCampaign.currentCampaignId
   );
   const isRequesting = useStore((store) => store.ai.isRequesting);
-  const events = useStore((store) => store.ai.events);
+  const { data: eventsData = [] } = useAiEventsQuery(campaignId);
+  const updateEventStatusMutation = useUpdateAiEventStatusMutation(campaignId);
   const requestAi = useStore((store) => store.ai.requestAi);
-  const updateEventStatus = useStore((store) => store.ai.updateEventStatus);
   const pendingMode = useStore((store) => store.ai.pendingMode);
   const pendingInput = useStore((store) => store.ai.pendingInput);
   const clearPending = useStore((store) => store.ai.clearPending);
-  const openNoteContent = useStore((store) => store.notes.openNoteContent);
-  const noteText = useYjsToText(
-    mode === "sessionRecap" ? openNoteContent : undefined
+
+  const openNote = useStore((store) => store.notes.openNote);
+  const openNoteId =
+    openNote && typeof openNote !== "string" ? openNote.id : undefined;
+  const openNoteEntityType =
+    openNote && typeof openNote !== "string" ? openNote.source : undefined;
+  const openNoteEntityId = useStore((store) =>
+    openNoteEntityType === NoteSource.Campaign
+      ? store.campaigns.currentCampaign.currentCampaignId
+      : store.characters.currentCharacter.currentCharacterId
   );
+  const { data: openNoteContent } = useNoteContentQuery({
+    noteId: mode === "sessionRecap" ? openNoteId : undefined,
+    entityType: openNoteEntityType,
+    entityId: openNoteEntityId,
+  });
+  const noteText = useYjsToText(mode === "sessionRecap" ? openNoteContent : undefined);
 
   useEffect(() => {
     if (pendingMode) {
@@ -109,12 +125,9 @@ export function AiGuidePanel() {
     }
   }, [pendingMode, pendingInput, clearPending]);
 
-  const sortedEvents = Object.entries(events)
-    .map(([id, event]) => ({ id, event }))
-    .sort(
-      (a, b) =>
-        b.event.createdAt.getTime() - a.event.createdAt.getTime()
-    );
+  const sortedEvents = eventsData
+    .map((event) => ({ id: event.id, event }))
+    .sort((a, b) => b.event.createdAt.getTime() - a.event.createdAt.getTime());
 
   const handleGenerate = () => {
     if (!campaignId) return;
@@ -136,7 +149,7 @@ export function AiGuidePanel() {
     editedText?: string
   ) => {
     if (!campaignId) return;
-    updateEventStatus({ eventId, campaignId, status, editedText });
+    updateEventStatusMutation.mutate({ eventId, campaignId, status, editedText });
   };
 
   const isGenerateDisabled =

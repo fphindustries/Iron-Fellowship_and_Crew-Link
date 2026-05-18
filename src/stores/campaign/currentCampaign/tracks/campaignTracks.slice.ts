@@ -18,26 +18,9 @@ export const createCampaignTracksSlice: CreateSliceType<CampaignTracksSlice> = (
 ) => ({
   ...defaultCampaignTracksSlice,
 
-  subscribe: (campaignId, status = TrackStatus.Active) => {
-    if (!campaignId) return () => {};
-    let active = true;
-    api
-      .get<any[]>(`/api/campaigns/${campaignId}/tracks?status=${status}`)
-      .then((rows) => {
-        if (!active) return;
-        set((store) => {
-          rows.forEach((row) => {
-            const track = toTrack(row);
-            store.campaigns.currentCampaign.tracks.trackMap[status][
-              track.type
-            ][row.id] = track as any;
-          });
-        });
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
+  subscribe: (_campaignId, _status) => {
+    // Data is now fetched by useCampaignTracksQuery via useListenToCampaignTracks.
+    return () => {};
   },
 
   addTrack: (track) => {

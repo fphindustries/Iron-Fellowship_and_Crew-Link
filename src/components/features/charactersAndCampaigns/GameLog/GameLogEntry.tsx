@@ -1,6 +1,6 @@
 import { Box, Typography } from "@mui/material";
-import { useEffect } from "react";
 import { useStore } from "stores/store";
+import { useUserQuery } from "hooks/queries/useUsersQuery";
 import { Roll } from "types/DieRolls.type";
 import { RollDisplay } from "../RollDisplay";
 import { NormalRollActions } from "../RollDisplay/NormalRollActions";
@@ -25,9 +25,8 @@ export function GameLogEntry(props: GameLogEntryProps) {
     (store) => store.campaigns.currentCampaign.characters.characterMap
   );
 
-  const logCreatorName = useStore(
-    (store) => store.users.userMap[log.uid]?.doc?.displayName
-  );
+  const { data: logCreatorUser } = useUserQuery(log.uid);
+  const logCreatorName = logCreatorUser?.displayName;
 
   const isYourEntry = log.characterId
     ? log.characterId === characterId
@@ -42,12 +41,6 @@ export function GameLogEntry(props: GameLogEntryProps) {
     rollerName =
       campaignCharacters[log.characterId]?.name ?? logCreatorName ?? "Loading";
   }
-
-  const logUid = log.uid;
-  const loadUserDoc = useStore((store) => store.users.loadUserDocument);
-  useEffect(() => {
-    loadUserDoc(logUid);
-  }, [logUid, loadUserDoc]);
 
   const getLogTimeString = (d: Date) => {
     return d.toLocaleString(undefined, {

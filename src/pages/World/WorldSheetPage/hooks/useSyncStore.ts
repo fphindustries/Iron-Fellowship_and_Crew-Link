@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useStore } from "stores/store";
+import { useWorldQuery } from "hooks/queries/useWorldsQuery";
 import { useListenToLocations } from "stores/world/currentWorld/locations/useListenToLocations";
 import { useListenToLoreDocuments } from "stores/world/currentWorld/lore/useListenToLoreDocuments";
 import { useListenToNPCs } from "stores/world/currentWorld/npcs/useListenToNPCs";
@@ -10,9 +11,10 @@ import { useListenToSectors } from "stores/world/currentWorld/sector/useListenTo
 export function useSyncStore() {
   const { worldId } = useParams();
 
-  const setWorldId = useStore(
-    (store) => store.worlds.currentWorld.setCurrentWorldId
-  );
+  const setWorldId = useStore((store) => store.worlds.currentWorld.setCurrentWorldId);
+  const setCurrentWorld = useStore((store) => store.worlds.currentWorld.setCurrentWorld);
+
+  const { data: world, isLoading } = useWorldQuery(worldId);
 
   useEffect(() => {
     setWorldId(worldId);
@@ -21,9 +23,15 @@ export function useSyncStore() {
     };
   }, [setWorldId, worldId]);
 
+  useEffect(() => {
+    setCurrentWorld(world ?? undefined);
+  }, [world, setCurrentWorld]);
+
   useListenToSectorLocations();
   useListenToLocations();
   useListenToNPCs();
   useListenToLoreDocuments();
   useListenToSectors();
+
+  return { isLoading };
 }

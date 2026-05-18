@@ -3,7 +3,7 @@ import { SidebarHeading } from "../TracksPanel/SidebarHeading";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { useStore } from "stores/store";
 import { useState } from "react";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { useConfirm } from "material-ui-confirm";
 import { Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
 import { AssetCard } from "components/features/assets/AssetCard";

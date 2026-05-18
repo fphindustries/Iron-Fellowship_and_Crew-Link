@@ -1,6 +1,2 @@
-import { AccessibilitySettingsSliceData } from "./accessibilitySettings.slice.type";
-
-export const defaultAccessibilitySettingsSlice: AccessibilitySettingsSliceData =
-  {
-    settings: {},
-  };
+// Accessibility settings are now managed by TanStack Query.
+export {};

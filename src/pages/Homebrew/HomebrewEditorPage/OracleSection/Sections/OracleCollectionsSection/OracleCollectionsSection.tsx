@@ -2,7 +2,7 @@ import { Button } from "@mui/material";
 import { SectionHeading } from "components/shared/SectionHeading";
 import { OracleTablesCollectionCard } from "./OracleTablesCollectionCard";
 import { EmptyState } from "components/shared/EmptyState";
-import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
+import { HomebrewOracleCollectionDocument } from "types/homebrew/HomebrewOracleCollection.type";
 
 export interface OracleCollectionsSectionProps {
   openCollectionId?: string;

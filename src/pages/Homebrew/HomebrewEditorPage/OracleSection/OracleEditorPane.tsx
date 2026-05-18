@@ -1,7 +1,7 @@
 import { Breadcrumbs, Link, Stack, Typography } from "@mui/material";
 import { useState } from "react";
-import { HomebrewOracleTableDocument } from "api-calls/homebrew/oracles/tables/_homebrewOracleTable.type";
-import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
+import { HomebrewOracleTableDocument } from "types/homebrew/HomebrewOracleTable.type";
+import { HomebrewOracleCollectionDocument } from "types/homebrew/HomebrewOracleCollection.type";
 import { OracleCollectionsSection } from "./Sections/OracleCollectionsSection";
 import { OracleTablesCollectionDialog } from "./Sections/OracleCollectionsSection/OracleTablesCollectionDialog";
 import { OracleInfoSection } from "./Sections/OracleInfoSection";

@@ -4,7 +4,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import SummarizeIcon from "@mui/icons-material/Summarize";
 import ListAltIcon from "@mui/icons-material/ListAlt";
-import { AiMode } from "api-calls/ai/_ai.type";
+import { AiMode } from "types/AI.type";
 
 interface AiModeSelectorProps {
   value: AiMode;

@@ -3,7 +3,7 @@ import { WorldSheet } from "components/features/worlds/WorldSheet";
 import { useConfirm } from "material-ui-confirm";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSyncStore } from "./hooks/useSyncStore";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BreakContainer } from "components/shared/BreakContainer";
 import { WORLD_ROUTES, constructWorldPath } from "../routes";
 import { PageContent, PageHeader } from "components/shared/Layout";
@@ -26,6 +26,7 @@ import { ignoreApiError } from "config/api.config";
 import { WorldAiSettingsSection } from "components/features/worlds/WorldAiSettingsSection";
 import { WorldAssumptionsSection } from "components/features/worlds/WorldAssumptionsSection";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
+import { useDeleteWorldMutation } from "hooks/queries/useWorldsQuery";
 
 enum TABS {
   DETAILS = "details",
@@ -38,7 +39,7 @@ enum TABS {
 }
 
 export function WorldSheetPage() {
-  useSyncStore();
+  const { isLoading } = useSyncStore();
 
   const { showGMFields } = useWorldPermissions();
   const showAiSettings = useAiGuide() && showGMFields;
@@ -64,25 +65,12 @@ export function WorldSheetPage() {
         store.auth.uid
       ) ?? false
   );
-  const isLoading = useStore((store) => store.worlds.loading);
 
   const confirm = useConfirm();
   const navigate = useNavigate();
-  const deleteWorld = useStore((store) => store.worlds.deleteWorld);
+  const deleteMutation = useDeleteWorldMutation();
 
-  const [syncLoading, setSyncLoading] = useState(true);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setSyncLoading(false);
-    }, 2 * 1000);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, []);
-
-  if (isLoading || (!world && syncLoading)) {
+  if (isLoading) {
     return <LinearProgress />;
   }
 
@@ -125,7 +113,8 @@ export function WorldSheetPage() {
       },
     })
       .then(() => {
-        deleteWorld(worldId)
+        deleteMutation
+          .mutateAsync(worldId)
           .then(() => {
             navigate(constructWorldPath(WORLD_ROUTES.SELECT));
           })

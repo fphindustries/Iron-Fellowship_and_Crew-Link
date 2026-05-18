@@ -1,7 +1,7 @@
 import {
   CampaignDocument,
   CampaignType,
-} from "api-calls/campaign/_campaign.type";
+} from "types/Campaign.type";
 import { CurrentCampaignSlice } from "./currentCampaign/currentCampaign.slice.type";
 
 export interface CampaignSliceData {

@@ -13,8 +13,8 @@ import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { TextFieldWithOracle } from "components/shared/TextFieldWithOracle/TextFieldWithOracle";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
-import { generateCharacterSummary } from "api-calls/ai/generateCharacterSummary";
-import { WorldContext } from "api-calls/ai/_ai.type";
+import { generateCharacterSummary } from "api/ai/generateCharacterSummary";
+import { WorldContext } from "types/AI.type";
 
 const nameOraclesIronsworn = [
   "classic/oracles/name/ironlander/a",

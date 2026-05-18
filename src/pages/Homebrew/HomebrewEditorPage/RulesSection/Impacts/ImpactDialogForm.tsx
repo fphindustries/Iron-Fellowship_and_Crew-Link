@@ -14,8 +14,8 @@ import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithClo
 import { convertIdPart } from "functions/dataswornIdEncoder";
 import { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
-import { HomebrewImpact } from "api-calls/homebrew/rules/impacts/_homebrewImpacts.type";
-import { HomebrewImpactCategoryDocument } from "api-calls/homebrew/rules/impacts/_homebrewImpacts.type";
+import { HomebrewImpact } from "types/homebrew/HomebrewImpacts.type";
+import { HomebrewImpactCategoryDocument } from "types/homebrew/HomebrewImpacts.type";
 import { ConditionMeterAutocomplete } from "../ConditionMeters/ConditionMeterAutocomplete";
 import { MarkdownEditor } from "components/shared/RichTextEditor/MarkdownEditor";
 

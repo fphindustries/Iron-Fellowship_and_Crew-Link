@@ -1,5 +1,5 @@
 import { Dialog } from "@mui/material";
-import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
+import { HomebrewOracleCollectionDocument } from "types/homebrew/HomebrewOracleCollection.type";
 import { OracleTablesCollectionDialogForm } from "./OracleTablesCollectionDialogForm";
 
 export interface OracleTablesCollectionDialogProps {

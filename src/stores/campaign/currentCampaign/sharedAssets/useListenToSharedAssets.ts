@@ -1,22 +1,23 @@
 import { useEffect } from "react";
 import { useStore } from "stores/store";
+import { useCampaignAssetsQuery } from "hooks/queries/useCampaignsQuery";
+import { AssetDocument } from "types/Asset.type";
 
 export function useListenToSharedAssets() {
-  const currentCampaignId = useStore(
+  const campaignId = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaignId
   );
-  const subscribe = useStore(
-    (store) => store.campaigns.currentCampaign.assets.subscribe
-  );
+  const { data: assetRows } = useCampaignAssetsQuery(campaignId);
 
   useEffect(() => {
-    let unsubscribe: () => void;
-    if (currentCampaignId) {
-      unsubscribe = subscribe(currentCampaignId);
-    }
-
-    return () => {
-      unsubscribe && unsubscribe();
-    };
-  }, [currentCampaignId, subscribe]);
+    if (!assetRows) return;
+    const assets: Record<string, AssetDocument> = {};
+    assetRows.forEach((row) => {
+      assets[row.id] = { id: row.id, ...(row.dataJson ?? {}) };
+    });
+    useStore.setState((store) => {
+      store.campaigns.currentCampaign.assets.assets = assets;
+      store.campaigns.currentCampaign.assets.loading = false;
+    });
+  }, [assetRows]);
 }

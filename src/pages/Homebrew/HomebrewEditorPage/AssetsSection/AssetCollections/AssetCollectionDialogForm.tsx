@@ -11,7 +11,7 @@ import { convertIdPart } from "functions/dataswornIdEncoder";
 import { useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { useStore } from "stores/store";
-import { HomebrewAssetCollectionDocument } from "api-calls/homebrew/assets/collections/_homebrewAssetCollection.type";
+import { HomebrewAssetCollectionDocument } from "types/homebrew/HomebrewAssetCollection.type";
 
 import { AssetCollectionAutocomplete } from "./AssetCollectionAutocomplete";
 

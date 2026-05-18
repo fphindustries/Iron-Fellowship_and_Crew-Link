@@ -19,7 +19,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { useStore } from "stores/store";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import {
   CAMPAIGN_ROUTES,
   constructCampaignSheetPath,
@@ -36,8 +36,9 @@ import { SetStatsStep } from "./components/SetStatsStep";
 import { EnvisionCharacterStep } from "./components/EnvisionCharacterStep";
 import { NameCharacterStep } from "./components/NameCharacterStep";
 import { ReviewStep } from "./components/ReviewStep";
-import { WorldContext, WorldAiSettings } from "api-calls/ai/_ai.type";
+import { WorldContext, WorldAiSettings } from "types/AI.type";
 import { CUSTOM_TRUTH_INDEX } from "components/features/worlds/WorldTruths/customTruthIndex";
+import { useAllWorldsQuery } from "hooks/queries/useWorldsQuery";
 
 interface GuidedForm {
   enabledExpansionMap: Record<string, boolean>;
@@ -72,7 +73,8 @@ export function CharacterGuidedCreatePageContent() {
   const [completedBackgroundVow, setCompletedBackgroundVow] = useState("");
 
   const assetMap = useStore((s) => s.rules.assetMaps.assetMap);
-  const worldMap = useStore((s) => s.worlds.worldMap);
+  const { data: allWorlds } = useAllWorldsQuery();
+  const worldMap = Object.fromEntries((allWorlds ?? []).map((w) => [w.id, w]));
   const worldTruthDefs = useStore((s) => s.rules.worldTruths);
   const createCharacter = useStore((store) => store.characters.createCharacter);
   const addCharacterToCampaign = useStore((store) => store.campaigns.currentCampaign.addCharacter);

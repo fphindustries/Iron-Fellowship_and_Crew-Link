@@ -11,8 +11,8 @@ import {
   Select,
   Typography,
 } from "@mui/material";
-import { generateSectorContent } from "api-calls/ai/generateSectorContent";
-import { SectorGenerationSettlement } from "api-calls/ai/_ai.type";
+import { generateSectorContent } from "api/ai/generateSectorContent";
+import { SectorGenerationSettlement } from "types/AI.type";
 import { TiptapTransformer } from "@hocuspocus/transformer";
 import * as Y from "yjs";
 import { useState } from "react";

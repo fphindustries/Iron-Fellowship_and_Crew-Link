@@ -1,4 +1,4 @@
-import { HomebrewLegacyTrackDocument } from "api-calls/homebrew/rules/legacyTracks/_homebrewLegacyTrack.type";
+import { HomebrewLegacyTrackDocument } from "types/homebrew/HomebrewLegacyTrack.type";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import {
   Button,

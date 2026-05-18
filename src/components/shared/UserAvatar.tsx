@@ -1,6 +1,5 @@
-import { useEffect } from "react";
-import { useStore } from "stores/store";
 import { Avatar, Skeleton } from "@mui/material";
+import { useUserQuery } from "hooks/queries/useUsersQuery";
 
 export interface UserAvatarProps {
   uid: string;
@@ -10,11 +9,7 @@ export interface UserAvatarProps {
 
 export function UserAvatar(props: UserAvatarProps) {
   const { uid, forceShowPhoto, forceName } = props;
-  const user = useStore((store) => store.users.userMap[uid]?.doc);
-  const loadUser = useStore((store) => store.users.loadUserDocument);
-  useEffect(() => {
-    loadUser(uid);
-  }, [loadUser, uid]);
+  const { data: user } = useUserQuery(uid);
 
   const initials = getInitials(forceName ?? user?.displayName ?? "User");
   if (!user) {

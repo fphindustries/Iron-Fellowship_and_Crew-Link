@@ -1,6 +1,6 @@
 import { Dialog } from "@mui/material";
-import { HomebrewImpact } from "api-calls/homebrew/rules/impacts/_homebrewImpacts.type";
-import { HomebrewImpactCategoryDocument } from "api-calls/homebrew/rules/impacts/_homebrewImpacts.type";
+import { HomebrewImpact } from "types/homebrew/HomebrewImpacts.type";
+import { HomebrewImpactCategoryDocument } from "types/homebrew/HomebrewImpacts.type";
 import { ImpactDialogForm } from "./ImpactDialogForm";
 
 export interface ImpactDialogProps {

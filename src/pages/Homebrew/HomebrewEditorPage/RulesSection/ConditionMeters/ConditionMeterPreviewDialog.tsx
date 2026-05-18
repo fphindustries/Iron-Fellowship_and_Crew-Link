@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, Stack } from "@mui/material";
-import { HomebrewConditionMeterDocument } from "api-calls/homebrew/rules/conditionMeters/_homebrewConditionMeters.type";
+import { HomebrewConditionMeterDocument } from "types/homebrew/HomebrewConditionMeters.type";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { MarkdownRenderer } from "components/shared/MarkdownRenderer";
 import { Track } from "components/features/Track";

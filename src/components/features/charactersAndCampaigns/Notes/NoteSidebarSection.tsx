@@ -16,6 +16,10 @@ import { StrictModeDroppable } from "./StrictModeDroppable";
 import { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import { ignoreApiError } from "config/api.config";
+import {
+  useAddNoteMutation,
+  useUpdateNoteOrderMutation,
+} from "hooks/queries/useNotesQuery";
 
 export interface NoteSidebarSectionProps {
   notes: Note[];
@@ -30,13 +34,22 @@ export function NoteSidebarSection(props: NoteSidebarSectionProps) {
 
   const setOpenNote = useStore((store) => store.notes.setOpenNoteId);
 
-  const tempReorder = useStore((store) => store.notes.temporarilyReorderNotes);
-  const updateNoteOrder = useStore((store) => store.notes.updateNoteOrder);
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
+
+  const entityId =
+    noteSource === NoteSource.Campaign ? campaignId : characterId;
+
+  const addNote = useAddNoteMutation(noteSource, entityId);
+  const updateNoteOrder = useUpdateNoteOrderMutation(noteSource, entityId);
+
   const handleDragEnd = (evt: DropResult) => {
     const { source, destination } = evt;
-    if (!destination) {
-      return;
-    }
+    if (!destination) return;
 
     let noteBefore: Note | undefined;
     let noteAfter: Note | undefined;
@@ -56,7 +69,7 @@ export function NoteSidebarSection(props: NoteSidebarSectionProps) {
     }
     const noteId = notes[source.index].noteId;
 
-    let order: number = 1;
+    let order = 1;
     if (noteBefore && noteAfter) {
       order = (noteBefore.order + noteAfter.order) / 2;
     } else if (noteBefore) {
@@ -65,29 +78,29 @@ export function NoteSidebarSection(props: NoteSidebarSectionProps) {
       order = noteAfter.order - 1;
     }
 
-    tempReorder({ source: noteSource, id: noteId }, order);
-    updateNoteOrder({ source: noteSource, id: noteId }, order).catch(ignoreApiError);
+    updateNoteOrder.mutate({ noteId, order });
   };
 
   const [loading, setLoading] = useState<boolean>(false);
-  const createNote = useStore((store) => store.notes.addNote);
+
   const handleCreateNote = () => {
     setLoading(true);
-    createNote &&
-      createNote(
-        noteSource,
-        notes.length > 0 ? notes[notes.length - 1].order + 1 : 1,
-        noteSource === NoteSource.Campaign && showGuidedPlayerView
-          ? true
-          : false
-      )
-        .then((noteId) => {
-          setOpenNote({ source: noteSource, id: noteId });
-        })
-        .catch(ignoreApiError)
-        .finally(() => {
-          setLoading(false);
-        });
+    addNote
+      .mutateAsync({
+        title: "",
+        sortOrder: notes.length > 0 ? notes[notes.length - 1].order + 1 : 1,
+        shared:
+          noteSource === NoteSource.Campaign && showGuidedPlayerView
+            ? true
+            : false,
+      })
+      .then((noteId) => {
+        setOpenNote({ source: noteSource, id: noteId });
+      })
+      .catch(ignoreApiError)
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   const sectionHeader = (
@@ -128,7 +141,7 @@ export function NoteSidebarSection(props: NoteSidebarSectionProps) {
                     key={note.noteId}
                     draggableId={note.noteId}
                     index={index}
-                    isDragDisabled={!updateNoteOrder}
+                    isDragDisabled={false}
                   >
                     {(provided) => (
                       <ListItem

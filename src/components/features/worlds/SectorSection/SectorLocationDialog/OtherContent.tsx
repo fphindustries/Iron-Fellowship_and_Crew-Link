@@ -1,7 +1,7 @@
 import { Grid } from "@mui/material";
 import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import { useStore } from "stores/store";
-import { StarforgedLocationOther } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
+import { StarforgedLocationOther } from "types/SectorLocations.type";
 import { ignoreApiError } from "config/api.config";
 
 export interface OtherContentProps {

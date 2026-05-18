@@ -7,7 +7,7 @@ import { RtcRichTextEditor } from "components/shared/RichTextEditor/RtcRichTextE
 import { useCallback, useState } from "react";
 import { WorldTruths } from "./WorldTruths";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
-import { generateWorldDescription } from "api-calls/ai/generateWorldDescription";
+import { generateWorldDescription } from "api/ai/generateWorldDescription";
 import { TiptapTransformer } from "@hocuspocus/transformer";
 import * as Y from "yjs";
 import { CUSTOM_TRUTH_INDEX } from "./WorldTruths/customTruthIndex";

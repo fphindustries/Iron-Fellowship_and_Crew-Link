@@ -38,22 +38,9 @@ export const createSectorSlice: CreateSliceType<SectorSlice> = (...params) => {
       });
     },
 
-    subscribe: (worldId) => {
-      let active = true;
-
-      api
-        .get<any[]>(`/api/worlds/${worldId}/sectors`)
-        .then((rows) => {
-          if (!active) return;
-          set((store) => {
-            rows.forEach((row) => {
-              store.worlds.currentWorld.currentWorldSectors.sectors[row.id] = toSector(row);
-            });
-          });
-        })
-        .catch(() => {});
-
-      return () => { active = false; };
+    subscribe: (_worldId) => {
+      // Data is now fetched by useSectorsQuery via useListenToSectors.
+      return () => {};
     },
 
     createSector: async () => {

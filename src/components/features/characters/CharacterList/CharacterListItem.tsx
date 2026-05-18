@@ -2,7 +2,8 @@ import { Box, Card, CardActionArea, Typography } from "@mui/material";
 import { PortraitAvatar } from "components/features/characters/PortraitAvatar/PortraitAvatar";
 import { PropsWithChildren, ReactNode } from "react";
 import { useStore } from "stores/store";
-import { CharacterDocument } from "api-calls/character/_character.type";
+import { useUserQuery } from "hooks/queries/useUsersQuery";
+import { CharacterDocument } from "types/Character.type";
 import OpenIcon from "@mui/icons-material/ChevronRight";
 import { LinkComponent } from "components/shared/LinkComponent";
 
@@ -30,7 +31,7 @@ export function CharacterListItem(props: CharacterListItemProps) {
     campaignId ? store.campaigns.campaignMap[campaignId] : undefined
   );
 
-  const userDoc = useStore((store) => store.users.userMap[uid]?.doc);
+  const { data: userDoc } = useUserQuery(uid);
 
   const Wrapper = ({ children }: PropsWithChildren) =>
     !href ? (

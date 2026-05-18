@@ -15,7 +15,7 @@ import {
   GenericHomebrewMove,
   MoveType,
   HomebrewMoveDocument,
-} from "api-calls/homebrew/moves/moves/_homebrewMove.type";
+} from "types/homebrew/HomebrewMove.type";
 import { MoveAutocomplete } from "../MoveAutocomplete";
 import { MoveTypeInput } from "./MoveTypeInput";
 import { MoveTypeFieldWrapper } from "./MoveTypeFieldWrapper";

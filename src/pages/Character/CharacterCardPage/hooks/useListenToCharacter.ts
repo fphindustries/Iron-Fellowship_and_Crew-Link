@@ -1,4 +1,4 @@
-import { CharacterDocument } from "api-calls/character/_character.type";
+import { CharacterDocument } from "types/Character.type";
 import { api } from "config/api.config";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";

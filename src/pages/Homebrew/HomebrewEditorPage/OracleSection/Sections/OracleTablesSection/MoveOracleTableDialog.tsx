@@ -11,7 +11,7 @@ import {
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { useState } from "react";
 import { useStore } from "stores/store";
-import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
+import { HomebrewOracleCollectionDocument } from "types/homebrew/HomebrewOracleCollection.type";
 import { ignoreApiError } from "config/api.config";
 
 export interface MoveOracleTableDialogProps {

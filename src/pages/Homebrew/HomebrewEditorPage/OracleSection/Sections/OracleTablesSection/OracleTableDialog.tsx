@@ -1,4 +1,4 @@
-import { HomebrewOracleTableDocument } from "api-calls/homebrew/oracles/tables/_homebrewOracleTable.type";
+import { HomebrewOracleTableDocument } from "types/homebrew/HomebrewOracleTable.type";
 import { Dialog } from "@mui/material";
 import { OracleTableSimpleForm } from "./OracleTableSimpleForm";
 

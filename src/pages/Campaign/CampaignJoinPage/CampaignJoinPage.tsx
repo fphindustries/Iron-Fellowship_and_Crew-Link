@@ -10,7 +10,7 @@ import {
 import { PageContent, PageHeader } from "components/shared/Layout";
 import { Head } from "providers/HeadProvider/Head";
 import { useStore } from "stores/store";
-import { CampaignDocument } from "api-calls/campaign/_campaign.type";
+import { CampaignDocument } from "types/Campaign.type";
 import { useAppName } from "hooks/useAppName";
 import { ignoreApiError } from "config/api.config";
 

@@ -2,7 +2,7 @@ import { Box, Button, Grid, Typography, LinearProgress } from "@mui/material";
 import { useState } from "react";
 import { AssetCard } from "components/features/assets/AssetCard";
 import { AssetCardDialog } from "components/features/assets/AssetCardDialog";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { useConfirm } from "material-ui-confirm";
 import { useStore } from "stores/store";
 import { SectionHeading } from "components/shared/SectionHeading";

@@ -2,7 +2,7 @@ import { Box, ButtonBase, SxProps, Theme, Typography } from "@mui/material";
 import { useDebouncedState } from "hooks/useDebouncedState";
 import { useEffect, useId, useRef } from "react";
 import { useStore } from "stores/store";
-import { HomebrewNonLinearMeterDocument } from "api-calls/homebrew/rules/nonLinearMeters/_homebrewNonLinearMeter.type";
+import { HomebrewNonLinearMeterDocument } from "types/homebrew/HomebrewNonLinearMeter.type";
 
 export interface NonLinearMeterProps {
   meter: HomebrewNonLinearMeterDocument;

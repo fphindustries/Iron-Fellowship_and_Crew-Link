@@ -1,6 +1,6 @@
 import { Datasworn } from "@datasworn/core";
 import { ListSubheader, MenuItem, TextField, capitalize } from "@mui/material";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 
 export interface AssetOptionProps {
   assetOptionKey: string;

@@ -6,7 +6,7 @@ import {
   FormGroup,
   Stack,
 } from "@mui/material";
-import { HomebrewImpactCategoryDocument } from "api-calls/homebrew/rules/impacts/_homebrewImpacts.type";
+import { HomebrewImpactCategoryDocument } from "types/homebrew/HomebrewImpacts.type";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { MarkdownRenderer } from "components/shared/MarkdownRenderer";
 

@@ -11,7 +11,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useState } from "react";
 import { useStore } from "stores/store";
-import { BookkeeperOutput } from "api-calls/ai/_ai.type";
+import { BookkeeperOutput } from "types/AI.type";
 import { BookkeeperApplyPayload } from "stores/ai/ai.slice.type";
 
 interface BookkeeperResultDisplayProps {

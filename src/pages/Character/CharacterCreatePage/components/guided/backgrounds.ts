@@ -1,4 +1,4 @@
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { Datasworn } from "@datasworn/core";
 
 export interface Background {

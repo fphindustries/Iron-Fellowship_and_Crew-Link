@@ -1,51 +1,14 @@
 import { CreateSliceType } from "stores/store.type";
 import { AiSlice, BookkeeperApplyPayload } from "./ai.slice.type";
 import { defaultAiSlice } from "./ai.slice.default";
+import { AiGuideResponse } from "types/AI.type";
 import { TrackStatus, TrackTypes } from "types/Track.type";
 import { api } from "config/api.config";
+import { queryClient } from "providers/QueryProvider";
+import { aiEventKeys } from "hooks/queries/useAiEventsQuery";
 
 export const createAiSlice: CreateSliceType<AiSlice> = (set, getState) => ({
   ...defaultAiSlice,
-
-  subscribe: (campaignId) => {
-    set((store) => {
-      store.ai.loading = true;
-      store.ai.error = undefined;
-    });
-
-    let active = true;
-
-    api
-      .get<any[]>(`/api/ai/events?campaignId=${campaignId}`)
-      .then((events) => {
-        if (!active) return;
-        set((store) => {
-          store.ai.loading = false;
-          events.forEach((event) => {
-            store.ai.events[event.id] = {
-              type: event.type,
-              contextSnapshot: event.contextSnapshotJson ?? {},
-              response: event.responseJson ?? {},
-              status: event.status,
-              canonized: event.canonized,
-              createdAt: new Date(event.createdAt),
-              createdBy: event.createdBy,
-            } as any;
-          });
-        });
-      })
-      .catch((error) => {
-        if (!active) return;
-        set((store) => {
-          store.ai.loading = false;
-          store.ai.error = String(error);
-        });
-      });
-
-    return () => {
-      active = false;
-    };
-  },
 
   requestAi: async ({ mode, campaignId, context, worldId }) => {
     set((store) => {
@@ -54,12 +17,15 @@ export const createAiSlice: CreateSliceType<AiSlice> = (set, getState) => ({
     });
 
     try {
-      const response = await api.post<any>("/api/ai/guide", {
+      const response = await api.post<AiGuideResponse>("/api/ai/guide", {
         mode,
         campaignId,
         context,
         worldId,
       });
+      if (campaignId) {
+        queryClient.invalidateQueries({ queryKey: aiEventKeys.list(campaignId) });
+      }
       return response;
     } finally {
       set((store) => {
@@ -67,14 +33,6 @@ export const createAiSlice: CreateSliceType<AiSlice> = (set, getState) => ({
         store.ai.activeRequestMode = undefined;
       });
     }
-  },
-
-  updateEventStatus: async ({ eventId, campaignId: _campaignId, status, editedText }) => {
-    const state = getState();
-    const event = state.ai.events[eventId];
-    if (!event) return;
-
-    await api.patch(`/api/ai/events/${eventId}`, { status, canonized: false });
   },
 
   setIsPanelOpen: (open) => {

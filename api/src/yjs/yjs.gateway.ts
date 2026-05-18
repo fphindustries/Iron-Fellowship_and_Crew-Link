@@ -11,7 +11,7 @@ interface DocRef {
   entityId: string;
 }
 
-@WebSocketGateway({ namespace: '/yjs', cors: { origin: '*', credentials: true } })
+@WebSocketGateway({ namespace: '/yjs' })
 export class YjsGateway implements OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 

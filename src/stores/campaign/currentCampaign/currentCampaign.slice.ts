@@ -23,10 +23,6 @@ export const createCurrentCampaignSlice: CreateSliceType<
         ? state.campaigns.campaignMap[campaignId]
         : undefined;
 
-      if (campaign?.users) {
-        state.users.loadUserDocuments(campaign.users);
-      }
-
       if (campaignId) {
         set((store) => {
           store.campaigns.currentCampaign.currentCampaignId = campaignId;
@@ -41,7 +37,6 @@ export const createCurrentCampaignSlice: CreateSliceType<
     setCurrentCampaign: (campaign) => {
       const state = getState();
       if (campaign) {
-        state.users.loadUserDocuments(campaign.users);
         const loadedCharacterIds = Object.keys(
           state.campaigns.currentCampaign.characters.characterMap ?? {}
         );
@@ -178,7 +173,6 @@ export const createCurrentCampaignSlice: CreateSliceType<
       state.campaigns.currentCampaign.characters.resetStore();
       state.campaigns.currentCampaign.assets.resetStore();
       state.notes.resetStore();
-      state.settings.resetStore();
       state.gameLog.resetStore();
 
       set((store) => {

@@ -1,4 +1,4 @@
-import { InitiativeStatus } from "api-calls/character/_character.type";
+import { InitiativeStatus } from "types/Character.type";
 import { InitiativeStatusChip } from "components/features/characters/InitiativeStatusChip";
 import { useStore } from "stores/store";
 

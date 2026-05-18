@@ -1,4 +1,4 @@
-import { CampaignDocument } from "api-calls/campaign/_campaign.type";
+import { CampaignDocument } from "types/Campaign.type";
 import { CampaignTracksSlice } from "./tracks/campaignTracks.slice.type";
 import { CampaignCharactersSlice } from "./characters/campaignCharacters.slice.type";
 import { SharedAssetSlice } from "./sharedAssets/sharedAssets.slice.type";

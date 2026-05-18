@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { CAMPAIGN_ROUTES, constructCampaignPath } from "pages/Campaign/routes";
 import { useStore } from "stores/store";
 import { useCampaignType } from "hooks/useCampaignType";
-import { CampaignType } from "api-calls/campaign/_campaign.type";
+import { CampaignType } from "types/Campaign.type";
 import HomebrewIcon from "@mui/icons-material/PlaylistAdd";
 import { ExpansionSelectorDialog } from "components/features/charactersAndCampaigns/ExpansionSelector/ExpansionSelectorDialog";
 import StepDownIcon from "@mui/icons-material/PersonRemove";

@@ -2,6 +2,7 @@ import { DialogContent, IconButton, Tooltip } from "@mui/material";
 import { LinkedDialogContentTitle } from "../LinkedDialogContentTitle";
 import PinnedIcon from "@mui/icons-material/PushPin";
 import { useStore } from "stores/store";
+import { useOraclePinsQuery, useTogglePinnedOracleMutation } from "hooks/queries/useSettingsQuery";
 import { OracleRollableTable } from "./OracleRollableTable";
 import { MarkdownRenderer } from "components/shared/MarkdownRenderer";
 import { OracleTableSharedRolls } from "./OracleTableSharedRolls";
@@ -9,7 +10,6 @@ import { OracleTableSharedResults } from "./OracleTableSharedResults";
 import { OracleCollection } from "./OracleCollection";
 import { OracleRollableColumn } from "./OracleRollableColumn";
 import { OracleButton } from "components/features/charactersAndCampaigns/OracleSection/OracleButton";
-import { ignoreApiError } from "config/api.config";
 
 export interface OracleDialogContentProps {
   id: string;
@@ -24,10 +24,8 @@ export function OracleDialogContent(props: OracleDialogContentProps) {
   const oracles = useStore((store) => store.rules.oracleMaps.allOraclesMap);
   const oracle = oracles[id];
 
-  const pinnedOracles = useStore((store) => store.settings.pinnedOraclesIds);
-  const updatePinnedOracles = useStore(
-    (store) => store.settings.togglePinnedOracle
-  );
+  const { data: pinnedOracles = {} } = useOraclePinsQuery();
+  const togglePinnedOracle = useTogglePinnedOracleMutation();
 
   if (!oracle) {
     return (
@@ -58,7 +56,7 @@ export function OracleDialogContent(props: OracleDialogContentProps) {
           <Tooltip title={pinned ? "Unpin Oracle" : "Pin Oracle"}>
             <IconButton
               color={pinned ? "primary" : "default"}
-              onClick={() => updatePinnedOracles(id, !pinned).catch(ignoreApiError)}
+              onClick={() => togglePinnedOracle.mutate({ oracleId: id, pinned: !pinned })}
             >
               <PinnedIcon />
             </IconButton>

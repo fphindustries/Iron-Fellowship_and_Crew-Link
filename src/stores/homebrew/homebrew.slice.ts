@@ -6,7 +6,7 @@ import { convertStoredOraclesToCollections } from "functions/convertStoredOracle
 import { convertStoredMovesToCategories } from "functions/convertStoredMovesToCategories";
 import { convertHomebrewAssetDocumentsToCollections } from "functions/convertHomebrewAssetDocumentsToCollections";
 import { api } from "config/api.config";
-import { PackageTypes } from "api-calls/homebrew/_homebrewCollection.type";
+import { PackageTypes } from "types/homebrew/HomebrewCollection.type";
 
 type ContentType =
   | "stat"
@@ -67,44 +67,9 @@ export const createHomebrewSlice: CreateSliceType<HomebrewSlice> = (
 ) => ({
   ...defaultHomebrewSlice,
 
-  subscribe: (uid) => {
-    let active = true;
-    set((store) => {
-      store.homebrew.loading = true;
-    });
-
-    api
-      .get<any[]>("/api/homebrew")
-      .then((collections) => {
-        if (!active) return;
-        set((store) => {
-          collections.forEach((row) => {
-            store.homebrew.collections[row.id] = {
-              ...(store.homebrew.collections[row.id] ?? {}),
-              base: toCollectionDocument(row),
-            };
-          });
-          store.homebrew.sortedHomebrewCollectionIds = collections
-            .filter(
-              (row) =>
-                row.editors?.includes(uid) || row.viewers?.includes(uid) || row.creator === uid
-            )
-            .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
-            .map((row) => row.id);
-          store.homebrew.loading = false;
-        });
-      })
-      .catch((error) => {
-        if (!active) return;
-        set((store) => {
-          store.homebrew.loading = false;
-          store.homebrew.error = String(error);
-        });
-      });
-
-    return () => {
-      active = false;
-    };
+  subscribe: (_uid) => {
+    // Data is now fetched by useHomebrewQuery via useListenToHomebrew.
+    return () => {};
   },
 
   subscribeToHomebrewContent: (homebrewIds) => {

@@ -1,6 +1,6 @@
 import { IconButton, Tooltip } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import { AiMode } from "api-calls/ai/_ai.type";
+import { AiMode } from "types/AI.type";
 import { useStore } from "stores/store";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 

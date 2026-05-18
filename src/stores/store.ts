@@ -10,7 +10,6 @@ import { shallow } from "zustand/shallow";
 import { createSettingsSlice } from "./settings/settings.slice";
 import { createNotesSlice } from "./notes/notes.slice";
 import { createGameLogSlice } from "./gameLog/gameLog.slice";
-import { createAccessibilitySettingsSlice } from "./accessibilitySettings/accessibilitySettings.slice";
 import { createAppStateSlice } from "./appState/appState.slice";
 import { createHomebrewSlice } from "./homebrew/homebrew.slice";
 import { createRulesSlice } from "./rules/rules.slice";
@@ -27,7 +26,6 @@ export const useStore = createWithEqualityFn<IStore>()(
     settings: createSettingsSlice(...params),
     notes: createNotesSlice(...params),
     gameLog: createGameLogSlice(...params),
-    accessibilitySettings: createAccessibilitySettingsSlice(...params),
     homebrew: createHomebrewSlice(...params),
     rules: createRulesSlice(...params),
     ai: createAiSlice(...params),

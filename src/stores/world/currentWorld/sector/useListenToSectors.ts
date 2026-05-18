@@ -1,24 +1,17 @@
-import { useWorldPermissions } from "components/features/worlds/useWorldPermissions";
 import { useEffect } from "react";
 import { useStore } from "stores/store";
+import { useSectorsQuery } from "hooks/queries/useWorldEntitiesQuery";
+import { useWorldPermissions } from "components/features/worlds/useWorldPermissions";
 
 export function useListenToSectors() {
   const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
-  const worldOwnerIds = useStore((store) =>
-    store.worlds.currentWorld.currentWorld
-      ? store.worlds.currentWorld.currentWorld.ownerIds ?? []
-      : undefined
-  );
-  const listenToSectors = useStore(
-    (store) => store.worlds.currentWorld.currentWorldSectors.subscribe
-  );
+  const { data: sectors } = useSectorsQuery(worldId);
 
   const openSectorId = useStore(
     (store) => store.worlds.currentWorld.currentWorldSectors.openSectorId
   );
   const listenToSectorNotes = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldSectors.subscribeToSectorNotes
+    (store) => store.worlds.currentWorld.currentWorldSectors.subscribeToSectorNotes
   );
   const resetStoreNotes = useStore(
     (store) => store.worlds.currentWorld.currentWorldSectors.resetStoreNotes
@@ -26,16 +19,15 @@ export function useListenToSectors() {
   const { isGuidedGame, showGMFields } = useWorldPermissions();
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-
-    if (worldId && worldOwnerIds) {
-      unsubscribe = listenToSectors(worldId, worldOwnerIds ?? []);
-    }
-
-    return () => {
-      unsubscribe && unsubscribe();
-    };
-  }, [worldId, worldOwnerIds, listenToSectors]);
+    if (!sectors) return;
+    useStore.setState((store) => {
+      const newMap: typeof store.worlds.currentWorld.currentWorldSectors.sectors = {};
+      sectors.forEach(({ id, ...sector }) => {
+        newMap[id] = sector;
+      });
+      store.worlds.currentWorld.currentWorldSectors.sectors = newMap;
+    });
+  }, [sectors]);
 
   useEffect(() => {
     const unsubscribes: (() => void)[] = [];
@@ -48,14 +40,8 @@ export function useListenToSectors() {
       }
     }
     return () => {
-      unsubscribes.forEach((unsubscribe) => unsubscribe());
+      unsubscribes.forEach((u) => u());
       resetStoreNotes();
     };
-  }, [
-    openSectorId,
-    showGMFields,
-    isGuidedGame,
-    listenToSectorNotes,
-    resetStoreNotes,
-  ]);
+  }, [openSectorId, showGMFields, isGuidedGame, listenToSectorNotes, resetStoreNotes]);
 }

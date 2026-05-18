@@ -8,7 +8,7 @@ import {
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { AiCampaignContext } from "api-calls/ai/_ai.type";
+import { AiCampaignContext } from "types/AI.type";
 
 interface AiContextPreviewProps {
   contextSnapshot: Partial<AiCampaignContext>;

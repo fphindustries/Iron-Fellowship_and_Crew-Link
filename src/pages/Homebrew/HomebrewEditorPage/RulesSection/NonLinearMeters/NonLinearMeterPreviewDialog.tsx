@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, Stack } from "@mui/material";
-import { HomebrewNonLinearMeterDocument } from "api-calls/homebrew/rules/nonLinearMeters/_homebrewNonLinearMeter.type";
+import { HomebrewNonLinearMeterDocument } from "types/homebrew/HomebrewNonLinearMeter.type";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { MarkdownRenderer } from "components/shared/MarkdownRenderer";
 import { StatComponent } from "components/features/characters/StatComponent";

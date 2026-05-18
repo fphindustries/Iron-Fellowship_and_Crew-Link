@@ -2,7 +2,7 @@ import { Dialog, DialogContent } from "@mui/material";
 import { StatComponent } from "components/features/characters/StatComponent";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { MarkdownRenderer } from "components/shared/MarkdownRenderer";
-import { HomebrewStatDocument } from "api-calls/homebrew/rules/stats/_homebrewStat.type";
+import { HomebrewStatDocument } from "types/homebrew/HomebrewStat.type";
 
 export interface StatViewerPreviewDialogProps {
   stat: HomebrewStatDocument;

@@ -11,7 +11,7 @@ import {
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { useState } from "react";
 import { useStore } from "stores/store";
-import { HomebrewMoveCategoryDocument } from "api-calls/homebrew/moves/categories/_homebrewMoveCategory.type";
+import { HomebrewMoveCategoryDocument } from "types/homebrew/HomebrewMoveCategory.type";
 import { ignoreApiError } from "config/api.config";
 
 export interface MoveMoveDialogProps {

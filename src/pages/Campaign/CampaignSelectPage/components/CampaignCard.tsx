@@ -3,13 +3,13 @@ import {
   CAMPAIGN_ROUTES,
   constructCampaignSheetPath,
 } from "pages/Campaign/routes";
-import { useEffect } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useStore } from "stores/store";
 import {
   CampaignDocument,
   CampaignType,
-} from "api-calls/campaign/_campaign.type";
+} from "types/Campaign.type";
+import { useUsersQueries } from "hooks/queries/useUsersQuery";
 import OpenIcon from "@mui/icons-material/ChevronRight";
 import SoloIcon from "@mui/icons-material/Person4";
 import CoopIcon from "@mui/icons-material/Group";
@@ -25,35 +25,32 @@ export function CampaignCard(props: CampaignCard) {
 
   const campaignType = campaign.type ?? CampaignType.Guided;
 
-  const gmIds = campaign.gmIds;
-  const playerIds = campaign.users;
+  const gmIds = useMemo(() => campaign.gmIds ?? [], [campaign.gmIds]);
+  const playerIds = useMemo(() => campaign.users ?? [], [campaign.users]);
 
-  const loadUserDocuments = useStore((store) => store.users.loadUserDocuments);
-  useEffect(() => {
-    loadUserDocuments([...(gmIds ?? []), ...(playerIds ?? [])]);
-  }, [gmIds, playerIds, loadUserDocuments]);
-
-  const playerNameString = useStore((store) => {
-    const playerNames: string[] = [];
-    playerIds?.forEach((playerId) => {
-      const displayName = store.users.userMap[playerId]?.doc?.displayName;
-      if (displayName) {
-        playerNames.push(displayName);
-      }
+  const allIds = useMemo(
+    () => [...new Set([...gmIds, ...playerIds])],
+    [gmIds, playerIds]
+  );
+  const userResults = useUsersQueries(allIds);
+  const userMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    allIds.forEach((uid, i) => {
+      const name = userResults[i]?.data?.displayName;
+      if (name) map[uid] = name;
     });
-    return playerNames.join(", ");
-  });
+    return map;
+  }, [allIds, userResults]);
 
-  const gmNameString = useStore((store) => {
-    const gmNames: string[] = [];
-    gmIds?.forEach((gmId) => {
-      const displayName = store.users.userMap[gmId]?.doc?.displayName;
-      if (displayName) {
-        gmNames.push(displayName);
-      }
-    });
-    return gmNames.join(", ");
-  });
+  const playerNameString = playerIds
+    .map((id) => userMap[id])
+    .filter(Boolean)
+    .join(", ");
+
+  const gmNameString = gmIds
+    .map((id) => userMap[id])
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <Card elevation={2} sx={{ height: "100%" }}>

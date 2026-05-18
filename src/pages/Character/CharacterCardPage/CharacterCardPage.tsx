@@ -9,7 +9,7 @@ import { api } from "config/api.config";
 import { RollCard } from "./components/RollCard";
 import { useSearchParams } from "react-router-dom";
 import { useInitiativeStatusText } from "components/features/characters/InitiativeStatusChip/useInitiativeStatusText";
-import { InitiativeStatus } from "api-calls/character/_character.type";
+import { InitiativeStatus } from "types/Character.type";
 
 export function CharacterCardPage() {
   const [params] = useSearchParams();

@@ -1,6 +1,6 @@
 import { Box, Card, CardActionArea, Typography } from "@mui/material";
 import ChevronRight from "@mui/icons-material/ChevronRight";
-import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
+import { HomebrewOracleCollectionDocument } from "types/homebrew/HomebrewOracleCollection.type";
 import { useStore } from "stores/store";
 
 export interface OracleTablesCollectionCardProps {

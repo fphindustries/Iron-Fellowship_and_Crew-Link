@@ -1,7 +1,7 @@
 import { Box, Card, CardActionArea, Typography } from "@mui/material";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import { useStore } from "stores/store";
-import { HomebrewMoveCategoryDocument } from "api-calls/homebrew/moves/categories/_homebrewMoveCategory.type";
+import { HomebrewMoveCategoryDocument } from "types/homebrew/HomebrewMoveCategory.type";
 
 export interface MoveCategoryCardProps {
   category: HomebrewMoveCategoryDocument;

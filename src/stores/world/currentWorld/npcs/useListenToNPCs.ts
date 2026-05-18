@@ -1,26 +1,26 @@
 import { useEffect } from "react";
 import { useStore } from "stores/store";
+import { useNPCsQuery } from "hooks/queries/useWorldEntitiesQuery";
 
 export function useListenToNPCs() {
   const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
-  const worldOwnerIds = useStore((store) =>
-    store.worlds.currentWorld.currentWorld
-      ? store.worlds.currentWorld.currentWorld.ownerIds ?? []
-      : undefined
-  );
-  const listenToNPCs = useStore(
-    (store) => store.worlds.currentWorld.currentWorldNPCs.subscribe
-  );
+  const { data: npcs } = useNPCsQuery(worldId);
 
   useEffect(() => {
-    let unsubscribe: () => void;
-
-    if (worldId && worldOwnerIds) {
-      unsubscribe = listenToNPCs(worldId, worldOwnerIds ?? []);
-    }
-
-    return () => {
-      unsubscribe && unsubscribe();
-    };
-  }, [worldId, worldOwnerIds, listenToNPCs]);
+    if (!npcs) return;
+    useStore.setState((store) => {
+      const existing = store.worlds.currentWorld.currentWorldNPCs.npcMap;
+      const newMap: typeof existing = {};
+      npcs.forEach(({ id, ...npc }) => {
+        const prev = existing[id];
+        newMap[id] = {
+          ...npc,
+          gmProperties: prev?.gmProperties,
+          notes: prev?.notes,
+          imageUrl: prev?.imageUrl,
+        };
+      });
+      store.worlds.currentWorld.currentWorldNPCs.npcMap = newMap;
+    });
+  }, [npcs]);
 }

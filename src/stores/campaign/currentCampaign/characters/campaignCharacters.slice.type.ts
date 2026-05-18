@@ -1,5 +1,5 @@
-import { CharacterDocument } from "api-calls/character/_character.type";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { CharacterDocument } from "types/Character.type";
+import { AssetDocument } from "types/Asset.type";
 import {
   Clock,
   ProgressTrack,

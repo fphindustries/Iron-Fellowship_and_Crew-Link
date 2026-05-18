@@ -1,15 +1,3 @@
-import { AccessibilitySettingsDocument } from "api-calls/user/settings/_settings.type";
-
-export interface AccessibilitySettingsSliceData {
-  settings: AccessibilitySettingsDocument;
-}
-
-export interface AccessibilitySettingsSliceActions {
-  listenToSettings: (uid: string) => () => void;
-  updateSettings: (
-    settings: Partial<AccessibilitySettingsDocument>
-  ) => Promise<void>;
-}
-
-export type AccessibilitySettingsSlice = AccessibilitySettingsSliceData &
-  AccessibilitySettingsSliceActions;
+// Accessibility settings are now managed by TanStack Query.
+// See src/hooks/queries/useSettingsQuery.ts → useAccessibilitySettingsQuery.
+export type AccessibilitySettingsSlice = Record<string, never>;

@@ -1,8 +1,9 @@
 import { Box, Card, CardActionArea, Skeleton, Typography } from "@mui/material";
 import { constructWorldSheetPath } from "pages/World/routes";
-import { useEffect } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useStore } from "stores/store";
+import { useWorldQuery } from "hooks/queries/useWorldsQuery";
+import { useUsersQueries } from "hooks/queries/useUsersQuery";
 import OpenIcon from "@mui/icons-material/ChevronRight";
 
 export interface WorldCardProps {
@@ -12,24 +13,18 @@ export interface WorldCardProps {
 export function WorldCard(props: WorldCardProps) {
   const { worldId } = props;
 
-  const world = useStore((store) => store.worlds.worldMap[worldId]);
-  const ownerIds = world.ownerIds;
-  const worldOwnerString = useStore((store) => {
-    const worldOwnersNames: string[] = [];
-    store.worlds.worldMap[worldId].ownerIds.map((ownerId) => {
-      const name = store.users.userMap[ownerId]?.doc?.displayName;
-      if (name) {
-        worldOwnersNames.push(name);
-      }
-    });
-    return worldOwnersNames.join(", ");
-  });
+  const { data: world } = useWorldQuery(worldId);
+  const ownerIds = useMemo(() => world?.ownerIds ?? [], [world?.ownerIds]);
+  const ownerResults = useUsersQueries(ownerIds);
 
-  const loadUsers = useStore((store) => store.users.loadUserDocuments);
-
-  useEffect(() => {
-    loadUsers(ownerIds);
-  }, [ownerIds, loadUsers]);
+  const worldOwnerString = useMemo(
+    () =>
+      ownerIds
+        .map((_, i) => ownerResults[i]?.data?.displayName)
+        .filter(Boolean)
+        .join(", "),
+    [ownerIds, ownerResults]
+  );
 
   return (
     <Card elevation={2} sx={{ height: "100%" }}>
@@ -40,7 +35,7 @@ export function WorldCard(props: WorldCardProps) {
       >
         <Box flexGrow={1}>
           <Typography variant={"h6"} component={"p"}>
-            {world.name}
+            {world?.name ?? <Skeleton width={"16ch"} />}
           </Typography>
           <Typography color={"textSecondary"}>
             Editors:{" "}

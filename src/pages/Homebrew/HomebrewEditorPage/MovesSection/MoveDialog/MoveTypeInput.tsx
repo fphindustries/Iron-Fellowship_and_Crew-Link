@@ -1,6 +1,6 @@
 import { Control, Controller } from "react-hook-form";
 import { Form } from "./MoveDialogForm";
-import { MoveType } from "api-calls/homebrew/moves/moves/_homebrewMove.type";
+import { MoveType } from "types/homebrew/HomebrewMove.type";
 import { Box, Grid, Typography } from "@mui/material";
 import { MoveTypeCard } from "./MoveTypeCard";
 

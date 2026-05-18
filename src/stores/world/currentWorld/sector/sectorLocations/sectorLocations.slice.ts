@@ -3,6 +3,7 @@ import { SectorLocationsSlice } from "./sectorLocations.slice.type";
 import { defaultSectorLocationsSlice } from "./sectorLocations.slice.default";
 import { api } from "config/api.config";
 
+
 export const createSectorLocationsSlice: CreateSliceType<
   SectorLocationsSlice
 > = (set, getState) => ({
@@ -15,26 +16,12 @@ export const createSectorLocationsSlice: CreateSliceType<
     });
   },
 
-  subscribe: (worldId, sectorId) => {
-    let active = true;
-
-    api
-      .get<any[]>(`/api/worlds/${worldId}/sectors/${sectorId}/locations`)
-      .then((rows) => {
-        if (!active) return;
-        set((store) => {
-          rows.forEach((row) => {
-            store.worlds.currentWorld.currentWorldSectors.locations.locations[row.id] =
-              row.dataJson as any;
-          });
-        });
-      })
-      .catch(() => {});
-
-    return () => { active = false; };
+  subscribe: (_worldId, _sectorId) => {
+    // Data is now fetched by useSectorLocationsQuery via useListenToSectorLocations.
+    return () => {};
   },
 
-  subscribeToLocationNotes: (locationId, isPrivate) => {
+  subscribeToLocationNotes: (_locationId, _isPrivate) => {
     // Sector location notes are loaded on-demand — no persistent subscription
     return () => {};
   },

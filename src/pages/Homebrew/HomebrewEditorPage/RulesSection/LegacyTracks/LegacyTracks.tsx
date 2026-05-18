@@ -12,7 +12,7 @@ import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRender
 import { useConfirm } from "material-ui-confirm";
 import { useState } from "react";
 import { useStore } from "stores/store";
-import { HomebrewLegacyTrackDocument } from "api-calls/homebrew/rules/legacyTracks/_homebrewLegacyTrack.type";
+import { HomebrewLegacyTrackDocument } from "types/homebrew/HomebrewLegacyTrack.type";
 import ViewIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";

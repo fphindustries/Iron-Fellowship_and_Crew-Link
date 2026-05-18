@@ -11,7 +11,7 @@ import { SectionWithSidebar } from "components/shared/Layout/SectionWithSidebar"
 import { Sidebar } from "pages/Character/CharacterSheetPage/components/Sidebar";
 import { useCampaignType } from "hooks/useCampaignType";
 import { CampaignContent } from "./components/CampaignContent";
-import { CampaignType } from "api-calls/campaign/_campaign.type";
+import { CampaignType } from "types/Campaign.type";
 import { CampaignSettingsMenu } from "./components/CampaignSettingsMenu";
 import { CampaignMoveOracleButtons } from "./components/CampaignMoveOracleButtons";
 import { InviteUsersDialog } from "./components/InviteUsersDialog";

@@ -1,12 +1,5 @@
-import { UserDocument } from "api-calls/user/_user.type";
+export type UserSliceData = Record<string, never>;
 
-export interface UserSliceData {
-  userMap: { [userId: string]: { loading: boolean; doc?: UserDocument } };
-}
-
-export interface UserSliceActions {
-  loadUserDocument: (userId: string) => void;
-  loadUserDocuments: (userIds: string[]) => void;
-}
+export interface UserSliceActions {}
 
 export type UserSlice = UserSliceData & UserSliceActions;

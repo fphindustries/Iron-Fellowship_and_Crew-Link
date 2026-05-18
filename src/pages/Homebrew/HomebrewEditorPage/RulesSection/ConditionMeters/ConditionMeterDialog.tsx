@@ -1,5 +1,5 @@
 import { Dialog } from "@mui/material";
-import { HomebrewConditionMeterDocument } from "api-calls/homebrew/rules/conditionMeters/_homebrewConditionMeters.type";
+import { HomebrewConditionMeterDocument } from "types/homebrew/HomebrewConditionMeters.type";
 import { ConditionMeterDialogForm } from "./ConditionMeterDialogForm";
 
 export interface ConditionMeterDialogProps {

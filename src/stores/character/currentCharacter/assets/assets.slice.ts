@@ -2,7 +2,7 @@ import { CreateSliceType } from "stores/store.type";
 import { AssetSlice } from "./assets.slice.type";
 import { defaultAssetsSlice } from "./assets.slice.default";
 import { api } from "config/api.config";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 
 function toAsset(row: any): AssetDocument {
   return { id: row.id, ...(row.dataJson ?? {}) };
@@ -14,34 +14,9 @@ export const createAssetsSlice: CreateSliceType<AssetSlice> = (
 ) => ({
   ...defaultAssetsSlice,
 
-  subscribe: (characterId) => {
-    let active = true;
-    set((store) => {
-      store.characters.currentCharacter.assets.loading = true;
-    });
-    api
-      .get<any[]>(`/api/characters/${characterId}/assets`)
-      .then((rows) => {
-        if (!active) return;
-        const assets: Record<string, AssetDocument> = {};
-        rows.forEach((row) => {
-          assets[row.id] = toAsset(row);
-        });
-        set((store) => {
-          store.characters.currentCharacter.assets.assets = assets;
-          store.characters.currentCharacter.assets.loading = false;
-        });
-      })
-      .catch((error) => {
-        if (!active) return;
-        set((store) => {
-          store.characters.currentCharacter.assets.loading = false;
-          store.characters.currentCharacter.assets.error = String(error);
-        });
-      });
-    return () => {
-      active = false;
-    };
+  subscribe: (_characterId) => {
+    // Data is now fetched by useCharacterAssetsQuery via useListenToCurrentCharacterAssets.
+    return () => {};
   },
 
   addAsset: (asset) => {

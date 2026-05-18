@@ -1,5 +1,5 @@
-import { Truth, World } from "api-calls/world/_world.type";
-import { WorldAiSettings } from "api-calls/world/settings/_worldSettings.type";
+import { Truth, World } from "types/World.type";
+import { WorldAiSettings } from "types/WorldSettings.type";
 import { LocationsSlice } from "./locations/locations.slice.type";
 import { NPCsSlice } from "./npcs/npcs.slice.type";
 import { LoreSlice } from "./lore/lore.slice.type";
@@ -19,6 +19,7 @@ export interface CurrentWorldSliceData {
 
 export interface CurrentWorldSliceActions {
   setCurrentWorldId: (worldId?: string) => void;
+  setCurrentWorld: (world: World | undefined) => void;
   updateCurrentWorld: (partialWorld: Partial<World>) => Promise<void>;
   updateCurrentWorldDescription: (
     worldId: string,

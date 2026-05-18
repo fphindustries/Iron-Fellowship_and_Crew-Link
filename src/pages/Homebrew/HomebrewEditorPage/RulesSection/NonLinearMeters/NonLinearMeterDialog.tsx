@@ -1,5 +1,5 @@
 import { Dialog } from "@mui/material";
-import { HomebrewNonLinearMeterDocument } from "api-calls/homebrew/rules/nonLinearMeters/_homebrewNonLinearMeter.type";
+import { HomebrewNonLinearMeterDocument } from "types/homebrew/HomebrewNonLinearMeter.type";
 import { NonLinearMeterDialogForm } from "./NonLinearMeterDialogForm";
 
 export interface NonLinearMeterDialogProps {

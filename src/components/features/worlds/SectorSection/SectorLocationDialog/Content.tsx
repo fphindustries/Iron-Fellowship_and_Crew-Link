@@ -1,4 +1,4 @@
-import { SectorLocationDocument } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
+import { SectorLocationDocument } from "types/SectorLocations.type";
 import { SECTOR_HEX_TYPES } from "../hexTypes";
 import { PlanetContent } from "./PlanetContent";
 import { StarContent } from "./StarContent";

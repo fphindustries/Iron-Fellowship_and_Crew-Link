@@ -9,7 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
-import { HomebrewStatDocument } from "api-calls/homebrew/rules/stats/_homebrewStat.type";
+import { HomebrewStatDocument } from "types/homebrew/HomebrewStat.type";
 import { StatDialog } from "./StatDialog";
 import { useStore } from "stores/store";
 import { useConfirm } from "material-ui-confirm";

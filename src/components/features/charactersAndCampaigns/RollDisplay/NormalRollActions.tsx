@@ -18,6 +18,7 @@ import { ROLL_RESULT, ROLL_TYPE, Roll } from "types/DieRolls.type";
 import { useStore } from "stores/store";
 import { useCampaignType } from "hooks/useCampaignType";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateRollMutation, useRemoveRollMutation } from "hooks/queries/useGameLogQuery";
 
 export interface NormalRollActionsProps {
   rollId: string;
@@ -62,9 +63,12 @@ export function NormalRollActions(props: NormalRollActionsProps) {
 
   const { showGuidedPlayerView } = useCampaignType();
 
-  const removeLog = useStore((store) => store.gameLog.removeRoll);
-
-  const updateRoll = useStore((store) => store.gameLog.updateRoll);
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
+  const entityType = campaignId ? "campaign" : "character";
+  const { mutate: removeLog } = useRemoveRollMutation();
+  const { mutateAsync: updateRoll } = useUpdateRollMutation();
   const updateCharacter = useStore(
     (store) => store.characters.currentCharacter.updateCurrentCharacter
   );
@@ -123,10 +127,10 @@ export function NormalRollActions(props: NormalRollActionsProps) {
 
       const promises: Promise<unknown>[] = [];
       promises.push(
-        updateRoll(rollId, {
-          ...roll,
-          momentumBurned: momentum,
-          result: newRollResult,
+        updateRoll({
+          id: rollId,
+          entityType,
+          roll: { ...roll, momentumBurned: momentum, result: newRollResult },
         })
       );
       promises.push(updateCharacter({ momentum: momentumResetValue }));
@@ -220,6 +224,7 @@ export function NormalRollActions(props: NormalRollActionsProps) {
                 removeLog(rollId);
               }}
             >
+
               <ListItemIcon>
                 <BackspaceIcon />
               </ListItemIcon>

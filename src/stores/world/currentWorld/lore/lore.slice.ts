@@ -21,38 +21,9 @@ function toLore(row: any) {
 export const createLoreSlice: CreateSliceType<LoreSlice> = (set, getState) => ({
   ...defaultLoreSlice,
 
-  subscribe: (worldId: string) => {
-    let active = true;
-
-    api
-      .get<any[]>(`/api/worlds/${worldId}/lore`)
-      .then((rows) => {
-        if (!active) return;
-        set((store) => {
-          store.worlds.currentWorld.currentWorldLore.loading = false;
-          rows.forEach((row) => {
-            const lore = toLore(row);
-            if ((lore.imageFilenames?.length ?? 0) > 0) {
-              store.worlds.currentWorld.doAnyDocsHaveImages = true;
-            }
-            const existing = store.worlds.currentWorld.currentWorldLore.loreMap[row.id];
-            store.worlds.currentWorld.currentWorldLore.loreMap[row.id] = {
-              ...lore,
-              gmProperties: existing?.gmProperties,
-              notes: existing?.notes,
-              imageUrl: (lore.imageFilenames?.length ?? 0) > 0 ? existing?.imageUrl : undefined,
-            };
-          });
-        });
-      })
-      .catch((error) => {
-        if (!active) return;
-        set((store) => {
-          store.worlds.currentWorld.currentWorldLore.error = String(error);
-        });
-      });
-
-    return () => { active = false; };
+  subscribe: (_worldId: string) => {
+    // Data is now fetched by useLoreQuery via useListenToLoreDocuments.
+    return () => {};
   },
 
   setOpenLoreId: (loreId) => {
@@ -183,46 +154,9 @@ export const createLoreSlice: CreateSliceType<LoreSlice> = (set, getState) => ({
     });
   },
 
-  subscribeToOpenLore: (loreId) => {
-    const state = getState();
-    const worldId = state.worlds.currentWorld.currentWorldId;
-    const isWorldOwner =
-      state.worlds.currentWorld.currentWorld?.ownerIds?.includes(state.auth.uid ?? "") ?? false;
-    if (!worldId) return () => {};
-
-    let active = true;
-
-    api
-      .get<any>(`/api/worlds/${worldId}/lore/${loreId}/notes`)
-      .then((row) => {
-        if (!active || !row?.content) return;
-        const content = new Uint8Array(row.content.data ?? row.content);
-        set((store) => {
-          const lore = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
-          if (lore) lore.notes = content;
-        });
-      })
-      .catch(() => {});
-
-    if (isWorldOwner) {
-      api
-        .get<any>(`/api/worlds/${worldId}/lore/${loreId}/private-notes`)
-        .then((row) => {
-          if (!active) return;
-          set((store) => {
-            const lore = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
-            if (lore) lore.gmProperties = row?.dataJson ?? null;
-          });
-        })
-        .catch(() => {});
-    } else {
-      set((store) => {
-        const lore = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
-        if (lore) lore.gmProperties = null;
-      });
-    }
-
-    return () => { active = false; };
+  subscribeToOpenLore: (_loreId) => {
+    // Data is now fetched by useLoreDetailQuery via useListenToCurrentLoreDocument.
+    return () => {};
   },
 
   resetStore: () => {

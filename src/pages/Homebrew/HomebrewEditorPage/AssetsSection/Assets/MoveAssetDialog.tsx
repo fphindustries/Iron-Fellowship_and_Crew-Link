@@ -11,7 +11,7 @@ import {
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
-import { HomebrewAssetCollectionDocument } from "api-calls/homebrew/assets/collections/_homebrewAssetCollection.type";
+import { HomebrewAssetCollectionDocument } from "types/homebrew/HomebrewAssetCollection.type";
 import { ignoreApiError } from "config/api.config";
 
 export interface MoveAssetDialogProps {

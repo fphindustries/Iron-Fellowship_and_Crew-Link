@@ -17,25 +17,9 @@ export const createCharacterTracksSlice: CreateSliceType<
 > = (set, getState) => ({
   ...defaultCharacterTracksSlice,
 
-  subscribe: (characterId, status = TrackStatus.Active) => {
-    let active = true;
-    api
-      .get<any[]>(`/api/characters/${characterId}/tracks?status=${status}`)
-      .then((rows) => {
-        if (!active) return;
-        set((store) => {
-          rows.forEach((row) => {
-            const track = toTrack(row);
-            store.characters.currentCharacter.tracks.trackMap[status][
-              track.type
-            ][row.id] = track as any;
-          });
-        });
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
+  subscribe: (_characterId, _status) => {
+    // Data is now fetched by useCharacterTracksQuery via useListenToCharacterTracks.
+    return () => {};
   },
 
   addTrack: (track) => {

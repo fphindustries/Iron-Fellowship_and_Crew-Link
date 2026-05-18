@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { useState } from "react";
-import { HomebrewConditionMeterDocument } from "api-calls/homebrew/rules/conditionMeters/_homebrewConditionMeters.type";
+import { HomebrewConditionMeterDocument } from "types/homebrew/HomebrewConditionMeters.type";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { convertIdPart } from "functions/dataswornIdEncoder";
 import { Preview } from "../../Preview";

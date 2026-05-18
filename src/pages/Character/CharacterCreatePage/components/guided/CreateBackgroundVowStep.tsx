@@ -16,8 +16,8 @@ import PsychologyIcon from "@mui/icons-material/Psychology";
 import { useState } from "react";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { useStore } from "stores/store";
-import { generateCharacterVow } from "api-calls/ai/generateCharacterVow";
-import { WorldContext } from "api-calls/ai/_ai.type";
+import { generateCharacterVow } from "api/ai/generateCharacterVow";
+import { WorldContext } from "types/AI.type";
 import { Datasworn } from "@datasworn/core";
 
 const ACTION_ORACLE_ID = "starforged/oracles/core/action";

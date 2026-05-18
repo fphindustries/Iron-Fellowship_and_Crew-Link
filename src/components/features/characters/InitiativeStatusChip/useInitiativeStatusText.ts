@@ -1,4 +1,4 @@
-import { InitiativeStatus } from "api-calls/character/_character.type";
+import { InitiativeStatus } from "types/Character.type";
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 

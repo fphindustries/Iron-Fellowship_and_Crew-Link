@@ -23,7 +23,7 @@ import {
   AiProviderName,
   AnthropicModelId,
   WorldAiModeConfig,
-} from "api-calls/ai/_ai.type";
+} from "types/AI.type";
 
 const AI_MODES: { value: AiMode; label: string }[] = [
   { value: "storyGenerator", label: "Story Generator" },

@@ -15,6 +15,7 @@ import { useSnackbar } from "providers/SnackbarProvider/useSnackbar";
 import { updateUser } from "lib/auth.lib";
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
+import { useUserQuery } from "hooks/queries/useUsersQuery";
 import { UserAvatar } from "./UserAvatar";
 import type { UserProfile } from "@starforged/shared";
 import { DialogTitleWithCloseButton } from "./DialogTitleWithCloseButton";
@@ -30,9 +31,8 @@ export function UserNameDialog(props: UserNameDialogProps) {
   const { error } = useSnackbar();
 
   const user = useStore((store) => store.auth.user);
-  const hasHiddenPhotoUrl = useStore((store) =>
-    user?.id ? store.users.userMap[user.id]?.doc?.hidePhoto ?? false : false
-  );
+  const { data: userProfile } = useUserQuery(user?.id);
+  const hasHiddenPhotoUrl = userProfile?.hidePhoto ?? false;
 
   const [name, setName] = useState(user?.displayName ?? "");
   const [showProfileImage, setShowProfileImage] = useState(!hasHiddenPhotoUrl);

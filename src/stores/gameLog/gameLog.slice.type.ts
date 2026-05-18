@@ -1,10 +1,6 @@
 import { Roll } from "types/DieRolls.type";
 
-export interface GameLogSliceData {
-  logs: { [key: string]: Roll };
-  totalLogsToLoad: number;
-  loading: boolean;
-}
+export interface GameLogSliceData {}
 
 export interface GameLogSliceActions {
   addRoll: (params: {
@@ -14,13 +10,6 @@ export interface GameLogSliceActions {
   }) => Promise<string>;
   updateRoll: (id: string, roll: Roll) => Promise<void>;
   removeRoll: (id: string) => Promise<void>;
-  
-  loadMoreLogs: () => void;
-  subscribe: (params: {
-    campaignId?: string;
-    characterId?: string;
-    totalLogsToLoad: number;
-  }) => () => void;
 
   resetStore: () => void;
 }

@@ -14,7 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "stores/store";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { constructHomebrewEditorPath } from "../routes";
-import { PackageTypes } from "api-calls/homebrew/_homebrewCollection.type";
+import { PackageTypes } from "types/homebrew/HomebrewCollection.type";
 import { ignoreApiError } from "config/api.config";
 
 export interface CreateExpansionDialogProps {

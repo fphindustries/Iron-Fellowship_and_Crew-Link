@@ -1,5 +1,5 @@
 import { Datasworn } from "@datasworn/core";
-import { HomebrewNonLinearMeterDocument } from "api-calls/homebrew/rules/nonLinearMeters/_homebrewNonLinearMeter.type";
+import { HomebrewNonLinearMeterDocument } from "types/homebrew/HomebrewNonLinearMeter.type";
 
 export interface RulesSliceData {
   expansionIds: string[];

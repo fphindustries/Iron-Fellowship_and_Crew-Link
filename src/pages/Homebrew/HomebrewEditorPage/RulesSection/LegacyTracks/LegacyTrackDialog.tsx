@@ -1,4 +1,4 @@
-import { HomebrewLegacyTrackDocument } from "api-calls/homebrew/rules/legacyTracks/_homebrewLegacyTrack.type";
+import { HomebrewLegacyTrackDocument } from "types/homebrew/HomebrewLegacyTrack.type";
 import { Dialog } from "@mui/material";
 import { LegacyTrackDialogForm } from "./LegacyTrackDialogForm";
 

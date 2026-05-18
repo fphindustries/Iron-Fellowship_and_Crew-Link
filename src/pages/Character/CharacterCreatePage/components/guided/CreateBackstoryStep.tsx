@@ -15,8 +15,8 @@ import CasinoIcon from "@mui/icons-material/Casino";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useState } from "react";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
-import { generateCharacterBackstory } from "api-calls/ai/generateCharacterBackstory";
-import { WorldContext } from "api-calls/ai/_ai.type";
+import { generateCharacterBackstory } from "api/ai/generateCharacterBackstory";
+import { WorldContext } from "types/AI.type";
 import {
   BACKSTORY_PROMPTS,
   BackstoryPrompt,

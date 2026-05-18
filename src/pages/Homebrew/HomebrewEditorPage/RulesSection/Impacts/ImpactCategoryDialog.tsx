@@ -1,4 +1,4 @@
-import { HomebrewImpactCategoryDocument } from "api-calls/homebrew/rules/impacts/_homebrewImpacts.type";
+import { HomebrewImpactCategoryDocument } from "types/homebrew/HomebrewImpacts.type";
 import { Dialog } from "@mui/material";
 import { ImpactCategoryDialogForm } from "./ImpactCategoryDialogForm";
 

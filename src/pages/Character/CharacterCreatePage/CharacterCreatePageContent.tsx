@@ -9,7 +9,7 @@ import { CharacterDetails } from "./components/CharacterDetails";
 import { ExpansionsAndHomebrew } from "./components/ExpansionsAndHomebrew";
 import { Stats } from "./components/Stats";
 import { Assets } from "./components/Assets";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { Box, Button } from "@mui/material";
 import { useStore } from "stores/store";
 import {

@@ -1,5 +1,5 @@
 import { Datasworn } from "@datasworn/core";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { AssetControl } from "./AssetControl";
 import { Stack } from "@mui/material";
 

@@ -23,13 +23,16 @@ export const createCurrentWorldSlice: CreateSliceType<CurrentWorldSlice> = (
       if (worldId && worldId !== previousWorldId) {
         store.worlds.currentWorld.resetStore();
         set((store) => {
-          store.worlds.currentWorld.currentWorld =
-            store.worlds.worldMap[worldId] ?? undefined;
           store.worlds.currentWorld.currentWorldId = worldId;
         });
       } else if (previousWorldId !== worldId) {
         store.worlds.currentWorld.resetStore();
       }
+    },
+    setCurrentWorld: (world) => {
+      set((store) => {
+        store.worlds.currentWorld.currentWorld = world;
+      });
     },
     updateCurrentWorld: async (partialWorld) => {
       const worldId = getState().worlds.currentWorld.currentWorldId;

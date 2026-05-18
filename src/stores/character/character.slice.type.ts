@@ -1,9 +1,9 @@
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { CurrentCharacterSlice } from "./currentCharacter/currentCharacter.slice.type";
 import {
   CharacterDocument,
   StatsMap,
-} from "api-calls/character/_character.type";
+} from "types/Character.type";
 
 export interface CharacterSliceData {
   characterMap: { [characterId: string]: CharacterDocument };

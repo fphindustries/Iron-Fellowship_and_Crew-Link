@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { Track } from "components/features/Track";
 import { AssetControls } from "./AssetControls";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { AssetControlCounter } from "./AssetControlCounter";
 import { AssetControlClock } from "./AssetControlClock";
 

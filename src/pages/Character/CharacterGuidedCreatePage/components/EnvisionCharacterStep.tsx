@@ -16,9 +16,9 @@ import CasinoIcon from "@mui/icons-material/Casino";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useState } from "react";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
-import { randomizeCharacterAppearance } from "api-calls/ai/randomizeCharacterAppearance";
-import { generateCharacterPortraits } from "api-calls/ai/generateCharacterPortraits";
-import { WorldContext } from "api-calls/ai/_ai.type";
+import { randomizeCharacterAppearance } from "api/ai/randomizeCharacterAppearance";
+import { generateCharacterPortraits } from "api/ai/generateCharacterPortraits";
+import { WorldContext } from "types/AI.type";
 import { useStore } from "stores/store";
 
 const PRONOUN_OPTIONS = ["he/him", "she/her", "they/them", "xe/xem"];

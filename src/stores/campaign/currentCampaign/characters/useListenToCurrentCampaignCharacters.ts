@@ -1,23 +1,29 @@
 import { useEffect } from "react";
 import { useStore } from "stores/store";
+import { useCampaignCharactersQueries } from "hooks/queries/useCampaignsQuery";
 
 export function useListenToCurrentCampaignCharacters() {
-  const currentCampaignCharacters = useStore(
+  const characterIds = useStore(
     (store) =>
       store.campaigns.currentCampaign.currentCampaign?.characters.map(
-        (character) => character.characterId
+        (c) => c.characterId
       ) ?? []
   );
 
-  const listenToCampaignCharacters = useStore(
-    (store) =>
-      store.campaigns.currentCampaign.characters.listenToCampaignCharacters
-  );
+  const results = useCampaignCharactersQueries(characterIds);
 
   useEffect(() => {
-    const unsubscribe = listenToCampaignCharacters(currentCampaignCharacters);
-    return () => {
-      unsubscribe();
-    };
-  }, [currentCampaignCharacters, listenToCampaignCharacters]);
+    const newMap: Record<string, unknown> = {};
+    let hasData = false;
+    results.forEach((result, i) => {
+      if (result.data) {
+        newMap[characterIds[i]] = result.data;
+        hasData = true;
+      }
+    });
+    if (!hasData) return;
+    useStore.setState((store) => {
+      Object.assign(store.campaigns.currentCampaign.characters.characterMap, newMap);
+    });
+  }, [results, characterIds]);
 }

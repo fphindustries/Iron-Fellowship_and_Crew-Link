@@ -1,7 +1,7 @@
 import { Datasworn } from "@datasworn/core";
 import { Box, Checkbox, Typography } from "@mui/material";
 import { MarkdownRenderer } from "components/shared/MarkdownRenderer";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 
 export interface AssetAbilitiesProps {
   asset: Datasworn.Asset;

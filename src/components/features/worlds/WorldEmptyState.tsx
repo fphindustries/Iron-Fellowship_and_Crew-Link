@@ -7,13 +7,14 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { World } from "api-calls/world/_world.type";
+import { World } from "types/World.type";
 import { EmptyState } from "../../shared/EmptyState/EmptyState";
 import { useStore } from "stores/store";
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { useCampaignType } from "hooks/useCampaignType";
 import { ignoreApiError } from "config/api.config";
+import { useCreateWorldMutation } from "hooks/queries/useWorldsQuery";
 
 export interface WorldEmptyStateProps {
   worldsToChooseFrom?: World[];
@@ -45,10 +46,12 @@ export function WorldEmptyState(props: WorldEmptyStateProps) {
 
   const { showGuidedPlayerView } = useCampaignType();
 
-  const createWorld = useStore((store) => store.worlds.createWorld);
+  const createMutation = useCreateWorldMutation();
   const handleWorldCreate = () => {
-    createWorld()
-      .then((worldId) => {
+    createMutation
+      .mutateAsync()
+      .then((row) => {
+        const worldId = row.id;
         if (campaignId) {
           updateCampaign({ worldId }).catch(ignoreApiError);
         } else if (characterId) {

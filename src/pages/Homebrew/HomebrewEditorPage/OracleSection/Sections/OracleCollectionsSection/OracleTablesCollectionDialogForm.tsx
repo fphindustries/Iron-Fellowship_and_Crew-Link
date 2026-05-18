@@ -12,7 +12,7 @@ import { useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { OracleCollectionAutocomplete } from "../../OracleCollectionAutocomplete";
 import { useStore } from "stores/store";
-import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
+import { HomebrewOracleCollectionDocument } from "types/homebrew/HomebrewOracleCollection.type";
 
 export interface OracleTablesCollectionDialogFormProps {
   homebrewId: string;

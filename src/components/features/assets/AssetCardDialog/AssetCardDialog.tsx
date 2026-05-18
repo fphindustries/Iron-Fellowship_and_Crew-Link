@@ -9,7 +9,7 @@ import {
   Tabs,
 } from "@mui/material";
 import { useCallback, useState } from "react";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { MarkdownRenderer } from "components/shared/MarkdownRenderer";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { AssetCardSearch } from "./AssetCardSearch";

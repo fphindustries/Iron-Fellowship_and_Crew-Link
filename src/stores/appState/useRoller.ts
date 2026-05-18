@@ -1,5 +1,7 @@
 import { useStore } from "stores/store";
 import { useCallback } from "react";
+import { useAccessibilitySettingsQuery } from "hooks/queries/useSettingsQuery";
+import { useAddRollMutation } from "hooks/queries/useGameLogQuery";
 import {
   ClockProgressionRoll,
   ROLL_RESULT,
@@ -11,7 +13,7 @@ import { getRollResultLabel } from "components/features/charactersAndCampaigns/R
 import { TrackTypes } from "types/Track.type";
 import { LEGACY_TrackTypes } from "types/LegacyTrack.type";
 import { rollOracle } from "./rollers/rollOracle";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { ignoreApiError } from "config/api.config";
 
 export const getRoll = (dieMax: number) => {
   return Math.floor(Math.random() * dieMax) + 1;
@@ -19,9 +21,8 @@ export const getRoll = (dieMax: number) => {
 
 export function useRoller() {
   const announce = useStore((store) => store.appState.announce);
-  const verboseScreenReaderRolls = useStore(
-    (store) => store.accessibilitySettings.settings.verboseRollResults
-  );
+  const { data: accessibilitySettings } = useAccessibilitySettingsQuery();
+  const verboseScreenReaderRolls = accessibilitySettings?.verboseRollResults;
 
   const uid = useStore((store) => store.auth.uid);
   const characterId = useStore(
@@ -31,7 +32,7 @@ export function useRoller() {
     (store) => store.campaigns.currentCampaign.currentCampaignId
   );
   const addRollToScreen = useStore((store) => store.appState.addRoll);
-  const addRollToLog = useStore((store) => store.gameLog.addRoll);
+  const { mutateAsync: addRollToLog } = useAddRollMutation();
 
   const newOracles = useStore((store) => store.rules.oracleMaps.allOraclesMap);
   const momentum = useStore(
@@ -91,8 +92,8 @@ export function useRoller() {
       }
 
       addRollToLog({
-        campaignId,
-        characterId: characterId || undefined,
+        entityType: campaignId ? "campaign" : "character",
+        entityId: campaignId ?? characterId ?? "",
         roll: statRoll,
       })
         .then((rollId) => {
@@ -170,8 +171,8 @@ export function useRoller() {
       if (showSnackbar && definedOracleRoll) {
         if (characterId || campaignId) {
           addRollToLog({
-            campaignId,
-            characterId: characterId || undefined,
+            entityType: campaignId ? "campaign" : "character",
+            entityId: campaignId ?? characterId ?? "",
             roll: definedOracleRoll,
           })
             .then((rollId) => {
@@ -241,8 +242,8 @@ export function useRoller() {
       };
 
       addRollToLog({
-        campaignId,
-        characterId: characterId || undefined,
+        entityType: campaignId ? "campaign" : "character",
+        entityId: campaignId ?? characterId ?? "",
         roll: trackProgressRoll,
       })
         .then((rollId) => {
@@ -292,8 +293,8 @@ export function useRoller() {
       };
 
       addRollToLog({
-        campaignId,
-        characterId: characterId || undefined,
+        entityType: campaignId ? "campaign" : "character",
+        entityId: campaignId ?? characterId ?? "",
         roll: clockRoll,
       })
         .then((rollId) => {

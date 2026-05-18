@@ -9,7 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
-import { HomebrewImpactCategoryDocument } from "api-calls/homebrew/rules/impacts/_homebrewImpacts.type";
+import { HomebrewImpactCategoryDocument } from "types/homebrew/HomebrewImpacts.type";
 import { ImpactCategoryDialog } from "./ImpactCategoryDialog";
 import { useStore } from "stores/store";
 import ViewIcon from "@mui/icons-material/Visibility";

@@ -1,22 +1,16 @@
 import { useWorldPermissions } from "components/features/worlds/useWorldPermissions";
 import { useEffect } from "react";
 import { useStore } from "stores/store";
+import { useSectorLocationsQuery } from "hooks/queries/useWorldEntitiesQuery";
 
 export function useListenToSectorLocations() {
-  const openWorldId = useStore(
-    (store) => store.worlds.currentWorld.currentWorldId
-  );
+  const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
   const openSectorId = useStore(
     (store) => store.worlds.currentWorld.currentWorldSectors.openSectorId
   );
-  const subscribe = useStore(
-    (store) => store.worlds.currentWorld.currentWorldSectors.locations.subscribe
-  );
   const resetStore = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldSectors.locations.resetStore
+    (store) => store.worlds.currentWorld.currentWorldSectors.locations.resetStore
   );
-
   const openSectorLocationId = useStore(
     (store) =>
       store.worlds.currentWorld.currentWorldSectors.locations.openLocationId
@@ -32,16 +26,21 @@ export function useListenToSectorLocations() {
       store.worlds.currentWorld.currentWorldSectors.locations.resetStoreNotes
   );
 
+  const { data: sectorLocations } = useSectorLocationsQuery(worldId, openSectorId);
+
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-    if (openWorldId && openSectorId) {
-      unsubscribe = subscribe(openWorldId, openSectorId);
-    }
+    if (!sectorLocations) return;
+    useStore.setState((store) => {
+      store.worlds.currentWorld.currentWorldSectors.locations.locations =
+        sectorLocations;
+    });
+  }, [sectorLocations]);
+
+  useEffect(() => {
     return () => {
-      unsubscribe && unsubscribe();
       resetStore();
     };
-  }, [openWorldId, openSectorId, subscribe, resetStore]);
+  }, [openSectorId, resetStore]);
 
   useEffect(() => {
     const unsubscribes: (() => void)[] = [];
@@ -58,7 +57,7 @@ export function useListenToSectorLocations() {
       }
     }
     return () => {
-      unsubscribes.forEach((unsubscribe) => unsubscribe());
+      unsubscribes.forEach((u) => u());
       resetStoreNotes();
     };
   }, [

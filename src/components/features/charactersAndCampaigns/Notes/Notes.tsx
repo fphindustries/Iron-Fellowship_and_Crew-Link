@@ -13,8 +13,15 @@ import { RtcRichTextEditor } from "components/shared/RichTextEditor/RtcRichTextE
 import { useCallback } from "react";
 import { useStore } from "stores/store";
 import { useCampaignType } from "hooks/useCampaignType";
-import { CampaignType } from "api-calls/campaign/_campaign.type";
+import { CampaignType } from "types/Campaign.type";
 import { AiTriggerButton } from "components/shared/AiTriggerButton";
+import {
+  useNoteContentQuery,
+  useNotesQuery,
+  useRemoveNoteMutation,
+  useUpdateNoteContentMutation,
+  useUpdateNoteSharedMutation,
+} from "hooks/queries/useNotesQuery";
 
 export interface NotesProps {
   hideSidebar?: boolean;
@@ -29,18 +36,8 @@ export function Notes(props: NotesProps) {
       store.notes.openNote ??
       (condensedView || hideSidebar ? undefined : ROLL_LOG_ID)
   );
-  const selectedNoteItem = useStore((store) => {
-    const openNote = store.notes.openNote;
-    if (openNote && typeof openNote !== "string") {
-      return store.notes.notes[openNote.source].find(
-        (note) => note.noteId === openNote.id
-      );
-    }
-    return undefined;
-  });
 
   const setSelectedNote = useStore((store) => store.notes.setOpenNoteId);
-  const selectedNoteContent = useStore((store) => store.notes.openNoteContent);
 
   const characterId = useStore(
     (store) => store.characters.currentCharacter.currentCharacterId
@@ -49,9 +46,50 @@ export function Notes(props: NotesProps) {
     (store) => store.campaigns.currentCampaign.currentCampaignId
   );
 
-  const onSave = useStore((store) => store.notes.updateNote);
-  const onDelete = useStore((store) => store.notes.removeNote);
-  const updateNoteShared = useStore((store) => store.notes.updateNoteShared);
+  const openNoteEntityType =
+    selectedNote && typeof selectedNote !== "string"
+      ? selectedNote.source
+      : undefined;
+  const openNoteEntityId =
+    openNoteEntityType === NoteSource.Campaign ? campaignId : characterId;
+
+  const { data: campaignNotes = [] } = useNotesQuery({
+    entityType: NoteSource.Campaign,
+    entityId: campaignId,
+    enabled: !!campaignId,
+  });
+  const { data: characterNotes = [] } = useNotesQuery({
+    entityType: NoteSource.Character,
+    entityId: characterId,
+    enabled: !!characterId,
+  });
+
+  const selectedNoteItem =
+    selectedNote && typeof selectedNote !== "string"
+      ? (selectedNote.source === NoteSource.Campaign
+          ? campaignNotes
+          : characterNotes
+        ).find((note) => note.noteId === selectedNote.id)
+      : undefined;
+
+  const noteContentQuery = useNoteContentQuery({
+    noteId:
+      selectedNote && typeof selectedNote !== "string"
+        ? selectedNote.id
+        : undefined,
+    entityType: openNoteEntityType,
+    entityId: openNoteEntityId,
+  });
+
+  const updateNoteContent = useUpdateNoteContentMutation();
+  const removeNote = useRemoveNoteMutation(
+    openNoteEntityType ?? NoteSource.Character,
+    openNoteEntityId
+  );
+  const updateNoteShared = useUpdateNoteSharedMutation(
+    openNoteEntityType ?? NoteSource.Character,
+    openNoteEntityId
+  );
 
   const saveCallback = useCallback(
     (
@@ -61,29 +99,24 @@ export function Notes(props: NotesProps) {
       title?: string
     ) => {
       const note = parseId(unparsedId);
-
-      return onSave(
-        note.source,
-        campaignId,
-        characterId,
-        note.id,
-        title ?? "Note",
-        notes,
-        isBeaconRequest
-      );
+      return updateNoteContent.mutateAsync({
+        noteId: note.id,
+        title: title ?? "Note",
+        content: notes,
+        isBeaconRequest,
+      });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [campaignId, characterId]
+    [updateNoteContent]
   );
 
   const handleDelete = useCallback(
     (unparsedId: string) => {
-      const id = parseId(unparsedId);
-      onDelete(id).then(() => {
+      const { id } = parseId(unparsedId);
+      removeNote.mutateAsync(id).then(() => {
         setSelectedNote();
       });
     },
-    [onDelete, setSelectedNote]
+    [removeNote, setSelectedNote]
   );
 
   const roomPrefix =
@@ -100,6 +133,11 @@ export function Notes(props: NotesProps) {
       : "";
 
   const { showGuidedPlayerView, campaignType } = useCampaignType();
+
+  const contentReady =
+    selectedNote &&
+    typeof selectedNote !== "string" &&
+    !noteContentQuery.isPending;
 
   return (
     <Box
@@ -158,46 +196,52 @@ export function Notes(props: NotesProps) {
               <GameLog />
             </>
           )}
-          {selectedNote &&
-            selectedNote !== ROLL_LOG_ID &&
-            selectedNote &&
-            selectedNoteContent !== undefined && (
-              <RtcRichTextEditor
-                roomPrefix={roomPrefix}
-                documentPassword={roomPassword ?? ""}
-                id={constructId(selectedNote.source, selectedNote.id)}
-                initialValue={selectedNoteContent ?? undefined}
-                showTitle
-                onSave={saveCallback}
-                onDelete={handleDelete}
-                extraEditorActions={
-                  <>
-                    <AiTriggerButton
-                      mode="sessionRecap"
-                      tooltip="Generate session recap with AI Guide"
+          {contentReady && (
+            <RtcRichTextEditor
+              roomPrefix={roomPrefix}
+              documentPassword={roomPassword ?? ""}
+              id={constructId(
+                (selectedNote as { source: NoteSource; id: string }).source,
+                (selectedNote as { source: NoteSource; id: string }).id
+              )}
+              initialValue={noteContentQuery.data ?? undefined}
+              showTitle
+              onSave={saveCallback}
+              onDelete={handleDelete}
+              extraEditorActions={
+                <>
+                  <AiTriggerButton
+                    mode="sessionRecap"
+                    tooltip="Generate session recap with AI Guide"
+                  />
+                  {selectedNote &&
+                  typeof selectedNote !== "string" &&
+                  selectedNote.source === NoteSource.Campaign &&
+                  campaignType === CampaignType.Guided &&
+                  !showGuidedPlayerView ? (
+                    <FormControlLabel
+                      label={"Shared"}
+                      sx={{ px: 1 }}
+                      control={
+                        <Checkbox
+                          checked={selectedNoteItem?.shared ?? false}
+                          onChange={(_, checked) =>
+                            updateNoteShared
+                              .mutate({
+                                noteId: (
+                                  selectedNote as { id: string }
+                                ).id,
+                                shared: checked,
+                              })
+                          }
+                        />
+                      }
                     />
-                    {selectedNote.source === NoteSource.Campaign &&
-                    campaignType === CampaignType.Guided &&
-                    !showGuidedPlayerView ? (
-                      <FormControlLabel
-                        label={"Shared"}
-                        sx={{ px: 1 }}
-                        control={
-                          <Checkbox
-                            checked={selectedNoteItem?.shared ?? false}
-                            onChange={(_, checked) =>
-                              updateNoteShared(selectedNote, checked).catch(
-                                () => {}
-                              )
-                            }
-                          />
-                        }
-                      />
-                    ) : null}
-                  </>
-                }
-              />
-            )}
+                  ) : null}
+                </>
+              }
+            />
+          )}
         </Box>
       )}
     </Box>

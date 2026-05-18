@@ -11,8 +11,8 @@ import { useState } from "react";
 import { useStore } from "stores/store";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { StatInput } from "pages/Character/CharacterCreatePage/components/StatInput";
-import { recommendStatAllocation } from "api-calls/ai/recommendStatAllocation";
-import { WorldContext } from "api-calls/ai/_ai.type";
+import { recommendStatAllocation } from "api/ai/recommendStatAllocation";
+import { WorldContext } from "types/AI.type";
 
 const STANDARD_ARRAY = [3, 2, 2, 1, 1];
 

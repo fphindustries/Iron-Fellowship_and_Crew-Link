@@ -1,5 +1,5 @@
 import { Box, Card, Stack, SxProps, Theme } from "@mui/material";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { useStore } from "stores/store";
 import { AssetOptions } from "./AssetOptions";
 import { AssetAbilities } from "./AssetAbilities";

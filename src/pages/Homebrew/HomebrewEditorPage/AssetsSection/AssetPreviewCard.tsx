@@ -6,7 +6,7 @@ import { AssetHeader } from "components/features/assets/AssetCard/AssetHeader";
 import { AssetNameAndDescription } from "components/features/assets/AssetCard/AssetNameAndDescription";
 import { AssetOptions } from "components/features/assets/AssetCard/AssetOptions";
 import { convertIdPart } from "functions/dataswornIdEncoder";
-import { HomebrewAssetDocument } from "api-calls/homebrew/assets/assets/_homebrewAssets.type";
+import { HomebrewAssetDocument } from "types/homebrew/HomebrewAssets.type";
 import EditIcon from "@mui/icons-material/Edit";
 import MoveIcon from "@mui/icons-material/DriveFileMove";
 

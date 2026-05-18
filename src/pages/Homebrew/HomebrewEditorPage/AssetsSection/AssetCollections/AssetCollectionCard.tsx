@@ -1,7 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import { useStore } from "stores/store";
-import { HomebrewAssetCollectionDocument } from "api-calls/homebrew/assets/collections/_homebrewAssetCollection.type";
+import { HomebrewAssetCollectionDocument } from "types/homebrew/HomebrewAssetCollection.type";
 
 export interface AssetCollectionCardProps {
   collection: HomebrewAssetCollectionDocument;

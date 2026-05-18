@@ -1,13 +1,13 @@
-import { CampaignType } from "api-calls/campaign/_campaign.type";
+import { CampaignType } from "types/Campaign.type";
 import { useEffect, useMemo } from "react";
 import { useStore } from "stores/store";
+import { useAllWorldsQuery } from "hooks/queries/useWorldsQuery";
 
 export function useSyncCampaignWorldPermissions() {
   const uid = useStore((store) => store.auth.uid);
   const campaigns = useStore((store) => store.campaigns.campaignMap);
   const areCampaignsLoading = useStore((store) => store.campaigns.loading);
-  const worlds = useStore((store) => store.worlds.worldMap);
-  const areWorldsLoading = useStore((store) => store.worlds.loading);
+  const { data: worlds, isLoading: areWorldsLoading } = useAllWorldsQuery();
 
   const campaignGuideMap = useMemo(() => {
     const map: { [worldId: string]: string } = {};
@@ -25,19 +25,18 @@ export function useSyncCampaignWorldPermissions() {
     });
     return map;
   }, [campaigns, uid]);
+
   const updateWorldGuides = useStore((store) => store.worlds.updateWorldGuide);
 
   useEffect(() => {
     if (uid && !areCampaignsLoading && !areWorldsLoading) {
-      Object.keys(worlds).forEach((worldId) => {
-        const world = worlds[worldId];
+      (worlds ?? []).forEach((world) => {
+        const worldId = world.id;
         const isFullOwner = world.ownerIds.includes(uid);
         const isPartialOwner = world.campaignGuides?.includes(uid);
         if (campaignGuideMap[worldId] && !isFullOwner && !isPartialOwner) {
-          // Add the user as a guide
           updateWorldGuides(worldId, uid);
         } else if (!campaignGuideMap[worldId] && isPartialOwner) {
-          // Remove the user as a guide
           updateWorldGuides(worldId, uid, true);
         }
       });

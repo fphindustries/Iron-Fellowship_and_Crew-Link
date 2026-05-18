@@ -1,4 +1,4 @@
-import { HomebrewStatDocument } from "api-calls/homebrew/rules/stats/_homebrewStat.type";
+import { HomebrewStatDocument } from "types/homebrew/HomebrewStat.type";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import {
   Button,

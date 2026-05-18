@@ -1,7 +1,7 @@
 import { Grid, MenuItem, TextField } from "@mui/material";
 import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import { useStore } from "stores/store";
-import { StarforgedLocationPlanet } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
+import { StarforgedLocationPlanet } from "types/SectorLocations.type";
 import { GuideOnlyHeader } from "../../common";
 import { ignoreApiError } from "config/api.config";
 

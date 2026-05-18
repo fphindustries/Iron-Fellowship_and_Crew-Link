@@ -1,6 +1,6 @@
 import { Box, Card, IconButton, Tooltip, Typography } from "@mui/material";
-import { HomebrewMoveDocument } from "api-calls/homebrew/moves/moves/_homebrewMove.type";
-import { HomebrewMoveCategoryDocument } from "api-calls/homebrew/moves/categories/_homebrewMoveCategory.type";
+import { HomebrewMoveDocument } from "types/homebrew/HomebrewMove.type";
+import { HomebrewMoveCategoryDocument } from "types/homebrew/HomebrewMoveCategory.type";
 import PreviewIcon from "@mui/icons-material/Visibility";
 import MoveIcon from "@mui/icons-material/DriveFileMove";
 import EditIcon from "@mui/icons-material/Edit";

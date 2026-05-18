@@ -6,7 +6,7 @@ import {
   LinearProgress,
   Typography,
 } from "@mui/material";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { AssetCard } from "components/features/assets/AssetCard";
 import { AssetCardDialog } from "components/features/assets/AssetCardDialog";
 import { SectionHeading } from "components/shared/SectionHeading";

@@ -3,7 +3,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
-@WebSocketGateway({ namespace: '/character', cors: { origin: '*', credentials: true } })
+@WebSocketGateway({ namespace: '/character' })
 export class CharacterGateway {
   @WebSocketServer() server: Server;
 

@@ -2,7 +2,7 @@ import { CreateSliceType } from "stores/store.type";
 import { SharedAssetSlice } from "./sharedAssets.slice.type";
 import { defaultSharedAssetsSlice } from "./sharedAssets.slice.default";
 import { api } from "config/api.config";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 
 function toAsset(row: any): AssetDocument {
   return { id: row.id, ...(row.dataJson ?? {}) };
@@ -14,34 +14,9 @@ export const createSharedAssetsSlice: CreateSliceType<SharedAssetSlice> = (
 ) => ({
   ...defaultSharedAssetsSlice,
 
-  subscribe: (campaignId) => {
-    let active = true;
-    set((store) => {
-      store.campaigns.currentCampaign.assets.loading = true;
-    });
-    api
-      .get<any[]>(`/api/campaigns/${campaignId}/assets`)
-      .then((rows) => {
-        if (!active) return;
-        const assets: Record<string, AssetDocument> = {};
-        rows.forEach((row) => {
-          assets[row.id] = toAsset(row);
-        });
-        set((store) => {
-          store.campaigns.currentCampaign.assets.assets = assets;
-          store.campaigns.currentCampaign.assets.loading = false;
-        });
-      })
-      .catch((error) => {
-        if (!active) return;
-        set((store) => {
-          store.campaigns.currentCampaign.assets.loading = false;
-          store.campaigns.currentCampaign.assets.error = String(error);
-        });
-      });
-    return () => {
-      active = false;
-    };
+  subscribe: (_campaignId) => {
+    // Data is now fetched by useCampaignAssetsQuery via useListenToSharedAssets.
+    return () => {};
   },
 
   addAsset: (asset) => {

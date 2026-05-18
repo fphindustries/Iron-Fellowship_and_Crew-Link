@@ -1,5 +1,3 @@
 import { UserSliceData } from "./users.slice.type";
 
-export const defaultUserSlice: UserSliceData = {
-  userMap: {},
-};
+export const defaultUserSlice: UserSliceData = {};

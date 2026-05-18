@@ -1,26 +1,27 @@
 import { useEffect } from "react";
 import { useStore } from "stores/store";
+import { useLocationsQuery } from "hooks/queries/useWorldEntitiesQuery";
 
 export function useListenToLocations() {
   const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
-  const worldOwnerIds = useStore((store) =>
-    store.worlds.currentWorld.currentWorld
-      ? store.worlds.currentWorld.currentWorld.ownerIds ?? []
-      : undefined
-  );
-  const listenToLocations = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLocations.subscribe
-  );
+  const { data: locations } = useLocationsQuery(worldId);
 
   useEffect(() => {
-    let unsubscribe: () => void;
-
-    if (worldId && worldOwnerIds) {
-      unsubscribe = listenToLocations(worldId, worldOwnerIds ?? []);
-    }
-
-    return () => {
-      unsubscribe && unsubscribe();
-    };
-  }, [worldId, worldOwnerIds, listenToLocations]);
+    if (!locations) return;
+    useStore.setState((store) => {
+      const existing = store.worlds.currentWorld.currentWorldLocations.locationMap;
+      const newMap: typeof existing = {};
+      locations.forEach(({ id, ...loc }) => {
+        const prev = existing[id];
+        newMap[id] = {
+          ...loc,
+          gmProperties: prev?.gmProperties,
+          notes: prev?.notes,
+          imageUrl: prev?.imageUrl,
+          mapBackgroundImageUrl: prev?.mapBackgroundImageUrl,
+        };
+      });
+      store.worlds.currentWorld.currentWorldLocations.locationMap = newMap;
+    });
+  }, [locations]);
 }

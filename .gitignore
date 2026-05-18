@@ -27,3 +27,5 @@ dist-ssr
 .firebase/*
 
 .claude/*
+api/.env
+.claude/settings.local.json

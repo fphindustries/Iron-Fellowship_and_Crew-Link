@@ -18,7 +18,7 @@ import {
   HomebrewAssetAbility,
   HomebrewAssetControl,
   HomebrewAssetOption,
-} from "api-calls/homebrew/assets/assets/_homebrewAssets.type";
+} from "types/homebrew/HomebrewAssets.type";
 // import { AssetAutocomplete } from "./AssetAutocomplete";
 import { Preview } from "../../Preview";
 import { AssetCardPreview } from "./AssetCardPreview";

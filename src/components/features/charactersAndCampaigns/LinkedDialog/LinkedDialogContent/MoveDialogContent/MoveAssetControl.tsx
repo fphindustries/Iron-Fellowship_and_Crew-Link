@@ -1,6 +1,6 @@
 import { Datasworn } from "@datasworn/core";
 import { Chip, Stack } from "@mui/material";
-import { AssetDocument } from "api-calls/assets/_asset.type";
+import { AssetDocument } from "types/Asset.type";
 import { StatComponent } from "components/features/characters/StatComponent";
 import { useStore } from "stores/store";
 

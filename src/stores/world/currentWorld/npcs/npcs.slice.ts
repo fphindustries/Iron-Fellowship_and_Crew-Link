@@ -22,38 +22,9 @@ function toNPC(row: any): NPC {
 export const createNPCsSlice: CreateSliceType<NPCsSlice> = (set, getState) => ({
   ...defaultNPCsSlice,
 
-  subscribe: (worldId: string) => {
-    let active = true;
-
-    api
-      .get<any[]>(`/api/worlds/${worldId}/npcs`)
-      .then((rows) => {
-        if (!active) return;
-        set((store) => {
-          store.worlds.currentWorld.currentWorldNPCs.loading = false;
-          rows.forEach((row) => {
-            const npc = toNPC(row);
-            if ((npc.imageFilenames?.length ?? 0) > 0) {
-              store.worlds.currentWorld.doAnyDocsHaveImages = true;
-            }
-            const existing = store.worlds.currentWorld.currentWorldNPCs.npcMap[row.id];
-            store.worlds.currentWorld.currentWorldNPCs.npcMap[row.id] = {
-              ...npc,
-              gmProperties: existing?.gmProperties,
-              notes: existing?.notes,
-              imageUrl: (npc.imageFilenames?.length ?? 0) > 0 ? existing?.imageUrl : undefined,
-            };
-          });
-        });
-      })
-      .catch((error) => {
-        if (!active) return;
-        set((store) => {
-          store.worlds.currentWorld.currentWorldNPCs.error = String(error);
-        });
-      });
-
-    return () => { active = false; };
+  subscribe: (_worldId: string) => {
+    // Data is now fetched by useNPCsQuery via useListenToNPCs.
+    return () => {};
   },
 
   setOpenNPCId: (npcId) => {
@@ -228,46 +199,9 @@ export const createNPCsSlice: CreateSliceType<NPCsSlice> = (set, getState) => ({
     });
   },
 
-  subscribeToOpenNPC: (npcId) => {
-    const state = getState();
-    const worldId = state.worlds.currentWorld.currentWorldId;
-    const isWorldOwner =
-      state.worlds.currentWorld.currentWorld?.ownerIds?.includes(state.auth.uid ?? "") ?? false;
-    if (!worldId) return () => {};
-
-    let active = true;
-
-    api
-      .get<any>(`/api/worlds/${worldId}/npcs/${npcId}/notes`)
-      .then((row) => {
-        if (!active || !row?.content) return;
-        const content = new Uint8Array(row.content.data ?? row.content);
-        set((store) => {
-          const npc = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
-          if (npc) npc.notes = content;
-        });
-      })
-      .catch(() => {});
-
-    if (isWorldOwner) {
-      api
-        .get<any>(`/api/worlds/${worldId}/npcs/${npcId}/private-notes`)
-        .then((row) => {
-          if (!active) return;
-          set((store) => {
-            const npc = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
-            if (npc) npc.gmProperties = row?.dataJson ?? null;
-          });
-        })
-        .catch(() => {});
-    } else {
-      set((store) => {
-        const npc = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
-        if (npc) npc.gmProperties = null;
-      });
-    }
-
-    return () => { active = false; };
+  subscribeToOpenNPC: (_npcId) => {
+    // Data is now fetched by useNPCDetailQuery via useListenToCurrentNPC.
+    return () => {};
   },
 
   resetStore: () => {

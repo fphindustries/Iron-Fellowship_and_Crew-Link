@@ -1,22 +1,23 @@
 import { useEffect } from "react";
 import { useStore } from "stores/store";
+import { useCharacterAssetsQuery } from "hooks/queries/useCharactersQuery";
+import { AssetDocument } from "types/Asset.type";
 
 export function useListenToCurrentCharacterAssets() {
-  const currentCharacterId = useStore(
+  const characterId = useStore(
     (store) => store.characters.currentCharacter.currentCharacterId
   );
-  const subscribe = useStore(
-    (store) => store.characters.currentCharacter.assets.subscribe
-  );
+  const { data: assetRows } = useCharacterAssetsQuery(characterId);
 
   useEffect(() => {
-    let unsubscribe: () => void;
-    if (currentCharacterId) {
-      unsubscribe = subscribe(currentCharacterId);
-    }
-
-    return () => {
-      unsubscribe && unsubscribe();
-    };
-  }, [currentCharacterId, subscribe]);
+    if (!assetRows) return;
+    const assets: Record<string, AssetDocument> = {};
+    assetRows.forEach((row) => {
+      assets[row.id] = { id: row.id, ...(row.dataJson ?? {}) };
+    });
+    useStore.setState((store) => {
+      store.characters.currentCharacter.assets.assets = assets;
+      store.characters.currentCharacter.assets.loading = false;
+    });
+  }, [assetRows]);
 }

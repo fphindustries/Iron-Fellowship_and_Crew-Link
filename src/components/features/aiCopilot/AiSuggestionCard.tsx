@@ -8,7 +8,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { AiEventDocument, AiEventStatus } from "api-calls/ai/_ai.type";
+import { AiEventDocument, AiEventStatus } from "types/AI.type";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";

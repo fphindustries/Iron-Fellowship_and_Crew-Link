@@ -4,11 +4,15 @@ import {
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CampaignMemberGuard } from '../common/guards/campaign-member.guard';
 import { CampaignsService } from './campaigns.service';
+import { CampaignGateway } from '../realtime/campaign.gateway';
 
 @Controller('api/campaigns')
 @UseGuards(JwtAuthGuard)
 export class CampaignsController {
-  constructor(private readonly svc: CampaignsService) {}
+  constructor(
+    private readonly svc: CampaignsService,
+    private readonly gateway: CampaignGateway,
+  ) {}
 
   @Get()
   findAll(@Req() req: any) {
@@ -22,46 +26,55 @@ export class CampaignsController {
   }
 
   @Post()
-  create(@Req() req: any, @Body() body: any) {
+  async create(@Req() req: any, @Body() body: any) {
     const user = req.user as { id: string };
-    return this.svc.create(user.id, body);
+    const result = await this.svc.create(user.id, body);
+    this.gateway.emit('updated', result.id, {});
+    return result;
   }
 
   @Patch(':id')
   @UseGuards(CampaignMemberGuard)
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.svc.update(id, body);
+  async update(@Param('id') id: string, @Body() body: any) {
+    const result = await this.svc.update(id, body);
+    this.gateway.emit('updated', id, {});
+    return result;
   }
 
   @Delete(':id')
   @UseGuards(CampaignMemberGuard)
-  remove(@Param('id') id: string) {
-    return this.svc.remove(id);
+  async remove(@Param('id') id: string) {
+    await this.svc.remove(id);
+    this.gateway.emit('updated', id, {});
   }
 
   @Post(':campaignId/members')
   @UseGuards(CampaignMemberGuard)
-  addMember(@Param('campaignId') cid: string, @Body('userId') userId: string) {
-    return this.svc.addMember(cid, userId);
+  async addMember(@Param('campaignId') cid: string, @Body('userId') userId: string) {
+    await this.svc.addMember(cid, userId);
+    this.gateway.emit('updated', cid, {});
   }
 
   @Delete(':campaignId/members/:userId')
   @UseGuards(CampaignMemberGuard)
-  removeMember(@Param('campaignId') cid: string, @Param('userId') uid: string) {
-    return this.svc.removeMember(cid, uid);
+  async removeMember(@Param('campaignId') cid: string, @Param('userId') uid: string) {
+    await this.svc.removeMember(cid, uid);
+    this.gateway.emit('updated', cid, {});
   }
 
   @Post(':campaignId/characters')
   @UseGuards(CampaignMemberGuard)
-  addCharacter(@Req() req: any, @Param('campaignId') cid: string, @Body('characterId') charId: string) {
+  async addCharacter(@Req() req: any, @Param('campaignId') cid: string, @Body('characterId') charId: string) {
     const user = req.user as { id: string };
-    return this.svc.addCharacter(cid, user.id, charId);
+    await this.svc.addCharacter(cid, user.id, charId);
+    this.gateway.emit('updated', cid, {});
   }
 
   @Delete(':campaignId/characters/:characterId')
   @UseGuards(CampaignMemberGuard)
-  removeCharacter(@Param('campaignId') cid: string, @Param('characterId') charId: string) {
-    return this.svc.removeCharacter(cid, charId);
+  async removeCharacter(@Param('campaignId') cid: string, @Param('characterId') charId: string) {
+    await this.svc.removeCharacter(cid, charId);
+    this.gateway.emit('updated', cid, {});
   }
 
   @Get(':campaignId/ai-events')
@@ -78,14 +91,16 @@ export class CampaignsController {
 
   @Post(':campaignId/gms')
   @UseGuards(CampaignMemberGuard)
-  addGm(@Param('campaignId') cid: string, @Body('userId') userId: string) {
-    return this.svc.addGm(cid, userId);
+  async addGm(@Param('campaignId') cid: string, @Body('userId') userId: string) {
+    await this.svc.addGm(cid, userId);
+    this.gateway.emit('updated', cid, {});
   }
 
   @Delete(':campaignId/gms/:userId')
   @UseGuards(CampaignMemberGuard)
-  removeGm(@Param('campaignId') cid: string, @Param('userId') uid: string) {
-    return this.svc.removeGm(cid, uid);
+  async removeGm(@Param('campaignId') cid: string, @Param('userId') uid: string) {
+    await this.svc.removeGm(cid, uid);
+    this.gateway.emit('updated', cid, {});
   }
 
   @Get(':campaignId/assets')
@@ -96,20 +111,25 @@ export class CampaignsController {
 
   @Post(':campaignId/assets')
   @UseGuards(CampaignMemberGuard)
-  addAsset(@Param('campaignId') cid: string, @Body() body: any) {
-    return this.svc.addAsset(cid, body);
+  async addAsset(@Param('campaignId') cid: string, @Body() body: any) {
+    const result = await this.svc.addAsset(cid, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
   }
 
   @Patch(':campaignId/assets/:id')
   @UseGuards(CampaignMemberGuard)
-  updateAsset(@Param('id') id: string, @Body() body: any) {
-    return this.svc.updateAsset(id, body);
+  async updateAsset(@Param('campaignId') cid: string, @Param('id') id: string, @Body() body: any) {
+    const result = await this.svc.updateAsset(id, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
   }
 
   @Delete(':campaignId/assets/:id')
   @UseGuards(CampaignMemberGuard)
-  removeAsset(@Param('id') id: string) {
-    return this.svc.removeAsset(id);
+  async removeAsset(@Param('campaignId') cid: string, @Param('id') id: string) {
+    await this.svc.removeAsset(id);
+    this.gateway.emit('updated', cid, {});
   }
 
   @Get(':campaignId/tracks')
@@ -120,19 +140,24 @@ export class CampaignsController {
 
   @Post(':campaignId/tracks')
   @UseGuards(CampaignMemberGuard)
-  addTrack(@Param('campaignId') cid: string, @Body() body: any) {
-    return this.svc.addTrack(cid, body);
+  async addTrack(@Param('campaignId') cid: string, @Body() body: any) {
+    const result = await this.svc.addTrack(cid, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
   }
 
   @Patch(':campaignId/tracks/:id')
   @UseGuards(CampaignMemberGuard)
-  updateTrack(@Param('id') id: string, @Body() body: any) {
-    return this.svc.updateTrack(id, body);
+  async updateTrack(@Param('campaignId') cid: string, @Param('id') id: string, @Body() body: any) {
+    const result = await this.svc.updateTrack(id, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
   }
 
   @Delete(':campaignId/tracks/:id')
   @UseGuards(CampaignMemberGuard)
-  removeTrack(@Param('id') id: string) {
-    return this.svc.removeTrack(id);
+  async removeTrack(@Param('campaignId') cid: string, @Param('id') id: string) {
+    await this.svc.removeTrack(id);
+    this.gateway.emit('updated', cid, {});
   }
 }

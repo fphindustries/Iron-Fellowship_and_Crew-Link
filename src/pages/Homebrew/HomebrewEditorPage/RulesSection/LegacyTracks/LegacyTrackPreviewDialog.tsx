@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, Stack } from "@mui/material";
-import { HomebrewLegacyTrackDocument } from "api-calls/homebrew/rules/legacyTracks/_homebrewLegacyTrack.type";
+import { HomebrewLegacyTrackDocument } from "types/homebrew/HomebrewLegacyTrack.type";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { MarkdownRenderer } from "components/shared/MarkdownRenderer";
 import { useGameSystem } from "hooks/useGameSystem";

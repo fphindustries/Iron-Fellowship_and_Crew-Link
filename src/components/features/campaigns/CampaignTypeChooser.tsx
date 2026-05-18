@@ -7,7 +7,7 @@ import {
   Grid,
   Typography,
 } from "@mui/material";
-import { CampaignType } from "api-calls/campaign/_campaign.type";
+import { CampaignType } from "types/Campaign.type";
 
 import SoloIcon from "@mui/icons-material/Person4";
 import CoopIcon from "@mui/icons-material/Group";

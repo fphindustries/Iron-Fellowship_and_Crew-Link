@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { CorsIoAdapter } from './realtime/socket-io.adapter';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const cookieParser = require('cookie-parser');
 
@@ -19,6 +20,7 @@ async function bootstrap() {
     origin: allowedOrigins,
     credentials: true,
   });
+  app.useWebSocketAdapter(new CorsIoAdapter(app, allowedOrigins));
 
   const port = process.env.PORT ?? 3001;
   await app.listen(port);

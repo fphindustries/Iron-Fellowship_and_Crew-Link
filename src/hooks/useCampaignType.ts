@@ -1,4 +1,4 @@
-import { CampaignType } from "api-calls/campaign/_campaign.type";
+import { CampaignType } from "types/Campaign.type";
 import { useStore } from "stores/store";
 
 export function useCampaignType(): {

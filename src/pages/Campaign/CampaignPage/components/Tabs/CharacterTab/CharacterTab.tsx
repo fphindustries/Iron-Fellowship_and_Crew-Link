@@ -1,5 +1,5 @@
 import { Button, Container, Grid, Stack } from "@mui/material";
-import { CampaignType } from "api-calls/campaign/_campaign.type";
+import { CampaignType } from "types/Campaign.type";
 import { SectionHeading } from "components/shared/SectionHeading";
 import { useCampaignType } from "hooks/useCampaignType";
 import { useStore } from "stores/store";

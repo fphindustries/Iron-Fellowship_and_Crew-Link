@@ -364,7 +364,7 @@ export const homebrewInviteKeys = pgTable('homebrew_invite_keys', {
 export const yjsDocuments = pgTable('yjs_documents', {
   id: uuid('id').primaryKey().defaultRandom(),
   entityType: text('entity_type').notNull(),
-  entityId: uuid('entity_id').notNull(),
+  entityId: text('entity_id').notNull(),
   state: bytea('state'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [unique().on(t.entityType, t.entityId)]);

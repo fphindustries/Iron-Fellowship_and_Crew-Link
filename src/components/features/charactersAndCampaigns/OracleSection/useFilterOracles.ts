@@ -1,6 +1,7 @@
 import { Datasworn } from "@datasworn/core";
 import { useMemo, useState } from "react";
 import { useStore } from "stores/store";
+import { useOraclePinsQuery } from "hooks/queries/useSettingsQuery";
 import { License } from "types/Datasworn";
 
 export enum CATEGORY_VISIBILITY {
@@ -30,7 +31,7 @@ export function useFilterOracles() {
     (store) => store.rules.rootOracleCollectionIds
   );
 
-  const pinnedOracles = useStore((store) => store.settings.pinnedOraclesIds);
+  const { data: pinnedOracles = {} } = useOraclePinsQuery();
 
   const { oracleCollections, rootOracles } = useMemo<{
     oracleCollections: Record<string, CombinedCollectionType>;

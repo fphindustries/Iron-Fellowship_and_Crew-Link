@@ -26,43 +26,9 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
 ) => ({
   ...defaultLocationsSlice,
 
-  subscribe: (worldId: string) => {
-    let active = true;
-
-    api
-      .get<any[]>(`/api/worlds/${worldId}/locations`)
-      .then((rows) => {
-        if (!active) return;
-        set((store) => {
-          store.worlds.currentWorld.currentWorldLocations.loading = false;
-          rows.forEach((row) => {
-            const location = toLocation(row);
-            const existing =
-              store.worlds.currentWorld.currentWorldLocations.locationMap[row.id];
-            if ((location.imageFilenames?.length ?? 0) > 0) {
-              store.worlds.currentWorld.doAnyDocsHaveImages = true;
-            }
-            store.worlds.currentWorld.currentWorldLocations.locationMap[row.id] = {
-              ...location,
-              gmProperties: existing?.gmProperties,
-              notes: existing?.notes,
-              imageUrl: (location.imageFilenames?.length ?? 0) > 0 ? existing?.imageUrl : undefined,
-              mapBackgroundImageUrl: location.mapBackgroundImageFilename
-                ? existing?.mapBackgroundImageUrl
-                : undefined,
-            };
-          });
-        });
-      })
-      .catch((error) => {
-        if (!active) return;
-        set((store) => {
-          store.worlds.currentWorld.currentWorldLocations.error = String(error);
-        });
-      });
-
+  subscribe: (_worldId: string) => {
+    // Data is now fetched by useLocationsQuery via useListenToLocations.
     return () => {
-      active = false;
     };
   },
 
@@ -378,48 +344,9 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
     });
   },
 
-  subscribeToOpenLocation: (locationId) => {
-    const state = getState();
-    const worldId = state.worlds.currentWorld.currentWorldId;
-    const isWorldOwner =
-      state.worlds.currentWorld.currentWorld?.ownerIds?.includes(state.auth.uid ?? "") ?? false;
-    if (!worldId) return () => {};
-
-    let active = true;
-
-    api
-      .get<any>(`/api/worlds/${worldId}/locations/${locationId}/notes`)
-      .then((row) => {
-        if (!active || !row?.content) return;
-        const content = new Uint8Array(row.content.data ?? row.content);
-        set((store) => {
-          const loc = store.worlds.currentWorld.currentWorldLocations.locationMap[locationId];
-          if (loc) loc.notes = content;
-        });
-      })
-      .catch(() => {});
-
-    if (isWorldOwner) {
-      api
-        .get<any>(`/api/worlds/${worldId}/locations/${locationId}/private-notes`)
-        .then((row) => {
-          if (!active) return;
-          set((store) => {
-            const loc = store.worlds.currentWorld.currentWorldLocations.locationMap[locationId];
-            if (loc) loc.gmProperties = row?.dataJson ?? null;
-          });
-        })
-        .catch(() => {});
-    } else {
-      set((store) => {
-        const loc = store.worlds.currentWorld.currentWorldLocations.locationMap[locationId];
-        if (loc) loc.gmProperties = null;
-      });
-    }
-
-    return () => {
-      active = false;
-    };
+  subscribeToOpenLocation: (_locationId) => {
+    // Data is now fetched by useLocationDetailQuery via useListenToCurrentLocation.
+    return () => {};
   },
 
   resetStore: () => {

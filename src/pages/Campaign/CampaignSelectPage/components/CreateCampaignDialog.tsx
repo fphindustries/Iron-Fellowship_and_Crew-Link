@@ -13,7 +13,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import { useNavigate } from "react-router-dom";
 import { CAMPAIGN_ROUTES, constructCampaignSheetPath } from "../../routes";
 import { useStore } from "stores/store";
-import { CampaignType } from "api-calls/campaign/_campaign.type";
+import { CampaignType } from "types/Campaign.type";
 import { CampaignTypeChooser } from "components/features/campaigns/CampaignTypeChooser";
 
 export interface CreateCampaignDialogProps {

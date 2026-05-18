@@ -1,5 +1,5 @@
 import { Chip } from "@mui/material";
-import { AiEventStatus } from "api-calls/ai/_ai.type";
+import { AiEventStatus } from "types/AI.type";
 
 interface AiStatusBadgeProps {
   status: AiEventStatus;

@@ -1,8 +1,9 @@
 import { Box, Button, Card, Stack, Typography } from "@mui/material";
-import { CampaignType } from "api-calls/campaign/_campaign.type";
+import { CampaignType } from "types/Campaign.type";
 import { UserAvatar } from "components/shared/UserAvatar";
 import { useCampaignType } from "hooks/useCampaignType";
 import { useStore } from "stores/store";
+import { useUserQuery } from "hooks/queries/useUsersQuery";
 
 export interface UserCardProps {
   uid: string;
@@ -13,7 +14,7 @@ export function UserCard(props: UserCardProps) {
 
   const currentUid = useStore((store) => store.auth.uid);
 
-  const user = useStore((store) => store.users.userMap[uid]);
+  const { data: user } = useUserQuery(uid);
   const gmIds = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaign?.gmIds ?? []
   );
@@ -33,7 +34,7 @@ export function UserCard(props: UserCardProps) {
         <UserAvatar uid={uid} />
         <Box ml={1}>
           <Typography variant={"h6"} lineHeight={1}>
-            {user.doc?.displayName}
+            {user?.displayName}
           </Typography>
           {campaignType === CampaignType.Guided && gmIds.includes(uid) && (
             <Typography color={"textSecondary"}>Guide</Typography>

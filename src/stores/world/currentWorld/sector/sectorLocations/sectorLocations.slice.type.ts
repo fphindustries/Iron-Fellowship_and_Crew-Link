@@ -1,4 +1,4 @@
-import { SectorLocationDocument } from "api-calls/world/sectors/sectorLocations/_sectorLocations.type";
+import { SectorLocationDocument } from "types/SectorLocations.type";
 
 export interface SectorLocationsSliceData {
   locations: { [locationId: string]: SectorLocationDocument };
