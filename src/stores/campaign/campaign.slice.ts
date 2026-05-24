@@ -5,7 +5,7 @@ import { getErrorMessage } from "functions/getErrorMessage";
 import { createCurrentCampaignSlice } from "./currentCampaign/currentCampaign.slice";
 import { api } from "config/api.config";
 
-function toCampaignDocument(row: any): any {
+export function toCampaignDocument(row: any): any {
   return {
     name: row.name,
     users: row.users ?? [],

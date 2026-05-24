@@ -1,7 +1,7 @@
-import { api } from "config/api.config";
 import { SectorGenerationRequest, SectorGenerationOutput } from "types/AI.type";
+import { aiPost } from "./_aiPost";
 
 export const generateSectorContent = (
   params: SectorGenerationRequest
 ): Promise<SectorGenerationOutput> =>
-  api.post<SectorGenerationOutput>("/api/ai/sector/content", params);
+  aiPost<SectorGenerationOutput>("/api/ai/sector/content", params);

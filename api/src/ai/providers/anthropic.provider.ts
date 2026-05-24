@@ -32,14 +32,18 @@ export class AnthropicProvider implements AiProvider {
     systemPromptDynamic: string;
     userPrompt: string;
   }): Promise<AiProviderResult> {
+    const systemBlocks = this.buildSystemBlocks(params.systemPromptStatic, params.systemPromptDynamic);
     const response = await this.client.messages.create({
       model: params.model,
       max_tokens: 4096,
-      system: this.buildSystemBlocks(params.systemPromptStatic, params.systemPromptDynamic),
+      system: systemBlocks,
       messages: [{ role: 'user', content: params.userPrompt }],
     });
     const textBlock = response.content.find((b) => b.type === 'text');
-    return { text: (textBlock as any)?.text ?? '' };
+    return {
+      text: (textBlock as any)?.text ?? '',
+      _debug: { provider: 'anthropic', model: params.model, systemPromptStatic: params.systemPromptStatic, systemPromptDynamic: params.systemPromptDynamic, userPrompt: params.userPrompt },
+    };
   }
 
   async generateStructured(params: {
@@ -50,10 +54,11 @@ export class AnthropicProvider implements AiProvider {
     schema: Record<string, unknown>;
     schemaName: string;
   }): Promise<AiProviderResult> {
+    const systemBlocks = this.buildSystemBlocks(params.systemPromptStatic, params.systemPromptDynamic);
     const response = await this.client.messages.create({
       model: params.model,
       max_tokens: 4096,
-      system: this.buildSystemBlocks(params.systemPromptStatic, params.systemPromptDynamic),
+      system: systemBlocks,
       messages: [{ role: 'user', content: params.userPrompt }],
       tools: [
         {
@@ -69,6 +74,9 @@ export class AnthropicProvider implements AiProvider {
     if (!toolBlock || toolBlock.type !== 'tool_use') {
       throw new Error('Anthropic did not return a tool_use block');
     }
-    return { text: JSON.stringify((toolBlock as any).input) };
+    return {
+      text: JSON.stringify((toolBlock as any).input),
+      _debug: { provider: 'anthropic', model: params.model, systemPromptStatic: params.systemPromptStatic, systemPromptDynamic: params.systemPromptDynamic, userPrompt: params.userPrompt, schemaName: params.schemaName },
+    };
   }
 }

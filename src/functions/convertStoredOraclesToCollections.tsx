@@ -1,7 +1,7 @@
 import { Datasworn } from "@datasworn/core";
 import { License } from "types/Datasworn";
-import { HomebrewOracleTableDocument } from "api-calls/homebrew/oracles/tables/_homebrewOracleTable.type";
-import { HomebrewOracleCollectionDocument } from "api-calls/homebrew/oracles/collections/_homebrewOracleCollection.type";
+import { HomebrewOracleTableDocument } from "types/homebrew/HomebrewOracleTable.type";
+import { HomebrewOracleCollectionDocument } from "types/homebrew/HomebrewOracleCollection.type";
 
 const DEFAULT_SOURCE: Datasworn.SourceInfo = {
   title: "Homebrew Content",

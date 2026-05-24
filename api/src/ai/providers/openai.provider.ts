@@ -24,7 +24,10 @@ export class OpenAiProvider implements AiProvider {
       input: params.userPrompt,
     });
 
-    return { text: completion.output_text };
+    return {
+      text: completion.output_text,
+      _debug: { provider: 'openai', model: params.model, instructions, userPrompt: params.userPrompt },
+    };
   }
 
   async generateStructured(params: {
@@ -53,7 +56,10 @@ export class OpenAiProvider implements AiProvider {
       },
     });
 
-    return { text: completion.output_text };
+    return {
+      text: completion.output_text,
+      _debug: { provider: 'openai', model: params.model, instructions, userPrompt: params.userPrompt, schemaName: params.schemaName },
+    };
   }
 
   async generateImage(prompt: string): Promise<string[]> {

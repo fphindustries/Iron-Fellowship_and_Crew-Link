@@ -1,7 +1,7 @@
-import { api } from "config/api.config";
 import { CharacterSummaryRequest, CharacterSummaryOutput } from "types/AI.type";
+import { aiPost } from "./_aiPost";
 
 export const generateCharacterSummary = (
   params: CharacterSummaryRequest
 ): Promise<CharacterSummaryOutput> =>
-  api.post<CharacterSummaryOutput>("/api/ai/character/summary", params);
+  aiPost<CharacterSummaryOutput>("/api/ai/character/summary", params);

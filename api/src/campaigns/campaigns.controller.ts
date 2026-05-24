@@ -28,6 +28,7 @@ export class CampaignsController {
   @Post()
   async create(@Req() req: any, @Body() body: any) {
     const user = req.user as { id: string };
+    if (body.type === 'co-op') body.type = 'coop';
     const result = await this.svc.create(user.id, body);
     this.gateway.emit('updated', result.id, {});
     return result;
@@ -36,6 +37,7 @@ export class CampaignsController {
   @Patch(':id')
   @UseGuards(CampaignMemberGuard)
   async update(@Param('id') id: string, @Body() body: any) {
+    if (body.type === 'co-op') body.type = 'coop';
     const result = await this.svc.update(id, body);
     this.gateway.emit('updated', id, {});
     return result;

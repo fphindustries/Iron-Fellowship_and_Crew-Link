@@ -81,6 +81,12 @@ export const createCurrentWorldSlice: CreateSliceType<CurrentWorldSlice> = (
       const worldId = getState().worlds.currentWorld.currentWorldId;
       if (!worldId) return Promise.reject("No world id defined.");
       await api.patch(`/api/worlds/${worldId}/ai-settings`, settings);
+      set((store) => {
+        const current = store.worlds.currentWorld.worldAiSettings;
+        store.worlds.currentWorld.worldAiSettings = current
+          ? { ...current, ...settings }
+          : (settings as any);
+      });
     },
 
     resetStore: () => {

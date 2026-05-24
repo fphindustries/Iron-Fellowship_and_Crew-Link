@@ -2,6 +2,7 @@ export type AiProviderName = 'openai' | 'anthropic';
 
 export interface AiProviderResult {
   text: string;
+  _debug?: object;
 }
 
 export interface AiProvider {

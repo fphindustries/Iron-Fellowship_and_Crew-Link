@@ -1,7 +1,7 @@
-import { api } from "config/api.config";
 import { StatAllocationRequest, StatAllocationOutput } from "types/AI.type";
+import { aiPost } from "./_aiPost";
 
 export const recommendStatAllocation = (
   params: StatAllocationRequest
 ): Promise<StatAllocationOutput> =>
-  api.post<StatAllocationOutput>("/api/ai/character/stats", params);
+  aiPost<StatAllocationOutput>("/api/ai/character/stats", params);

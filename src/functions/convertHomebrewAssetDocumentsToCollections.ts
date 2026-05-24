@@ -1,7 +1,7 @@
 import { Datasworn } from "@datasworn/core";
 import { License } from "types/Datasworn";
-import { HomebrewAssetDocument } from "api-calls/homebrew/assets/assets/_homebrewAssets.type";
-import { HomebrewAssetCollectionDocument } from "api-calls/homebrew/assets/collections/_homebrewAssetCollection.type";
+import { HomebrewAssetDocument } from "types/homebrew/HomebrewAssets.type";
+import { HomebrewAssetCollectionDocument } from "types/homebrew/HomebrewAssetCollection.type";
 import { convertIdPart } from "./dataswornIdEncoder";
 
 const DEFAULT_SOURCE: Datasworn.SourceInfo = {

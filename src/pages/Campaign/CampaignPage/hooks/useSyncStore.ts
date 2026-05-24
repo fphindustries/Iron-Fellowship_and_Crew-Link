@@ -16,12 +16,21 @@ import { useListenToSharedAssets } from "stores/campaign/currentCampaign/sharedA
 import { useListenToLogs } from "stores/gameLog/useListenToLogs";
 import { useListenToHomebrewContent } from "stores/homebrew/useListenToHomebrewContent";
 import { useSyncTheme } from "providers/ThemeProvider/useSyncTheme";
+import { useCampaignQuery } from "hooks/queries/useCampaignsQuery";
+import { toCampaignDocument } from "stores/campaign/campaign.slice";
+import { useWorldQuery } from "hooks/queries/useWorldsQuery";
 
 export function useSyncStore() {
   const { campaignId } = useParams();
 
   const setCampaignId = useStore(
     (store) => store.campaigns.currentCampaign.setCurrentCampaignId
+  );
+  const setCurrentCampaign = useStore(
+    (store) => store.campaigns.currentCampaign.setCurrentCampaign
+  );
+  const setCurrentWorld = useStore(
+    (store) => store.worlds.currentWorld.setCurrentWorld
   );
   const expansionIds = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaign?.expansionIds
@@ -33,6 +42,17 @@ export function useSyncStore() {
       setCampaignId(undefined);
     };
   }, [campaignId, setCampaignId]);
+
+  const { data: campaignData } = useCampaignQuery(campaignId);
+  useEffect(() => {
+    if (!campaignData) return;
+    setCurrentCampaign(toCampaignDocument(campaignData));
+  }, [campaignData, setCurrentCampaign]);
+
+  const { data: worldData } = useWorldQuery(campaignData?.worldId);
+  useEffect(() => {
+    setCurrentWorld(worldData ?? undefined);
+  }, [worldData, setCurrentWorld]);
 
   useListenToCurrentCampaignCharacters();
   useListenToCurrentCampaignCharacterAssets();

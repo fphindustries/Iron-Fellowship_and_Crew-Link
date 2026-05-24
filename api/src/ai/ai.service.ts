@@ -70,6 +70,7 @@ export class AiService {
     const provider = this.getProvider(providerName);
     let responseData: any;
 
+    let _debug: object | undefined;
     if (useStructuredOutput) {
       const result = await provider.generateStructured({
         model,
@@ -79,9 +80,11 @@ export class AiService {
         schema: BOOKKEEPER_JSON_SCHEMA,
         schemaName: 'bookkeeper_output',
       });
+      _debug = result._debug;
       responseData = { mode, bookkeeper: JSON.parse(result.text) };
     } else {
       const result = await provider.generateText({ model, systemPromptStatic, systemPromptDynamic, userPrompt });
+      _debug = result._debug;
       responseData = { mode, text: result.text };
     }
 
@@ -111,7 +114,7 @@ export class AiService {
       })
       .returning();
 
-    return { ...responseData, eventId: event.id };
+    return { ...responseData, eventId: event.id, _debug };
   }
 
   async updateEventStatus(id: string, body: any) {
@@ -200,7 +203,7 @@ export class AiService {
       schemaName: 'path_recommendation_output',
     });
 
-    return JSON.parse(result.text);
+    return { ...JSON.parse(result.text), _debug: result._debug };
   }
 
   async generateBackstory(body: any) {
@@ -221,7 +224,7 @@ export class AiService {
       systemPromptDynamic: '',
       userPrompt: userParts.join('\n'),
     });
-    return { backstory: result.text };
+    return { backstory: result.text, _debug: result._debug };
   }
 
   async generateVow(body: any) {
@@ -247,7 +250,7 @@ export class AiService {
       systemPromptDynamic: '',
       userPrompt: userParts.join('\n') || 'Generate a fitting background vow.',
     });
-    return { vow: result.text.trim() };
+    return { vow: result.text.trim(), _debug: result._debug };
   }
 
   async recommendFinalAsset(body: any) {
@@ -294,7 +297,7 @@ export class AiService {
       schema: SCHEMA,
       schemaName: 'asset_recommendation_output',
     });
-    return JSON.parse(result.text);
+    return { ...JSON.parse(result.text), _debug: result._debug };
   }
 
   async recommendStatAllocation(body: any) {
@@ -344,7 +347,7 @@ export class AiService {
       schema: SCHEMA,
       schemaName: 'stat_allocation_output',
     });
-    return JSON.parse(result.text);
+    return { ...JSON.parse(result.text), _debug: result._debug };
   }
 
   async randomizeAppearance(body: any) {
@@ -381,7 +384,7 @@ export class AiService {
       schema: SCHEMA,
       schemaName: 'appearance_output',
     });
-    return JSON.parse(result.text);
+    return { ...JSON.parse(result.text), _debug: result._debug };
   }
 
   async generatePortraits(body: any) {
@@ -401,7 +404,7 @@ export class AiService {
       'Digital art, dramatic lighting, square composition, no text, no watermarks.',
     ].filter(Boolean).join(' ');
     const images = await this.openai.generateImage(prompt);
-    return { images };
+    return { images, _debug: { provider: 'openai', model: 'gpt-image-1', prompt } };
   }
 
   async generateCharacterSummary(body: any) {
@@ -430,7 +433,7 @@ export class AiService {
       systemPromptDynamic: '',
       userPrompt: userParts.join('\n'),
     });
-    return { summary: result.text };
+    return { summary: result.text, _debug: result._debug };
   }
 
   async generateWorldDescription(body: any) {
@@ -453,7 +456,7 @@ export class AiService {
       systemPromptDynamic: '',
       userPrompt,
     });
-    return { description: result.text };
+    return { description: result.text, _debug: result._debug };
   }
 
   async generateSectorContent(body: any) {
@@ -512,6 +515,6 @@ export class AiService {
       schema: OUTPUT_SCHEMA,
       schemaName: 'SectorGenerationOutput',
     });
-    return JSON.parse(raw.text);
+    return { ...JSON.parse(raw.text), _debug: raw._debug };
   }
 }

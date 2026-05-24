@@ -1,7 +1,7 @@
-import { api } from "config/api.config";
 import { WorldDescriptionRequest, WorldDescriptionOutput } from "types/AI.type";
+import { aiPost } from "./_aiPost";
 
 export const generateWorldDescription = (
   params: WorldDescriptionRequest
 ): Promise<WorldDescriptionOutput> =>
-  api.post<WorldDescriptionOutput>("/api/ai/world/description", params);
+  aiPost<WorldDescriptionOutput>("/api/ai/world/description", params);

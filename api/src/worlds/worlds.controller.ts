@@ -36,7 +36,21 @@ export class WorldsController {
   @Patch(':worldId')
   @UseGuards(WorldOwnerGuard)
   async update(@Param('worldId') id: string, @Body() body: any) {
-    const result = await this.svc.update(id, body);
+    const patch: Record<string, unknown> = { ...body };
+    // Client sends camelCase aliases; remap to Drizzle schema field names.
+    if ('newTruths' in patch) {
+      patch.newTruthsJson = patch.newTruths;
+      delete patch.newTruths;
+    }
+    if ('worldDescription' in patch) {
+      const raw = patch.worldDescription;
+      const values: number[] = Array.isArray(raw)
+        ? raw
+        : Object.values(raw as Record<string, number>);
+      patch.worldDescriptionBytes = Buffer.from(values);
+      delete patch.worldDescription;
+    }
+    const result = await this.svc.update(id, patch as any);
     this.gateway.emit('updated', id, {});
     return result;
   }
@@ -279,7 +293,8 @@ export class WorldsController {
   @Patch(':worldId/ai-settings')
   @UseGuards(WorldOwnerGuard)
   async upsertAiSettings(@Param('worldId') wid: string, @Body() body: any) {
-    const result = await this.svc.upsertWorldAiSettings(wid, body);
+    const { provider, ...configPatch } = body;
+    const result = await this.svc.upsertWorldAiSettings(wid, { provider, configPatch });
     this.gateway.emit('updated', wid, {});
     return result;
   }

@@ -1,7 +1,7 @@
-import { api } from "config/api.config";
 import { VowRequest, VowOutput } from "types/AI.type";
+import { aiPost } from "./_aiPost";
 
 export const generateCharacterVow = (
   params: VowRequest
 ): Promise<VowOutput> =>
-  api.post<VowOutput>("/api/ai/character/vow", params);
+  aiPost<VowOutput>("/api/ai/character/vow", params);

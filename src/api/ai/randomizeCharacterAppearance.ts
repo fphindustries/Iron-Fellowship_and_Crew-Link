@@ -1,7 +1,7 @@
-import { api } from "config/api.config";
 import { RandomizeAppearanceRequest, RandomizeAppearanceOutput } from "types/AI.type";
+import { aiPost } from "./_aiPost";
 
 export const randomizeCharacterAppearance = (
   params: RandomizeAppearanceRequest
 ): Promise<RandomizeAppearanceOutput> =>
-  api.post<RandomizeAppearanceOutput>("/api/ai/character/appearance", params);
+  aiPost<RandomizeAppearanceOutput>("/api/ai/character/appearance", params);

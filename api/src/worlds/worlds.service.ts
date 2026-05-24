@@ -46,7 +46,14 @@ export class WorldsService {
   }
 
   async update(id: string, patch: Partial<typeof schema.worlds.$inferInsert>) {
-    const [updated] = await this.db.update(schema.worlds).set(patch).where(eq(schema.worlds.id, id)).returning();
+    const validKeys = Object.keys(schema.worlds) as (keyof typeof schema.worlds.$inferInsert)[];
+    const filteredPatch = Object.fromEntries(
+      Object.entries(patch).filter(([k]) => validKeys.includes(k as any)),
+    ) as Partial<typeof schema.worlds.$inferInsert>;
+    if (!Object.keys(filteredPatch).length) {
+      return this.findOne(id);
+    }
+    const [updated] = await this.db.update(schema.worlds).set(filteredPatch).where(eq(schema.worlds.id, id)).returning();
     return updated;
   }
 
@@ -260,16 +267,41 @@ export class WorldsService {
       .from(schema.worldAiSettings)
       .where(eq(schema.worldAiSettings.worldId, worldId))
       .limit(1);
-    return row ?? null;
+    if (!row) return null;
+    // Flatten configJson so the client sees { provider, worldTonePrompt, modeConfigs, ... }
+    return { provider: row.provider, ...((row.configJson as object) ?? {}) };
   }
 
-  async upsertWorldAiSettings(worldId: string, patch: Partial<typeof schema.worldAiSettings.$inferInsert>) {
-    const [row] = await this.db
-      .insert(schema.worldAiSettings)
-      .values({ worldId, ...patch } as any)
-      .onConflictDoUpdate({ target: schema.worldAiSettings.worldId, set: patch as any })
-      .returning();
-    return row;
+  async upsertWorldAiSettings(worldId: string, patch: { provider?: string; configPatch?: Record<string, unknown> }) {
+    const existing = await this.db
+      .select()
+      .from(schema.worldAiSettings)
+      .where(eq(schema.worldAiSettings.worldId, worldId))
+      .limit(1)
+      .then(([r]) => r ?? null);
+
+    const existingConfig = (existing?.configJson ?? {}) as Record<string, unknown>;
+    const newConfig = patch.configPatch && Object.keys(patch.configPatch).length
+      ? { ...existingConfig, ...patch.configPatch }
+      : existingConfig;
+
+    let row: typeof schema.worldAiSettings.$inferSelect;
+    if (!existing) {
+      [row] = await this.db
+        .insert(schema.worldAiSettings)
+        .values({ worldId, provider: patch.provider ?? 'openai', configJson: newConfig })
+        .returning();
+    } else {
+      const set: Partial<typeof schema.worldAiSettings.$inferInsert> = {};
+      if (patch.provider !== undefined) set.provider = patch.provider;
+      if (patch.configPatch && Object.keys(patch.configPatch).length) set.configJson = newConfig;
+      [row] = await this.db
+        .update(schema.worldAiSettings)
+        .set(set)
+        .where(eq(schema.worldAiSettings.worldId, worldId))
+        .returning();
+    }
+    return { provider: row.provider, ...((row.configJson as object) ?? {}) };
   }
 
   async addOwner(worldId: string, userId: string) {

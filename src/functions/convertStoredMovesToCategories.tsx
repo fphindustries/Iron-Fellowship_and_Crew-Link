@@ -3,8 +3,8 @@ import { License } from "types/Datasworn";
 import {
   MoveType,
   HomebrewMoveDocument,
-} from "api-calls/homebrew/moves/moves/_homebrewMove.type";
-import { HomebrewMoveCategoryDocument } from "api-calls/homebrew/moves/categories/_homebrewMoveCategory.type";
+} from "types/homebrew/HomebrewMove.type";
+import { HomebrewMoveCategoryDocument } from "types/homebrew/HomebrewMoveCategory.type";
 
 const DEFAULT_SOURCE: Datasworn.SourceInfo = {
   title: "Homebrew Content",

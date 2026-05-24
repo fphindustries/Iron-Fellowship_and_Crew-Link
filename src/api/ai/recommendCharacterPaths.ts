@@ -1,7 +1,7 @@
-import { api } from "config/api.config";
 import { PathRecommendationRequest, PathRecommendationOutput } from "types/AI.type";
+import { aiPost } from "./_aiPost";
 
 export const recommendCharacterPaths = (
   params: PathRecommendationRequest
 ): Promise<PathRecommendationOutput> =>
-  api.post<PathRecommendationOutput>("/api/ai/character/paths", params);
+  aiPost<PathRecommendationOutput>("/api/ai/character/paths", params);
