@@ -26,9 +26,11 @@ export const worldEntityKeys = {
 // ── Row transforms ──────────────────────────────────────────────────────────
 
 function toLocation(row: Record<string, unknown>): Location {
+  const imageFilenames = (row.imageFilenames as string[]) ?? [];
   return {
     name: row.name as string,
-    imageFilenames: (row.imageFilenames as string[]) ?? [],
+    imageFilenames,
+    imageUrl: imageFilenames[0] ?? undefined,
     updatedDate: row.updatedAt ? new Date(row.updatedAt as string) : new Date(),
     createdDate: row.createdAt ? new Date(row.createdAt as string) : new Date(),
     ...((row.dataJson as object) ?? {}),
@@ -36,9 +38,11 @@ function toLocation(row: Record<string, unknown>): Location {
 }
 
 function toNPC(row: Record<string, unknown>): NPC {
+  const imageFilenames = (row.imageFilenames as string[]) ?? [];
   return {
     name: row.name as string,
-    imageFilenames: (row.imageFilenames as string[]) ?? [],
+    imageFilenames,
+    imageUrl: imageFilenames[0] ?? undefined,
     updatedDate: row.updatedAt ? new Date(row.updatedAt as string) : new Date(),
     createdDate: row.createdAt ? new Date(row.createdAt as string) : new Date(),
     ...((row.dataJson as object) ?? {}),
@@ -46,9 +50,11 @@ function toNPC(row: Record<string, unknown>): NPC {
 }
 
 function toLore(row: Record<string, unknown>): Lore {
+  const imageFilenames = (row.imageFilenames as string[]) ?? [];
   return {
     name: row.name as string,
-    imageFilenames: (row.imageFilenames as string[]) ?? [],
+    imageFilenames,
+    imageUrl: imageFilenames[0] ?? undefined,
     updatedDate: row.updatedAt ? new Date(row.updatedAt as string) : new Date(),
     createdDate: row.createdAt ? new Date(row.createdAt as string) : new Date(),
     ...((row.dataJson as object) ?? {}),

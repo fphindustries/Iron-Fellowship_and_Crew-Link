@@ -16,7 +16,7 @@ import PsychologyIcon from "@mui/icons-material/Psychology";
 import { useState } from "react";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { useStore } from "stores/store";
-import { generateCharacterVow } from "api/ai/generateCharacterVow";
+import { generateCharacterVowStream } from "api/ai/generateCharacterVow";
 import { WorldContext } from "types/AI.type";
 import { Datasworn } from "@datasworn/core";
 
@@ -75,13 +75,14 @@ export function CreateBackgroundVowStep({
     setAiError(null);
     setVowText("");
     try {
-      const result = await generateCharacterVow({
+      for await (const chunk of generateCharacterVowStream({
         paths: pathNames,
         backstory,
         prompt,
         worldContext,
-      });
-      setVowText(result?.vow ?? "");
+      })) {
+        setVowText((prev) => prev + chunk);
+      }
     } catch {
       setAiError("Failed to generate vow. Please try again.");
     } finally {
@@ -319,29 +320,32 @@ export function CreateBackgroundVowStep({
       {/* AI-generated editable result */}
       {method !== "write" && showAi && (
         <Box mt={2}>
-          {aiLoading ? (
+          {aiLoading && !vowText && (
             <Stack direction="row" alignItems="center" spacing={1} mb={2}>
               <CircularProgress size={16} />
               <Typography variant="body2" color="text.secondary">
                 Generating vow…
               </Typography>
             </Stack>
-          ) : (
-            vowText && (
-              <>
-                <Typography variant="subtitle2" gutterBottom>
+          )}
+          {vowText && (
+            <>
+              <Stack direction="row" alignItems="center" spacing={1} mb={0.5}>
+                <Typography variant="subtitle2">
                   Generated vow — feel free to edit:
                 </Typography>
-                <TextField
-                  multiline
-                  minRows={2}
-                  fullWidth
-                  value={vowText}
-                  onChange={(e) => setVowText(e.target.value)}
-                  sx={{ mb: 2 }}
-                />
-              </>
-            )
+                {aiLoading && <CircularProgress size={14} />}
+              </Stack>
+              <TextField
+                multiline
+                minRows={2}
+                fullWidth
+                value={vowText}
+                onChange={(e) => setVowText(e.target.value)}
+                disabled={aiLoading}
+                sx={{ mb: 2 }}
+              />
+            </>
           )}
         </Box>
       )}
@@ -349,7 +353,7 @@ export function CreateBackgroundVowStep({
       <Button
         variant="contained"
         onClick={() => onComplete(vowText.trim())}
-        disabled={!canConfirm}
+        disabled={!canConfirm || aiLoading}
       >
         Confirm Vow
       </Button>

@@ -21,6 +21,7 @@ export interface SetStatsStepProps {
   pathNames: string[];
   backstory: string;
   backgroundVow: string;
+  finalAsset?: string;
   initialStats?: Record<string, number>;
   worldContext?: WorldContext;
 }
@@ -30,6 +31,7 @@ export function SetStatsStep({
   pathNames,
   backstory,
   backgroundVow,
+  finalAsset,
   initialStats,
   worldContext,
 }: SetStatsStepProps) {
@@ -99,6 +101,7 @@ export function SetStatsStep({
         backstory,
         backgroundVow,
         stats: statEntries,
+        finalAsset,
         worldContext,
       });
       if (result?.allocations) {

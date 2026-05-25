@@ -1,5 +1,9 @@
 import {
-  WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, ConnectedSocket,
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
@@ -13,7 +17,10 @@ export class CampaignGateway {
   }
 
   @SubscribeMessage('leave-room')
-  leaveRoom(@MessageBody() entityId: string, @ConnectedSocket() socket: Socket) {
+  leaveRoom(
+    @MessageBody() entityId: string,
+    @ConnectedSocket() socket: Socket,
+  ) {
     socket.leave(`campaign:${entityId}`);
   }
 

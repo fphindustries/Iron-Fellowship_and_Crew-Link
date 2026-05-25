@@ -7,7 +7,7 @@ export interface PortraitAvatarProps {
   characterId: string;
   name?: string;
   portraitSettings?: {
-    filename: string;
+    url: string;
     position: {
       x: number;
       y: number;
@@ -39,10 +39,10 @@ export function PortraitAvatar(props: PortraitAvatarProps) {
     (store) => store.characters.characterPortraitMap[characterId]?.url
   );
 
-  const filename = portraitSettings?.filename;
+  const url = portraitSettings?.url;
   useEffect(() => {
-    loadPortrait(uid, characterId, filename);
-  }, [uid, characterId, filename, loadPortrait]);
+    loadPortrait(uid, characterId, url);
+  }, [uid, characterId, url, loadPortrait]);
 
   return (
     <PortraitAvatarDisplay

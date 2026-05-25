@@ -2,11 +2,7 @@ import { CreateSliceType } from "stores/store.type";
 import { LoreSlice } from "./lore.slice.type";
 import { defaultLoreSlice } from "./lore.slice.default";
 import { api } from "config/api.config";
-import { uploadImage, deleteImage, getImageUrl } from "lib/storage.lib";
-
-function constructLoreImagePath(worldId: string, loreId: string) {
-  return `/worlds/${worldId}/lore/${loreId}`;
-}
+import { fileToBase64 } from "lib/storage.lib";
 
 function toLore(row: any) {
   return {
@@ -59,10 +55,6 @@ export const createLoreSlice: CreateSliceType<LoreSlice> = (set, getState) => ({
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
     if (!worldId) return Promise.reject("No world found");
-    const filename = world.currentWorldLore.loreMap[loreId]?.imageFilenames?.[0];
-    if (filename) {
-      await deleteImage(constructLoreImagePath(worldId, loreId), filename).catch(() => {});
-    }
     await api.del(`/api/worlds/${worldId}/lore/${loreId}`);
     set((store) => {
       delete store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
@@ -120,13 +112,9 @@ export const createLoreSlice: CreateSliceType<LoreSlice> = (set, getState) => ({
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
     if (!worldId) return Promise.reject("No world found");
-    const oldFilename = world.currentWorldLore.loreMap[loreId]?.imageFilenames?.[0];
-    const imagePath = constructLoreImagePath(worldId, loreId);
-    if (oldFilename) await deleteImage(imagePath, oldFilename).catch(() => {});
-    await uploadImage(imagePath, image);
-    const imageFilenames = [image.name];
+    const imageUrl = await fileToBase64(image);
+    const imageFilenames = [imageUrl];
     await api.patch(`/api/worlds/${worldId}/lore/${loreId}`, { imageFilenames });
-    const imageUrl = await getImageUrl(`${imagePath}/${image.name}`);
     set((store) => {
       const lore = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];
       if (lore) {
@@ -140,10 +128,8 @@ export const createLoreSlice: CreateSliceType<LoreSlice> = (set, getState) => ({
   removeLoreImage: async (loreId) => {
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
-    const filename = world.currentWorldLore.loreMap[loreId]?.imageFilenames?.[0];
     if (!worldId) return Promise.reject("No world found");
-    if (!filename) return Promise.reject("Lore did not have an image");
-    await deleteImage(constructLoreImagePath(worldId, loreId), filename);
+    if (!world.currentWorldLore.loreMap[loreId]?.imageFilenames?.[0]) return Promise.reject("Lore did not have an image");
     await api.patch(`/api/worlds/${worldId}/lore/${loreId}`, { imageFilenames: [] });
     set((store) => {
       const lore = store.worlds.currentWorld.currentWorldLore.loreMap[loreId];

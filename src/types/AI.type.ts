@@ -21,12 +21,10 @@ export type AnthropicModelId =
   | "claude-haiku-4-5-20251001";
 
 export interface WorldAiModeConfig {
-  anthropicModel?: AnthropicModelId;
   customInstructions?: string;
 }
 
 export interface WorldAiSettings {
-  provider: AiProviderName;
   worldTonePrompt?: string;
   assumptions?: string;
   portraitStyleAnchor?: string;
@@ -160,10 +158,12 @@ export interface PathRecommendationOutput {
 
 export interface PathRecommendationRequest {
   description: string;
+  worldContext?: WorldContext;
 }
 
 export interface BackstoryRequest {
   prompt: string;
+  paths?: string[];
   worldContext?: WorldContext;
 }
 
@@ -212,6 +212,7 @@ export interface StatAllocationRequest {
   backstory: string;
   backgroundVow: string;
   stats: StatAllocationEntry[];
+  finalAsset?: string;
   worldContext?: WorldContext;
 }
 

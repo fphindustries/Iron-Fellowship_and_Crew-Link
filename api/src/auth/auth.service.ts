@@ -20,7 +20,11 @@ export class AuthService {
     private readonly mail: MailService,
   ) {}
 
-  async findOrCreateUser(email: string, displayName: string, photoUrl?: string) {
+  async findOrCreateUser(
+    email: string,
+    displayName: string,
+    photoUrl?: string,
+  ) {
     const [existing] = await this.db
       .select()
       .from(schema.users)
@@ -81,7 +85,8 @@ export class AuthService {
       )
       .limit(1);
 
-    if (!tokenRow) throw new UnauthorizedException('Invalid or expired magic link');
+    if (!tokenRow)
+      throw new UnauthorizedException('Invalid or expired magic link');
 
     await this.db
       .update(schema.magicLinkTokens)

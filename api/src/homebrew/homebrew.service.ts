@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, or, sql } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
@@ -25,12 +30,19 @@ export class HomebrewService {
   }
 
   async findOne(id: string) {
-    const [c] = await this.db.select().from(schema.homebrewCollections).where(eq(schema.homebrewCollections.id, id)).limit(1);
+    const [c] = await this.db
+      .select()
+      .from(schema.homebrewCollections)
+      .where(eq(schema.homebrewCollections.id, id))
+      .limit(1);
     if (!c) throw new NotFoundException();
     return c;
   }
 
-  async create(userId: string, data: Partial<typeof schema.homebrewCollections.$inferInsert>) {
+  async create(
+    userId: string,
+    data: Partial<typeof schema.homebrewCollections.$inferInsert>,
+  ) {
     const [collection] = await this.db
       .insert(schema.homebrewCollections)
       .values({ ...data, creator: userId } as any)
@@ -38,35 +50,62 @@ export class HomebrewService {
     return collection;
   }
 
-  async update(id: string, userId: string, patch: Partial<typeof schema.homebrewCollections.$inferInsert>) {
+  async update(
+    id: string,
+    userId: string,
+    patch: Partial<typeof schema.homebrewCollections.$inferInsert>,
+  ) {
     const c = await this.findOne(id);
-    if (c.creator !== userId && !c.editors.includes(userId)) throw new ForbiddenException();
-    const [updated] = await this.db.update(schema.homebrewCollections).set(patch).where(eq(schema.homebrewCollections.id, id)).returning();
+    if (c.creator !== userId && !c.editors.includes(userId))
+      throw new ForbiddenException();
+    const [updated] = await this.db
+      .update(schema.homebrewCollections)
+      .set(patch)
+      .where(eq(schema.homebrewCollections.id, id))
+      .returning();
     return updated;
   }
 
   async remove(id: string, userId: string) {
     const c = await this.findOne(id);
     if (c.creator !== userId) throw new ForbiddenException();
-    await this.db.delete(schema.homebrewCollections).where(eq(schema.homebrewCollections.id, id));
+    await this.db
+      .delete(schema.homebrewCollections)
+      .where(eq(schema.homebrewCollections.id, id));
   }
 
   async getContent(collectionId: string) {
-    return this.db.select().from(schema.homebrewContent).where(eq(schema.homebrewContent.collectionId, collectionId));
+    return this.db
+      .select()
+      .from(schema.homebrewContent)
+      .where(eq(schema.homebrewContent.collectionId, collectionId));
   }
 
-  async addContent(collectionId: string, contentType: typeof schema.homebrewContentTypeEnum.enumValues[number], dataJson: object) {
-    const [item] = await this.db.insert(schema.homebrewContent).values({ collectionId, contentType, dataJson }).returning();
+  async addContent(
+    collectionId: string,
+    contentType: (typeof schema.homebrewContentTypeEnum.enumValues)[number],
+    dataJson: object,
+  ) {
+    const [item] = await this.db
+      .insert(schema.homebrewContent)
+      .values({ collectionId, contentType, dataJson })
+      .returning();
     return item;
   }
 
   async updateContent(id: string, dataJson: object) {
-    const [item] = await this.db.update(schema.homebrewContent).set({ dataJson }).where(eq(schema.homebrewContent.id, id)).returning();
+    const [item] = await this.db
+      .update(schema.homebrewContent)
+      .set({ dataJson })
+      .where(eq(schema.homebrewContent.id, id))
+      .returning();
     return item;
   }
 
   async removeContent(id: string) {
-    await this.db.delete(schema.homebrewContent).where(eq(schema.homebrewContent.id, id));
+    await this.db
+      .delete(schema.homebrewContent)
+      .where(eq(schema.homebrewContent.id, id));
   }
 
   async createInviteKey(collectionId: string) {
@@ -85,7 +124,8 @@ export class HomebrewService {
       .from(schema.homebrewInviteKeys)
       .where(eq(schema.homebrewInviteKeys.key, key))
       .limit(1);
-    if (!invite || invite.expiresAt < new Date()) throw new NotFoundException('Invalid or expired invite key');
+    if (!invite || invite.expiresAt < new Date())
+      throw new NotFoundException('Invalid or expired invite key');
     return invite;
   }
 

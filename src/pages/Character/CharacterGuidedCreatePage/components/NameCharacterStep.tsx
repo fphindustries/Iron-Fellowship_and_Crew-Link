@@ -4,6 +4,7 @@ import {
   Button,
   CircularProgress,
   Paper,
+  Stack,
   Typography,
 } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
@@ -13,7 +14,7 @@ import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { TextFieldWithOracle } from "components/shared/TextFieldWithOracle/TextFieldWithOracle";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
-import { generateCharacterSummary } from "api/ai/generateCharacterSummary";
+import { generateCharacterSummaryStream } from "api/ai/generateCharacterSummary";
 import { WorldContext } from "types/AI.type";
 
 const nameOraclesIronsworn = [
@@ -80,8 +81,9 @@ export function NameCharacterStep({
   const handleGenerateSummary = async () => {
     setSummaryLoading(true);
     setSummaryError(null);
+    setAiSummary("");
     try {
-      const result = await generateCharacterSummary({
+      for await (const chunk of generateCharacterSummaryStream({
         name: name.trim() || "Unknown",
         paths: pathNames,
         backstory,
@@ -91,9 +93,8 @@ export function NameCharacterStep({
         wear,
         pronouns,
         worldContext,
-      });
-      if (result?.summary) {
-        setAiSummary(result.summary);
+      })) {
+        setAiSummary((prev) => prev + chunk);
       }
     } catch {
       setSummaryError("Failed to generate summary. Please try again.");
@@ -145,21 +146,33 @@ export function NameCharacterStep({
         </Alert>
       )}
 
-      {aiSummary && (
+      {(aiSummary || summaryLoading) && (
         <Paper
           variant="outlined"
           sx={{ p: 2, mb: 3, bgcolor: "background.paperInlay" }}
         >
-          <Typography variant="body2" sx={{ fontStyle: "italic" }}>
-            {aiSummary}
-          </Typography>
+          {aiSummary ? (
+            <Stack direction="row" alignItems="flex-start" spacing={1}>
+              <Typography variant="body2" sx={{ fontStyle: "italic", flex: 1 }}>
+                {aiSummary}
+              </Typography>
+              {summaryLoading && <CircularProgress size={14} sx={{ mt: 0.3, flexShrink: 0 }} />}
+            </Stack>
+          ) : (
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <CircularProgress size={16} />
+              <Typography variant="body2" color="text.secondary">
+                Generating summary…
+              </Typography>
+            </Stack>
+          )}
         </Paper>
       )}
 
       <Button
         variant="contained"
         onClick={() => onComplete(name.trim(), aiSummary)}
-        disabled={!name.trim()}
+        disabled={!name.trim() || summaryLoading}
       >
         Continue
       </Button>

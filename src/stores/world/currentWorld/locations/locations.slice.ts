@@ -2,13 +2,9 @@ import { CreateSliceType } from "stores/store.type";
 import { LocationTab, LocationsSlice } from "./locations.slice.type";
 import { defaultLocationsSlice } from "./locations.slice.default";
 import { api } from "config/api.config";
-import { uploadImage, deleteImage, getImageUrl } from "lib/storage.lib";
+import { fileToBase64 } from "lib/storage.lib";
 import { Location } from "types/Locations.type";
 import { MapEntryType } from "types/Locations.type";
-
-function constructLocationImagePath(worldId: string, locationId: string) {
-  return `/worlds/${worldId}/locations/${locationId}`;
-}
 
 function toLocation(row: any): Location {
   return {
@@ -107,11 +103,6 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
     if (!worldId) return Promise.reject("No world found");
-    const filename =
-      world.currentWorldLocations.locationMap[locationId]?.imageFilenames?.[0];
-    if (filename) {
-      await deleteImage(constructLocationImagePath(worldId, locationId), filename).catch(() => {});
-    }
     await api.del(`/api/worlds/${worldId}/locations/${locationId}`);
     set((store) => {
       delete store.worlds.currentWorld.currentWorldLocations.locationMap[locationId];
@@ -239,16 +230,9 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
     if (!worldId) return Promise.reject("No world found");
-    const oldFilename =
-      world.currentWorldLocations.locationMap[locationId]?.imageFilenames?.[0];
-    if (oldFilename) {
-      await deleteImage(constructLocationImagePath(worldId, locationId), oldFilename).catch(() => {});
-    }
-    const imagePath = constructLocationImagePath(worldId, locationId);
-    await uploadImage(imagePath, image);
-    const imageFilenames = [image.name];
+    const imageUrl = await fileToBase64(image);
+    const imageFilenames = [imageUrl];
     await api.patch(`/api/worlds/${worldId}/locations/${locationId}`, { imageFilenames });
-    const imageUrl = await getImageUrl(`${imagePath}/${image.name}`);
     set((store) => {
       const loc = store.worlds.currentWorld.currentWorldLocations.locationMap[locationId];
       if (loc) {
@@ -263,19 +247,12 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
     if (!worldId) return Promise.reject("No world found");
-    const oldFilename =
-      world.currentWorldLocations.locationMap[locationId]?.mapBackgroundImageFilename;
-    const imagePath = constructLocationImagePath(worldId, locationId);
-    if (oldFilename) {
-      await deleteImage(imagePath, oldFilename).catch(() => {});
-    }
-    await uploadImage(imagePath, image);
-    const mapBackgroundImageFilename = image.name;
+    const mapBackgroundImageUrl = await fileToBase64(image);
+    const mapBackgroundImageFilename = mapBackgroundImageUrl;
     const loc = getState().worlds.currentWorld.currentWorldLocations.locationMap[locationId];
     await api.patch(`/api/worlds/${worldId}/locations/${locationId}`, {
       dataJson: { ...((loc as any)?.dataJson ?? {}), mapBackgroundImageFilename },
     });
-    const mapBackgroundImageUrl = await getImageUrl(`${imagePath}/${image.name}`);
     set((store) => {
       const l = store.worlds.currentWorld.currentWorldLocations.locationMap[locationId];
       if (l) {
@@ -286,33 +263,17 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
   },
 
   updateMapBackgroundImageUrl: (locationId, filename) => {
-    const worldId = getState().worlds.currentWorld.currentWorldId ?? "";
-    if (!worldId) return;
-    if (!filename) {
-      set((store) => {
-        const loc = store.worlds.currentWorld.currentWorldLocations.locationMap[locationId];
-        if (loc) loc.mapBackgroundImageUrl = undefined;
-      });
-      return;
-    }
-    getImageUrl(constructLocationImagePath(worldId, locationId) + "/" + filename)
-      .then((url) => {
-        set((store) => {
-          const loc = store.worlds.currentWorld.currentWorldLocations.locationMap[locationId];
-          if (loc) loc.mapBackgroundImageUrl = url;
-        });
-      })
-      .catch(() => {});
+    set((store) => {
+      const loc = store.worlds.currentWorld.currentWorldLocations.locationMap[locationId];
+      if (loc) loc.mapBackgroundImageUrl = filename ?? undefined;
+    });
   },
 
   removeLocationImage: async (locationId) => {
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
-    const filename =
-      world.currentWorldLocations.locationMap[locationId]?.imageFilenames?.[0];
     if (!worldId) return Promise.reject("No world found");
-    if (!filename) return Promise.reject("Location did not have an image");
-    await deleteImage(constructLocationImagePath(worldId, locationId), filename);
+    if (!world.currentWorldLocations.locationMap[locationId]?.imageFilenames?.[0]) return Promise.reject("Location did not have an image");
     await api.patch(`/api/worlds/${worldId}/locations/${locationId}`, { imageFilenames: [] });
     set((store) => {
       const loc = store.worlds.currentWorld.currentWorldLocations.locationMap[locationId];
@@ -326,11 +287,8 @@ export const createLocationsSlice: CreateSliceType<LocationsSlice> = (
   removeLocationMapBackground: async (locationId) => {
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
-    const filename =
-      world.currentWorldLocations.locationMap[locationId]?.mapBackgroundImageFilename;
     if (!worldId) return Promise.reject("No world found");
-    if (!filename) return Promise.reject("Location did not have an image");
-    await deleteImage(constructLocationImagePath(worldId, locationId), filename);
+    if (!world.currentWorldLocations.locationMap[locationId]?.mapBackgroundImageFilename) return Promise.reject("Location did not have an image");
     const loc = getState().worlds.currentWorld.currentWorldLocations.locationMap[locationId];
     await api.patch(`/api/worlds/${worldId}/locations/${locationId}`, {
       dataJson: { ...((loc as any)?.dataJson ?? {}), mapBackgroundImageFilename: null },

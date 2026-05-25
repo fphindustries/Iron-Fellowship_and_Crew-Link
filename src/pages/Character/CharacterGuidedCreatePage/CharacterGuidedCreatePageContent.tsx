@@ -71,6 +71,7 @@ export function CharacterGuidedCreatePageContent() {
   const [completedPathNames, setCompletedPathNames] = useState<string[]>([]);
   const [completedBackstory, setCompletedBackstory] = useState("");
   const [completedBackgroundVow, setCompletedBackgroundVow] = useState("");
+  const [completedFinalAssetName, setCompletedFinalAssetName] = useState<string | undefined>(undefined);
 
   const assetMap = useStore((s) => s.rules.assetMaps.assetMap);
   const { data: allWorlds } = useAllWorldsQuery();
@@ -173,6 +174,7 @@ export function CharacterGuidedCreatePageContent() {
   };
 
   const handleFinalAssetComplete = (asset: AssetDocument) => {
+    setCompletedFinalAssetName(assetMap[asset.id]?.name ?? undefined);
     setFormData((prev) => ({ ...prev, assets: [...prev.assets, asset] }));
     advance();
   };
@@ -380,11 +382,15 @@ export function CharacterGuidedCreatePageContent() {
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Box>
             {activeStep === 0 && (
-              <ChoosePathsStep onComplete={handlePathsComplete} />
+              <ChoosePathsStep
+                onComplete={handlePathsComplete}
+                worldContext={worldContext}
+              />
             )}
             {activeStep === 1 && (
               <CreateBackstoryStep
                 onComplete={handleBackstoryComplete}
+                paths={completedPathNames}
                 worldContext={worldContext}
               />
             )}
@@ -411,6 +417,7 @@ export function CharacterGuidedCreatePageContent() {
                 pathNames={completedPathNames}
                 backstory={completedBackstory}
                 backgroundVow={completedBackgroundVow}
+                finalAsset={completedFinalAssetName}
                 initialStats={
                   Object.keys(formData.stats).length > 0
                     ? formData.stats

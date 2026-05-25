@@ -32,7 +32,10 @@ export class AnthropicProvider implements AiProvider {
     systemPromptDynamic: string;
     userPrompt: string;
   }): Promise<AiProviderResult> {
-    const systemBlocks = this.buildSystemBlocks(params.systemPromptStatic, params.systemPromptDynamic);
+    const systemBlocks = this.buildSystemBlocks(
+      params.systemPromptStatic,
+      params.systemPromptDynamic,
+    );
     const response = await this.client.messages.create({
       model: params.model,
       max_tokens: 4096,
@@ -42,8 +45,40 @@ export class AnthropicProvider implements AiProvider {
     const textBlock = response.content.find((b) => b.type === 'text');
     return {
       text: (textBlock as any)?.text ?? '',
-      _debug: { provider: 'anthropic', model: params.model, systemPromptStatic: params.systemPromptStatic, systemPromptDynamic: params.systemPromptDynamic, userPrompt: params.userPrompt },
+      _debug: {
+        provider: 'anthropic',
+        model: params.model,
+        systemPromptStatic: params.systemPromptStatic,
+        systemPromptDynamic: params.systemPromptDynamic,
+        userPrompt: params.userPrompt,
+      },
     };
+  }
+
+  async *generateTextStream(params: {
+    model: string;
+    systemPromptStatic: string;
+    systemPromptDynamic: string;
+    userPrompt: string;
+  }): AsyncGenerator<string> {
+    const systemBlocks = this.buildSystemBlocks(
+      params.systemPromptStatic,
+      params.systemPromptDynamic,
+    );
+    const stream = this.client.messages.stream({
+      model: params.model,
+      max_tokens: 4096,
+      system: systemBlocks,
+      messages: [{ role: 'user', content: params.userPrompt }],
+    });
+    for await (const chunk of stream) {
+      if (
+        chunk.type === 'content_block_delta' &&
+        chunk.delta.type === 'text_delta'
+      ) {
+        yield chunk.delta.text;
+      }
+    }
   }
 
   async generateStructured(params: {
@@ -54,7 +89,10 @@ export class AnthropicProvider implements AiProvider {
     schema: Record<string, unknown>;
     schemaName: string;
   }): Promise<AiProviderResult> {
-    const systemBlocks = this.buildSystemBlocks(params.systemPromptStatic, params.systemPromptDynamic);
+    const systemBlocks = this.buildSystemBlocks(
+      params.systemPromptStatic,
+      params.systemPromptDynamic,
+    );
     const response = await this.client.messages.create({
       model: params.model,
       max_tokens: 4096,
@@ -63,8 +101,10 @@ export class AnthropicProvider implements AiProvider {
       tools: [
         {
           name: params.schemaName,
-          description: 'Return structured data matching this schema. Always use this tool to respond.',
-          input_schema: params.schema as Anthropic.Messages.Tool['input_schema'],
+          description:
+            'Return structured data matching this schema. Always use this tool to respond.',
+          input_schema:
+            params.schema as Anthropic.Messages.Tool['input_schema'],
         },
       ],
       tool_choice: { type: 'tool', name: params.schemaName },
@@ -76,7 +116,14 @@ export class AnthropicProvider implements AiProvider {
     }
     return {
       text: JSON.stringify((toolBlock as any).input),
-      _debug: { provider: 'anthropic', model: params.model, systemPromptStatic: params.systemPromptStatic, systemPromptDynamic: params.systemPromptDynamic, userPrompt: params.userPrompt, schemaName: params.schemaName },
+      _debug: {
+        provider: 'anthropic',
+        model: params.model,
+        systemPromptStatic: params.systemPromptStatic,
+        systemPromptDynamic: params.systemPromptDynamic,
+        userPrompt: params.userPrompt,
+        schemaName: params.schemaName,
+      },
     };
   }
 }

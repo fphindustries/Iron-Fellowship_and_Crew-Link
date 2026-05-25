@@ -60,15 +60,27 @@ export class NotesService {
   }
 
   async getContent(id: string) {
-    const charNote = await this.db.select().from(schema.characterNotes).where(eq(schema.characterNotes.id, id)).limit(1);
+    const charNote = await this.db
+      .select()
+      .from(schema.characterNotes)
+      .where(eq(schema.characterNotes.id, id))
+      .limit(1);
     if (charNote.length) return { content: charNote[0].content };
-    const campNote = await this.db.select().from(schema.campaignNotes).where(eq(schema.campaignNotes.id, id)).limit(1);
+    const campNote = await this.db
+      .select()
+      .from(schema.campaignNotes)
+      .where(eq(schema.campaignNotes.id, id))
+      .limit(1);
     if (campNote.length) return { content: campNote[0].content };
     return null;
   }
 
   async remove(id: string) {
-    await this.db.delete(schema.characterNotes).where(eq(schema.characterNotes.id, id));
-    await this.db.delete(schema.campaignNotes).where(eq(schema.campaignNotes.id, id));
+    await this.db
+      .delete(schema.characterNotes)
+      .where(eq(schema.characterNotes.id, id));
+    await this.db
+      .delete(schema.campaignNotes)
+      .where(eq(schema.campaignNotes.id, id));
   }
 }

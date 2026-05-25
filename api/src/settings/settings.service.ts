@@ -73,7 +73,9 @@ export class SettingsService {
   }
 
   async deleteCustomMove(id: string) {
-    await this.db.delete(schema.userCustomMoves).where(eq(schema.userCustomMoves.id, id));
+    await this.db
+      .delete(schema.userCustomMoves)
+      .where(eq(schema.userCustomMoves.id, id));
   }
 
   async getCustomOracles(userId: string) {
@@ -101,10 +103,16 @@ export class SettingsService {
   }
 
   async deleteCustomOracle(id: string) {
-    await this.db.delete(schema.userCustomOracles).where(eq(schema.userCustomOracles.id, id));
+    await this.db
+      .delete(schema.userCustomOracles)
+      .where(eq(schema.userCustomOracles.id, id));
   }
 
-  async getEntitySettings(userId: string, entityId: string, entityType: string) {
+  async getEntitySettings(
+    userId: string,
+    entityId: string,
+    entityType: string,
+  ) {
     const [row] = await this.db
       .select()
       .from(schema.userEntitySettings)
@@ -118,12 +126,21 @@ export class SettingsService {
     return row ?? { userId, entityId, entityType, dataJson: {} };
   }
 
-  async updateEntitySettings(userId: string, entityId: string, entityType: string, data: any) {
+  async updateEntitySettings(
+    userId: string,
+    entityId: string,
+    entityType: string,
+    data: any,
+  ) {
     const [row] = await this.db
       .insert(schema.userEntitySettings)
       .values({ userId, entityId, entityType, dataJson: data })
       .onConflictDoUpdate({
-        target: [schema.userEntitySettings.userId, schema.userEntitySettings.entityId, schema.userEntitySettings.entityType],
+        target: [
+          schema.userEntitySettings.userId,
+          schema.userEntitySettings.entityId,
+          schema.userEntitySettings.entityType,
+        ],
         set: { dataJson: data },
       })
       .returning();

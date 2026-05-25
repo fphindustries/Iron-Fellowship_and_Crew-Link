@@ -1,5 +1,13 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CampaignMemberGuard } from '../common/guards/campaign-member.guard';
@@ -52,21 +60,31 @@ export class CampaignsController {
 
   @Post(':campaignId/members')
   @UseGuards(CampaignMemberGuard)
-  async addMember(@Param('campaignId') cid: string, @Body('userId') userId: string) {
+  async addMember(
+    @Param('campaignId') cid: string,
+    @Body('userId') userId: string,
+  ) {
     await this.svc.addMember(cid, userId);
     this.gateway.emit('updated', cid, {});
   }
 
   @Delete(':campaignId/members/:userId')
   @UseGuards(CampaignMemberGuard)
-  async removeMember(@Param('campaignId') cid: string, @Param('userId') uid: string) {
+  async removeMember(
+    @Param('campaignId') cid: string,
+    @Param('userId') uid: string,
+  ) {
     await this.svc.removeMember(cid, uid);
     this.gateway.emit('updated', cid, {});
   }
 
   @Post(':campaignId/characters')
   @UseGuards(CampaignMemberGuard)
-  async addCharacter(@Req() req: any, @Param('campaignId') cid: string, @Body('characterId') charId: string) {
+  async addCharacter(
+    @Req() req: any,
+    @Param('campaignId') cid: string,
+    @Body('characterId') charId: string,
+  ) {
     const user = req.user as { id: string };
     await this.svc.addCharacter(cid, user.id, charId);
     this.gateway.emit('updated', cid, {});
@@ -74,7 +92,10 @@ export class CampaignsController {
 
   @Delete(':campaignId/characters/:characterId')
   @UseGuards(CampaignMemberGuard)
-  async removeCharacter(@Param('campaignId') cid: string, @Param('characterId') charId: string) {
+  async removeCharacter(
+    @Param('campaignId') cid: string,
+    @Param('characterId') charId: string,
+  ) {
     await this.svc.removeCharacter(cid, charId);
     this.gateway.emit('updated', cid, {});
   }
@@ -93,14 +114,20 @@ export class CampaignsController {
 
   @Post(':campaignId/gms')
   @UseGuards(CampaignMemberGuard)
-  async addGm(@Param('campaignId') cid: string, @Body('userId') userId: string) {
+  async addGm(
+    @Param('campaignId') cid: string,
+    @Body('userId') userId: string,
+  ) {
     await this.svc.addGm(cid, userId);
     this.gateway.emit('updated', cid, {});
   }
 
   @Delete(':campaignId/gms/:userId')
   @UseGuards(CampaignMemberGuard)
-  async removeGm(@Param('campaignId') cid: string, @Param('userId') uid: string) {
+  async removeGm(
+    @Param('campaignId') cid: string,
+    @Param('userId') uid: string,
+  ) {
     await this.svc.removeGm(cid, uid);
     this.gateway.emit('updated', cid, {});
   }
@@ -121,7 +148,11 @@ export class CampaignsController {
 
   @Patch(':campaignId/assets/:id')
   @UseGuards(CampaignMemberGuard)
-  async updateAsset(@Param('campaignId') cid: string, @Param('id') id: string, @Body() body: any) {
+  async updateAsset(
+    @Param('campaignId') cid: string,
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
     const result = await this.svc.updateAsset(id, body);
     this.gateway.emit('updated', cid, {});
     return result;
@@ -150,7 +181,11 @@ export class CampaignsController {
 
   @Patch(':campaignId/tracks/:id')
   @UseGuards(CampaignMemberGuard)
-  async updateTrack(@Param('campaignId') cid: string, @Param('id') id: string, @Body() body: any) {
+  async updateTrack(
+    @Param('campaignId') cid: string,
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
     const result = await this.svc.updateTrack(id, body);
     this.gateway.emit('updated', cid, {});
     return result;

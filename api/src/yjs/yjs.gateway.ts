@@ -1,6 +1,10 @@
 import {
-  WebSocketGateway, WebSocketServer, SubscribeMessage,
-  MessageBody, ConnectedSocket, OnGatewayDisconnect,
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+  OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import * as Y from 'yjs';
@@ -22,11 +26,17 @@ export class YjsGateway implements OnGatewayDisconnect {
   }
 
   @SubscribeMessage('join-document')
-  async joinDocument(@MessageBody() data: DocRef, @ConnectedSocket() socket: Socket) {
+  async joinDocument(
+    @MessageBody() data: DocRef,
+    @ConnectedSocket() socket: Socket,
+  ) {
     const room = this.roomKey(data.entityType, data.entityId);
     socket.join(room);
 
-    const state = await this.yjsService.loadState(data.entityType, data.entityId);
+    const state = await this.yjsService.loadState(
+      data.entityType,
+      data.entityId,
+    );
     if (state) {
       socket.emit('sync-step-2', { diff: Array.from(state) });
     }
@@ -37,7 +47,10 @@ export class YjsGateway implements OnGatewayDisconnect {
     @MessageBody() data: DocRef & { stateVector: number[] },
     @ConnectedSocket() socket: Socket,
   ) {
-    const persisted = await this.yjsService.loadState(data.entityType, data.entityId);
+    const persisted = await this.yjsService.loadState(
+      data.entityType,
+      data.entityId,
+    );
     if (!persisted) return;
 
     const sv = new Uint8Array(data.stateVector);

@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { SettingsService } from './settings.service';
 
@@ -26,7 +36,10 @@ export class SettingsController {
 
   @Patch('accessibility')
   updateAccessibilitySettings(@Req() req: any, @Body() body: any) {
-    return this.svc.updateAccessibilitySettings((req.user as { id: string }).id, body);
+    return this.svc.updateAccessibilitySettings(
+      (req.user as { id: string }).id,
+      body,
+    );
   }
 
   // Custom moves
@@ -73,12 +86,30 @@ export class SettingsController {
 
   // Entity settings (per-character/campaign/world settings)
   @Get('entity/:entityType/:entityId')
-  getEntitySettings(@Req() req: any, @Param('entityType') entityType: string, @Param('entityId') entityId: string) {
-    return this.svc.getEntitySettings((req.user as { id: string }).id, entityId, entityType);
+  getEntitySettings(
+    @Req() req: any,
+    @Param('entityType') entityType: string,
+    @Param('entityId') entityId: string,
+  ) {
+    return this.svc.getEntitySettings(
+      (req.user as { id: string }).id,
+      entityId,
+      entityType,
+    );
   }
 
   @Patch('entity/:entityType/:entityId')
-  updateEntitySettings(@Req() req: any, @Param('entityType') entityType: string, @Param('entityId') entityId: string, @Body() body: any) {
-    return this.svc.updateEntitySettings((req.user as { id: string }).id, entityId, entityType, body);
+  updateEntitySettings(
+    @Req() req: any,
+    @Param('entityType') entityType: string,
+    @Param('entityId') entityId: string,
+    @Body() body: any,
+  ) {
+    return this.svc.updateEntitySettings(
+      (req.user as { id: string }).id,
+      entityId,
+      entityType,
+      body,
+    );
   }
 }

@@ -14,7 +14,7 @@ export function toUserProfile(row: UserRow): UserProfile {
     displayName: row.displayName,
     photoUrl: row.photoUrl ?? undefined,
     hidePhoto: row.hidePhoto,
-    layout: ((row.layoutJson as UserLayout) ?? {}),
+    layout: (row.layoutJson as UserLayout) ?? {},
     appVersion: row.appVersion ?? undefined,
   };
 }
@@ -24,7 +24,10 @@ export class UsersService {
   constructor(@Inject(DB) private readonly db: NodePgDatabase<typeof schema>) {}
 
   async findById(id: string): Promise<UserProfile> {
-    const [user] = await this.db.select().from(schema.users).where(eq(schema.users.id, id));
+    const [user] = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, id));
     if (!user) throw new NotFoundException('User not found');
     return toUserProfile(user);
   }

@@ -26,8 +26,37 @@ export class OpenAiProvider implements AiProvider {
 
     return {
       text: completion.output_text,
-      _debug: { provider: 'openai', model: params.model, instructions, userPrompt: params.userPrompt },
+      _debug: {
+        provider: 'openai',
+        model: params.model,
+        instructions,
+        userPrompt: params.userPrompt,
+      },
     };
+  }
+
+  async *generateTextStream(params: {
+    model: string;
+    systemPromptStatic: string;
+    systemPromptDynamic: string;
+    userPrompt: string;
+  }): AsyncGenerator<string> {
+    const instructions = [params.systemPromptStatic, params.systemPromptDynamic]
+      .filter(Boolean)
+      .join('\n\n');
+
+    const stream = await this.client.responses.create({
+      model: params.model,
+      instructions,
+      input: params.userPrompt,
+      stream: true,
+    });
+
+    for await (const event of stream) {
+      if (event.type === 'response.output_text.delta') {
+        yield event.delta;
+      }
+    }
   }
 
   async generateStructured(params: {
@@ -58,7 +87,13 @@ export class OpenAiProvider implements AiProvider {
 
     return {
       text: completion.output_text,
-      _debug: { provider: 'openai', model: params.model, instructions, userPrompt: params.userPrompt, schemaName: params.schemaName },
+      _debug: {
+        provider: 'openai',
+        model: params.model,
+        instructions,
+        userPrompt: params.userPrompt,
+        schemaName: params.schemaName,
+      },
     };
   }
 

@@ -1,5 +1,13 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CharactersService } from './characters.service';
@@ -73,7 +81,10 @@ export class CharactersController {
   }
 
   @Delete(':characterId/assets/:id')
-  async removeAsset(@Param('characterId') cid: string, @Param('id') id: string) {
+  async removeAsset(
+    @Param('characterId') cid: string,
+    @Param('id') id: string,
+  ) {
     await this.svc.removeAsset(id);
     this.gateway.emit('updated', cid, {});
   }
@@ -104,7 +115,10 @@ export class CharactersController {
   }
 
   @Delete(':characterId/tracks/:id')
-  async removeTrack(@Param('characterId') cid: string, @Param('id') id: string) {
+  async removeTrack(
+    @Param('characterId') cid: string,
+    @Param('id') id: string,
+  ) {
     await this.svc.removeTrack(id);
     this.gateway.emit('updated', cid, {});
   }

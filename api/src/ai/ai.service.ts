@@ -24,18 +24,45 @@ export class AiService {
     @Inject(DB) private readonly db: NodePgDatabase<typeof schema>,
     private readonly config: ConfigService,
   ) {
-    this.openai = new OpenAiProvider(config.get<string>('OPENAI_API_KEY') ?? '');
-    this.anthropic = new AnthropicProvider(config.get<string>('ANTHROPIC_API_KEY') ?? '');
+    this.openai = new OpenAiProvider(
+      config.get<string>('OPENAI_API_KEY') ?? '',
+    );
+    this.anthropic = new AnthropicProvider(
+      config.get<string>('ANTHROPIC_API_KEY') ?? '',
+    );
   }
 
   private getProvider(name: AiProviderName): AiProvider {
     return name === 'anthropic' ? this.anthropic : this.openai;
   }
 
-  private resolveModel(provider: AiProviderName, mode: string, customModel?: string): string {
-    if (customModel) return customModel;
+  private get guideProvider(): AiProvider {
+    const name = (this.config.get<string>('AI_PROVIDER') ??
+      'openai') as AiProviderName;
+    return this.getProvider(name);
+  }
+
+  private get guideProviderName(): AiProviderName {
+    return (this.config.get<string>('AI_PROVIDER') ??
+      'openai') as AiProviderName;
+  }
+
+  private get characterProvider(): AiProvider {
+    const name = (this.config.get<string>('AI_PROVIDER_CHARACTER') ??
+      'openai') as AiProviderName;
+    return this.getProvider(name);
+  }
+
+  private get characterProviderName(): AiProviderName {
+    return (this.config.get<string>('AI_PROVIDER_CHARACTER') ??
+      'openai') as AiProviderName;
+  }
+
+  private resolveModel(provider: AiProviderName, mode: string): string {
     if (provider === 'anthropic') {
-      return HEAVY_MODES.has(mode) ? 'claude-sonnet-4-20250514' : DEFAULT_ANTHROPIC_MODEL;
+      return HEAVY_MODES.has(mode)
+        ? 'claude-sonnet-4-20250514'
+        : DEFAULT_ANTHROPIC_MODEL;
     }
     return HEAVY_MODES.has(mode) ? 'gpt-4o' : DEFAULT_OPENAI_MODEL;
   }
@@ -51,23 +78,25 @@ export class AiService {
   async callGuide(userId: string, body: any) {
     const { mode, context, campaignId, worldId } = body;
 
-    const worldSettings = worldId ? await this.getWorldAiSettings(worldId) : null;
-    const providerName: AiProviderName = (worldSettings?.provider as AiProviderName) ?? 'openai';
+    const worldSettings = worldId
+      ? await this.getWorldAiSettings(worldId)
+      : null;
+    const providerName = this.guideProviderName;
     const modeConfig = (worldSettings?.configJson as any)?.modeConfigs?.[mode];
-    const model = this.resolveModel(
-      providerName,
-      mode,
-      providerName === 'anthropic' ? modeConfig?.anthropicModel : undefined,
-    );
+    const model = this.resolveModel(providerName, mode);
 
-    const { systemPromptStatic, systemPromptDynamic, userPrompt, useStructuredOutput } =
-      buildPrompt(mode, context, {
-        worldTonePrompt: (worldSettings?.configJson as any)?.worldTonePrompt,
-        assumptions: (worldSettings?.configJson as any)?.assumptions,
-        modeCustomInstructions: modeConfig?.customInstructions,
-      });
+    const {
+      systemPromptStatic,
+      systemPromptDynamic,
+      userPrompt,
+      useStructuredOutput,
+    } = buildPrompt(mode, context, {
+      worldTonePrompt: (worldSettings?.configJson as any)?.worldTonePrompt,
+      assumptions: (worldSettings?.configJson as any)?.assumptions,
+      modeCustomInstructions: modeConfig?.customInstructions,
+    });
 
-    const provider = this.getProvider(providerName);
+    const provider = this.guideProvider;
     let responseData: any;
 
     let _debug: object | undefined;
@@ -83,7 +112,12 @@ export class AiService {
       _debug = result._debug;
       responseData = { mode, bookkeeper: JSON.parse(result.text) };
     } else {
-      const result = await provider.generateText({ model, systemPromptStatic, systemPromptDynamic, userPrompt });
+      const result = await provider.generateText({
+        model,
+        systemPromptStatic,
+        systemPromptDynamic,
+        userPrompt,
+      });
       _debug = result._debug;
       responseData = { mode, text: result.text };
     }
@@ -186,16 +220,18 @@ export class AiService {
       'Keep reasoning brief (1-2 sentences) and focused on why the background fits the concept.',
     ].join('\n');
 
-    const userPrompt = [
+    const userParts = [
       `Available backgrounds:\n${BACKGROUNDS_REFERENCE}`,
       '',
       `Character concept: "${body.description}"`,
       '',
       'Recommend 3 backgrounds that best fit this concept.',
-    ].join('\n');
+    ];
+    appendWorldContextLines(userParts, body.worldContext);
+    const userPrompt = userParts.join('\n');
 
-    const result = await this.openai.generateStructured({
-      model: DEFAULT_OPENAI_MODEL,
+    const result = await this.characterProvider.generateStructured({
+      model: this.resolveModel(this.characterProviderName, 'default'),
       systemPromptStatic: systemPrompt,
       systemPromptDynamic: '',
       userPrompt,
@@ -206,28 +242,62 @@ export class AiService {
     return { ...JSON.parse(result.text), _debug: result._debug };
   }
 
-  async generateBackstory(body: any) {
-    const { prompt, worldContext } = body;
+  private buildBackstoryPrompts(body: any) {
+    const { prompt, paths, worldContext } = body;
     const systemPrompt = [
       'You are a character creation assistant for Ironsworn: Starforged, a sci-fi narrative RPG.',
       'Write a concise character backstory (2–3 short paragraphs) based on the given prompt.',
+      "The backstory should reflect the character's paths and leave room for their vow to emerge naturally.",
       'Match the tone: hopeful space opera, personal struggle against a vast and dangerous cosmos.',
       'Keep it simple and evocative — leave room for the story to unfold in play.',
       'Do not mention game mechanics or asset names.',
       'Write in second person ("you").',
+      'If world truths or assumptions are provided, honor them: the backstory must be consistent with those truths and set in that specific version of the Forge.',
     ].join('\n');
-    const userParts = [prompt];
+    const userParts = [
+      paths?.length ? `Chosen paths: ${paths.join(', ')}.` : '',
+      prompt,
+    ].filter(Boolean);
     appendWorldContextLines(userParts, worldContext);
-    const result = await this.openai.generateText({
-      model: DEFAULT_OPENAI_MODEL,
+    return { systemPrompt, userPrompt: userParts.join('\n') };
+  }
+
+  async generateBackstory(body: any) {
+    const { systemPrompt, userPrompt } = this.buildBackstoryPrompts(body);
+    const result = await this.characterProvider.generateText({
+      model: this.resolveModel(this.characterProviderName, 'default'),
       systemPromptStatic: systemPrompt,
       systemPromptDynamic: '',
-      userPrompt: userParts.join('\n'),
+      userPrompt,
     });
     return { backstory: result.text, _debug: result._debug };
   }
 
-  async generateVow(body: any) {
+  async *generateBackstoryStream(
+    body: any,
+  ): AsyncGenerator<{ text: string } | { _debug: object }> {
+    const { systemPrompt, userPrompt } = this.buildBackstoryPrompts(body);
+    const model = this.resolveModel(this.characterProviderName, 'default');
+    yield {
+      _debug: {
+        provider: this.characterProviderName,
+        model,
+        systemPromptStatic: systemPrompt,
+        systemPromptDynamic: '',
+        userPrompt,
+      },
+    };
+    for await (const chunk of this.characterProvider.generateTextStream({
+      model,
+      systemPromptStatic: systemPrompt,
+      systemPromptDynamic: '',
+      userPrompt,
+    })) {
+      yield { text: chunk };
+    }
+  }
+
+  private buildVowPrompts(body: any) {
     const { paths, backstory, prompt, worldContext } = body;
     const systemPrompt = [
       'You are a character creation assistant for Ironsworn: Starforged, a sci-fi narrative RPG.',
@@ -237,6 +307,7 @@ export class AiService {
       'Keep it to one sentence, evocative and personal but simple enough to leave room for the story to develop.',
       'Do not mention game mechanics, asset names, or difficulty ratings.',
       'Match the tone: personal struggle against a vast, dangerous cosmos.',
+      "The vow should feel like a natural continuation of the backstory and reflect the character's paths.",
     ].join('\n');
     const userParts = [
       paths?.length ? `Character paths: ${paths.join(', ')}.` : '',
@@ -244,17 +315,50 @@ export class AiService {
       prompt ? `Additional context: ${prompt}` : '',
     ].filter(Boolean);
     appendWorldContextLines(userParts, worldContext);
-    const result = await this.openai.generateText({
-      model: DEFAULT_OPENAI_MODEL,
+    return {
+      systemPrompt,
+      userPrompt: userParts.join('\n') || 'Generate a fitting background vow.',
+    };
+  }
+
+  async generateVow(body: any) {
+    const { systemPrompt, userPrompt } = this.buildVowPrompts(body);
+    const result = await this.characterProvider.generateText({
+      model: this.resolveModel(this.characterProviderName, 'default'),
       systemPromptStatic: systemPrompt,
       systemPromptDynamic: '',
-      userPrompt: userParts.join('\n') || 'Generate a fitting background vow.',
+      userPrompt,
     });
     return { vow: result.text.trim(), _debug: result._debug };
   }
 
+  async *generateVowStream(
+    body: any,
+  ): AsyncGenerator<{ text: string } | { _debug: object }> {
+    const { systemPrompt, userPrompt } = this.buildVowPrompts(body);
+    const model = this.resolveModel(this.characterProviderName, 'default');
+    yield {
+      _debug: {
+        provider: this.characterProviderName,
+        model,
+        systemPromptStatic: systemPrompt,
+        systemPromptDynamic: '',
+        userPrompt,
+      },
+    };
+    for await (const chunk of this.characterProvider.generateTextStream({
+      model,
+      systemPromptStatic: systemPrompt,
+      systemPromptDynamic: '',
+      userPrompt,
+    })) {
+      yield { text: chunk };
+    }
+  }
+
   async recommendFinalAsset(body: any) {
-    const { paths, backstory, backgroundVow, availableAssets, worldContext } = body;
+    const { paths, backstory, backgroundVow, availableAssets, worldContext } =
+      body;
     const SCHEMA = {
       type: 'object',
       properties: {
@@ -279,18 +383,20 @@ export class AiService {
       'The player has already chosen 2 path assets. Now recommend exactly 3 additional assets from the provided list.',
       'You MUST only choose asset names from the "Available assets" list provided in the user message. Do not invent or guess asset names.',
       'For each recommendation, provide the exact asset name (copied verbatim from the list) and a single sentence explaining why it fits.',
-      'Base your reasoning on the character\'s paths, backstory, and background vow.',
+      "Base your reasoning on the character's paths, backstory, and background vow.",
       'Keep reasoning concise and personal.',
     ].join('\n');
     const userParts = [
       paths?.length ? `Chosen paths: ${paths.join(', ')}.` : '',
       backstory ? `Backstory: ${backstory}` : '',
       backgroundVow ? `Background vow: ${backgroundVow}` : '',
-      availableAssets?.length ? `Available assets: ${availableAssets.join(', ')}` : '',
+      availableAssets?.length
+        ? `Available assets: ${availableAssets.join(', ')}`
+        : '',
     ].filter(Boolean);
     appendWorldContextLines(userParts, worldContext);
-    const result = await this.openai.generateStructured({
-      model: DEFAULT_OPENAI_MODEL,
+    const result = await this.characterProvider.generateStructured({
+      model: this.resolveModel(this.characterProviderName, 'default'),
       systemPromptStatic: systemPrompt,
       systemPromptDynamic: '',
       userPrompt: userParts.join('\n'),
@@ -301,7 +407,8 @@ export class AiService {
   }
 
   async recommendStatAllocation(body: any) {
-    const { paths, backstory, backgroundVow, stats, worldContext } = body;
+    const { paths, backstory, backgroundVow, stats, finalAsset, worldContext } =
+      body;
     const SCHEMA = {
       type: 'object',
       properties: {
@@ -322,11 +429,13 @@ export class AiService {
       required: ['allocations', 'reasoning'],
       additionalProperties: false,
     };
-    const statList = stats.map((s: any) => `- ${s.key} (${s.label}): ${s.description}`).join('\n');
+    const statList = stats
+      .map((s: any) => `- ${s.key} (${s.label}): ${s.description}`)
+      .join('\n');
     const systemPrompt = [
       'You are a character creation assistant for Ironsworn: Starforged, a sci-fi narrative RPG.',
       'Allocate the values [3, 2, 2, 1, 1] across exactly the stat keys provided. Each value must be used exactly once.',
-      'Choose allocations that best fit the character\'s paths, backstory, and background vow.',
+      "Choose allocations that best fit the character's paths, backstory, and background vow.",
       'Return the exact stat keys provided — do not rename or omit any.',
       'Give a brief (2-3 sentence) reasoning explaining your choices.',
       '',
@@ -337,10 +446,11 @@ export class AiService {
       paths?.length ? `Chosen paths: ${paths.join(', ')}.` : '',
       backstory ? `Backstory: ${backstory}` : '',
       backgroundVow ? `Background vow: ${backgroundVow}` : '',
+      finalAsset ? `Final asset: ${finalAsset}.` : '',
     ].filter(Boolean);
     appendWorldContextLines(userParts, worldContext);
-    const result = await this.openai.generateStructured({
-      model: DEFAULT_OPENAI_MODEL,
+    const result = await this.characterProvider.generateStructured({
+      model: this.resolveModel(this.characterProviderName, 'default'),
       systemPromptStatic: systemPrompt,
       systemPromptDynamic: '',
       userPrompt: userParts.join('\n'),
@@ -364,7 +474,7 @@ export class AiService {
     };
     const systemPrompt = [
       'You are a Starforged character creation assistant for a sci-fi narrative RPG.',
-      'Generate one or two vivid short phrases (10 words or less each) for a character\'s:',
+      "Generate one or two vivid short phrases (10 words or less each) for a character's:",
       '- look: distinctive physical features or appearance',
       '- act: personality traits or behavioral tendencies',
       '- wear: clothing, gear, or equipment they typically carry',
@@ -376,11 +486,13 @@ export class AiService {
       backgroundVow ? `Background vow: ${backgroundVow}` : '',
     ].filter(Boolean);
     appendWorldContextLines(userParts, worldContext);
-    const result = await this.openai.generateStructured({
-      model: DEFAULT_OPENAI_MODEL,
+    const result = await this.characterProvider.generateStructured({
+      model: this.resolveModel(this.characterProviderName, 'default'),
       systemPromptStatic: systemPrompt,
       systemPromptDynamic: '',
-      userPrompt: userParts.join('\n') || 'Generate appearance for a new Starforged character.',
+      userPrompt:
+        userParts.join('\n') ||
+        'Generate appearance for a new Starforged character.',
       schema: SCHEMA,
       schemaName: 'appearance_output',
     });
@@ -389,9 +501,13 @@ export class AiService {
 
   async generatePortraits(body: any) {
     const { look, act, wear, pronouns, paths, portraitStyleAnchor } = body;
-    const pathsLine = paths?.length ? ` Character roles: ${paths.join(', ')}.` : '';
+    const pathsLine = paths?.length
+      ? ` Character roles: ${paths.join(', ')}.`
+      : '';
     const pronounsLine = pronouns ? ` Pronouns: ${pronouns}.` : '';
-    const styleAnchorLine = portraitStyleAnchor ? ` Art style: ${portraitStyleAnchor}.` : '';
+    const styleAnchorLine = portraitStyleAnchor
+      ? ` Art style: ${portraitStyleAnchor}.`
+      : '';
     const prompt = [
       'Ironsworn Starforged sci-fi RPG character portrait.',
       'Close-up portrait, face clearly visible and centered, head and shoulders only.',
@@ -402,17 +518,32 @@ export class AiService {
       pronounsLine,
       styleAnchorLine,
       'Digital art, dramatic lighting, square composition, no text, no watermarks.',
-    ].filter(Boolean).join(' ');
+    ]
+      .filter(Boolean)
+      .join(' ');
     const images = await this.openai.generateImage(prompt);
-    return { images, _debug: { provider: 'openai', model: 'gpt-image-1', prompt } };
+    return {
+      images,
+      _debug: { provider: 'openai', model: 'gpt-image-1', prompt },
+    };
   }
 
-  async generateCharacterSummary(body: any) {
-    const { name, paths, backstory, backgroundVow, look, act, wear, pronouns, worldContext } = body;
+  private buildCharacterSummaryPrompts(body: any) {
+    const {
+      name,
+      paths,
+      backstory,
+      backgroundVow,
+      look,
+      act,
+      wear,
+      pronouns,
+      worldContext,
+    } = body;
     const systemPrompt = [
       'You are a narrative writer for Ironsworn: Starforged, a gritty sci-fi tabletop RPG.',
       'Write a vivid 1-2 paragraph character introduction in the third person.',
-      'Weave together the character\'s name, paths, backstory, background vow, appearance, personality, and gear into a cohesive narrative.',
+      "Weave together the character's name, paths, backstory, background vow, appearance, personality, and gear into a cohesive narrative.",
       'Be evocative and atmospheric, matching the tone of a dark science-fiction setting.',
       'Do not use headers, bullet points, or lists. Write flowing prose only.',
       `The character uses ${pronouns} pronouns.`,
@@ -427,13 +558,44 @@ export class AiService {
       wear ? `Wear: ${wear}` : '',
     ].filter(Boolean);
     appendWorldContextLines(userParts, worldContext);
-    const result = await this.openai.generateText({
-      model: DEFAULT_OPENAI_MODEL,
+    return { systemPrompt, userPrompt: userParts.join('\n') };
+  }
+
+  async generateCharacterSummary(body: any) {
+    const { systemPrompt, userPrompt } =
+      this.buildCharacterSummaryPrompts(body);
+    const result = await this.characterProvider.generateText({
+      model: this.resolveModel(this.characterProviderName, 'default'),
       systemPromptStatic: systemPrompt,
       systemPromptDynamic: '',
-      userPrompt: userParts.join('\n'),
+      userPrompt,
     });
     return { summary: result.text, _debug: result._debug };
+  }
+
+  async *generateCharacterSummaryStream(
+    body: any,
+  ): AsyncGenerator<{ text: string } | { _debug: object }> {
+    const { systemPrompt, userPrompt } =
+      this.buildCharacterSummaryPrompts(body);
+    const model = this.resolveModel(this.characterProviderName, 'default');
+    yield {
+      _debug: {
+        provider: this.characterProviderName,
+        model,
+        systemPromptStatic: systemPrompt,
+        systemPromptDynamic: '',
+        userPrompt,
+      },
+    };
+    for await (const chunk of this.characterProvider.generateTextStream({
+      model,
+      systemPromptStatic: systemPrompt,
+      systemPromptDynamic: '',
+      userPrompt,
+    })) {
+      yield { text: chunk };
+    }
   }
 
   async generateWorldDescription(body: any) {
@@ -447,11 +609,19 @@ export class AiService {
       'Do not repeat the truth names verbatim — weave their meaning into the narrative.',
     ];
     if (assumptions) systemLines.push('', 'Setting assumptions:', assumptions);
-    if (worldTonePrompt) systemLines.push('', `Additional tone: ${worldTonePrompt}`);
-    const truthsText = truths.map((t: any) => `${t.name}: ${t.description}`).join('\n');
-    const userPrompt = [`World name: ${worldName}`, '', 'Chosen truths for this world:', truthsText].join('\n');
-    const result = await this.openai.generateText({
-      model: DEFAULT_OPENAI_MODEL,
+    if (worldTonePrompt)
+      systemLines.push('', `Additional tone: ${worldTonePrompt}`);
+    const truthsText = truths
+      .map((t: any) => `${t.name}: ${t.description}`)
+      .join('\n');
+    const userPrompt = [
+      `World name: ${worldName}`,
+      '',
+      'Chosen truths for this world:',
+      truthsText,
+    ].join('\n');
+    const result = await this.guideProvider.generateText({
+      model: this.resolveModel(this.guideProviderName, 'default'),
       systemPromptStatic: systemLines.join('\n'),
       systemPromptDynamic: '',
       userPrompt,
@@ -460,7 +630,8 @@ export class AiService {
   }
 
   async generateSectorContent(body: any) {
-    const { sectorName, region, trouble, settlements, npc, worldContext } = body;
+    const { sectorName, region, trouble, settlements, npc, worldContext } =
+      body;
     const OUTPUT_SCHEMA = {
       type: 'object',
       properties: {
@@ -473,13 +644,16 @@ export class AiService {
     const systemLines = [
       'You are a creative writer for Ironsworn: Starforged, a gritty sci-fi tabletop RPG.',
       'Write vivid, atmospheric descriptions for a newly generated sector of the Forge.',
-      'Each settlement description should be 1–2 sentences, player-facing, and evoke the settlement\'s character based on its oracle-generated attributes.',
-      'The NPC description should be 1–2 sentences capturing the character\'s appearance, manner, or reputation in a way that intrigues the players.',
+      "Each settlement description should be 1–2 sentences, player-facing, and evoke the settlement's character based on its oracle-generated attributes.",
+      "The NPC description should be 1–2 sentences capturing the character's appearance, manner, or reputation in a way that intrigues the players.",
       'Write in present tense. Do not use headers or bullet points. Keep prose tight and evocative.',
     ];
-    if (worldContext?.assumptions) systemLines.push('', 'Setting assumptions:', worldContext.assumptions);
+    if (worldContext?.assumptions)
+      systemLines.push('', 'Setting assumptions:', worldContext.assumptions);
     if (worldContext?.truths?.length) {
-      const truthsText = worldContext.truths.map((t: any) => `${t.name}: ${t.description}`).join('\n');
+      const truthsText = worldContext.truths
+        .map((t: any) => `${t.name}: ${t.description}`)
+        .join('\n');
       systemLines.push('', 'World truths:', truthsText);
     }
     const settlementLines = settlements.map((s: any, i: number) => {
@@ -492,7 +666,9 @@ export class AiService {
         `  Trouble: ${s.trouble}`,
       ];
       if (s.planet) {
-        lines.push(`  Planet: ${s.planet.name} (${s.planet.className})${s.planet.atmosphere ? `, Atmosphere: ${s.planet.atmosphere}` : ''}`);
+        lines.push(
+          `  Planet: ${s.planet.name} (${s.planet.className})${s.planet.atmosphere ? `, Atmosphere: ${s.planet.atmosphere}` : ''}`,
+        );
       }
       return lines.join('\n');
     });
@@ -507,8 +683,8 @@ export class AiService {
       '',
       `Generate exactly ${settlements.length} settlement description(s) and 1 NPC description.`,
     ].join('\n');
-    const raw = await this.openai.generateStructured({
-      model: DEFAULT_OPENAI_MODEL,
+    const raw = await this.guideProvider.generateStructured({
+      model: this.resolveModel(this.guideProviderName, 'default'),
       systemPromptStatic: systemLines.join('\n'),
       systemPromptDynamic: '',
       userPrompt,

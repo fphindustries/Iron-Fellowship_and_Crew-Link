@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { GameLogService } from './game-log.service';
 
@@ -8,7 +18,10 @@ export class GameLogController {
   constructor(private readonly svc: GameLogService) {}
 
   @Get()
-  findAll(@Query('entityType') entityType: string, @Query('entityId') entityId: string) {
+  findAll(
+    @Query('entityType') entityType: string,
+    @Query('entityId') entityId: string,
+  ) {
     return this.svc.findAll(entityType, entityId);
   }
 
@@ -36,7 +49,10 @@ export class GameLogController {
   }
 
   @Delete()
-  clearLog(@Query('entityType') entityType: string, @Query('entityId') entityId: string) {
+  clearLog(
+    @Query('entityType') entityType: string,
+    @Query('entityId') entityId: string,
+  ) {
     return this.svc.clearLog(entityType, entityId);
   }
 }

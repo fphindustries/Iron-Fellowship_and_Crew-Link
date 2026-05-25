@@ -4,11 +4,7 @@ import { defaultCurrentCharacterSlice } from "./currentCharacter.slice.default";
 import { createAssetsSlice } from "./assets/assets.slice";
 import { createCharacterTracksSlice } from "./tracks/characterTracks.slice";
 import { api } from "config/api.config";
-import { deleteImage, uploadImage } from "lib/storage.lib";
-
-function constructCharacterPortraitFolderPath(uid: string, characterId: string) {
-  return `/characters/${uid}/characters/${characterId}`;
-}
+import { fileToBase64 } from "lib/storage.lib";
 
 export const createCurrentCharacterSlice: CreateSliceType<
   CurrentCharacterSlice
@@ -45,38 +41,26 @@ export const createCurrentCharacterSlice: CreateSliceType<
 
     updateCurrentCharacterPortrait: async (portrait, scale, position) => {
       const state = getState();
-      const uid = state.auth.user?.id;
       const characterId = state.characters.currentCharacter.currentCharacterId;
-      if (!uid || !characterId) return Promise.reject("Character ID or UserID were not defined");
-
-      const folderPath = constructCharacterPortraitFolderPath(uid, characterId);
-      const oldFilename = state.characters.currentCharacter.currentCharacter?.profileImage?.filename;
+      if (!characterId) return Promise.reject("Character ID was not defined");
 
       if (portrait) {
-        if (oldFilename) {
-          await deleteImage(folderPath, oldFilename).catch(() => {});
-        }
-        await uploadImage(folderPath, portrait);
+        const url = await fileToBase64(portrait);
         await api.patch<void>(`/api/characters/${characterId}`, {
-          profileImage: { filename: portrait.name, position, scale },
+          profileImage: { url, position, scale },
         });
       } else {
+        const existingUrl = state.characters.currentCharacter.currentCharacter?.profileImage?.url;
         await api.patch<void>(`/api/characters/${characterId}`, {
-          profileImage: { filename: oldFilename, position, scale },
+          profileImage: { url: existingUrl, position, scale },
         });
       }
     },
 
     removeCurrentCharacterPortrait: async () => {
       const state = getState();
-      const uid = state.auth.user?.id;
       const characterId = state.characters.currentCharacter.currentCharacterId;
-      const oldFilename = state.characters.currentCharacter.currentCharacter?.profileImage?.filename;
-      if (!uid || !characterId) return Promise.reject("Character ID or UserID were not defined");
-      if (!oldFilename) return Promise.reject("We could not find your old portrait");
-
-      const folderPath = constructCharacterPortraitFolderPath(uid, characterId);
-      await deleteImage(folderPath, oldFilename);
+      if (!characterId) return Promise.reject("Character ID was not defined");
       await api.patch<void>(`/api/characters/${characterId}`, { profileImage: null });
     },
 

@@ -22,6 +22,27 @@
       "when": 1747484827000,
       "tag": "0002_yjs_entity_id_text",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1748044800000,
+      "tag": "0003_drop_world_ai_provider",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779675780109,
+      "tag": "0004_black_raza",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1748476800000,
+      "tag": "0005_db_image_storage",
+      "breakpoints": true
     }
   ]
 }

@@ -11,7 +11,10 @@ type Db = NodePgDatabase<typeof schema>;
 export class YjsService {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  async loadState(entityType: string, entityId: string): Promise<Uint8Array | null> {
+  async loadState(
+    entityType: string,
+    entityId: string,
+  ): Promise<Uint8Array | null> {
     const [row] = await this.db
       .select()
       .from(schema.yjsDocuments)

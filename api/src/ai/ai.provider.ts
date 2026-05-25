@@ -13,6 +13,13 @@ export interface AiProvider {
     userPrompt: string;
   }): Promise<AiProviderResult>;
 
+  generateTextStream(params: {
+    model: string;
+    systemPromptStatic: string;
+    systemPromptDynamic: string;
+    userPrompt: string;
+  }): AsyncGenerator<string>;
+
   generateStructured(params: {
     model: string;
     systemPromptStatic: string;

@@ -46,28 +46,44 @@ export class GameLogService {
 
   async updateEntry(id: string, entityType: string, data: any) {
     if (entityType === 'character') {
-      const [row] = await this.db.update(schema.characterGameLog).set({ dataJson: data }).where(eq(schema.characterGameLog.id, id)).returning();
+      const [row] = await this.db
+        .update(schema.characterGameLog)
+        .set({ dataJson: data })
+        .where(eq(schema.characterGameLog.id, id))
+        .returning();
       return row;
     }
     if (entityType === 'campaign') {
-      const [row] = await this.db.update(schema.campaignGameLog).set({ dataJson: data }).where(eq(schema.campaignGameLog.id, id)).returning();
+      const [row] = await this.db
+        .update(schema.campaignGameLog)
+        .set({ dataJson: data })
+        .where(eq(schema.campaignGameLog.id, id))
+        .returning();
       return row;
     }
     throw new BadRequestException('Invalid entityType');
   }
 
   async removeEntry(id: string) {
-    await this.db.delete(schema.characterGameLog).where(eq(schema.characterGameLog.id, id));
-    await this.db.delete(schema.campaignGameLog).where(eq(schema.campaignGameLog.id, id));
+    await this.db
+      .delete(schema.characterGameLog)
+      .where(eq(schema.characterGameLog.id, id));
+    await this.db
+      .delete(schema.campaignGameLog)
+      .where(eq(schema.campaignGameLog.id, id));
   }
 
   async clearLog(entityType: string, entityId: string) {
     if (entityType === 'character') {
-      await this.db.delete(schema.characterGameLog).where(eq(schema.characterGameLog.characterId, entityId));
+      await this.db
+        .delete(schema.characterGameLog)
+        .where(eq(schema.characterGameLog.characterId, entityId));
       return;
     }
     if (entityType === 'campaign') {
-      await this.db.delete(schema.campaignGameLog).where(eq(schema.campaignGameLog.campaignId, entityId));
+      await this.db
+        .delete(schema.campaignGameLog)
+        .where(eq(schema.campaignGameLog.campaignId, entityId));
       return;
     }
     throw new BadRequestException('Invalid entityType');

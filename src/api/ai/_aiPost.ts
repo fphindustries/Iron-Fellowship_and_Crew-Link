@@ -11,3 +11,17 @@ export async function aiPost<T>(endpoint: string, params: unknown): Promise<T> {
   }
   return raw as T;
 }
+
+export async function* aiPostStream(
+  endpoint: string,
+  params: unknown
+): AsyncGenerator<string> {
+  recordAiCall(endpoint + " · request", params);
+  for await (const event of api.postStream(endpoint, params)) {
+    if (event._debug) {
+      recordAiCall(endpoint + " · provider", event._debug);
+    } else if (event.text) {
+      yield event.text;
+    }
+  }
+}

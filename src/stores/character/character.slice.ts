@@ -5,7 +5,7 @@ import { getErrorMessage } from "functions/getErrorMessage";
 import { createCurrentCharacterSlice } from "./currentCharacter/currentCharacter.slice";
 import { momentumTrack } from "data/defaultTracks";
 import { api } from "config/api.config";
-import { getImageUrl, uploadImage } from "lib/storage.lib";
+import { fileToBase64 } from "lib/storage.lib";
 
 function toCharacterDocument(row: any): any {
   return {
@@ -66,39 +66,19 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
       };
     },
 
-    loadCharacterPortrait: (uid, characterId, filename) => {
-      const existingFilename =
-        getState().characters.characterPortraitMap[characterId]?.filename;
-
-      if (!filename) {
+    loadCharacterPortrait: (_uid, characterId, url) => {
+      if (!url) {
         set((state) => {
           delete state.characters.characterPortraitMap[characterId];
         });
-      } else if (existingFilename !== filename) {
+      } else {
         set((state) => {
           state.characters.characterPortraitMap[characterId] = {
-            loading: true,
-            filename: filename,
+            loading: false,
+            filename: url,
+            url,
           };
         });
-        getImageUrl(`characters/${uid}/characters/${characterId}/${filename}`)
-          .then((url) => {
-            set((state) => {
-              state.characters.characterPortraitMap[characterId] = {
-                loading: false,
-                filename: filename,
-                url,
-              };
-            });
-          })
-          .catch(() => {
-            set((state) => {
-              state.characters.characterPortraitMap[characterId] = {
-                loading: false,
-                filename: filename,
-              };
-            });
-          });
       }
     },
 
@@ -139,9 +119,14 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
       await Promise.all(postCreation);
 
       if (portrait && portrait.image instanceof File) {
-        const portraitPath = `characters/${uid}/characters/${char.id}`;
-        await uploadImage(portraitPath, portrait.image);
-        await api.patch(`/api/characters/${char.id}`, { profileImage: portrait.image.name });
+        const url = await fileToBase64(portrait.image);
+        await api.patch(`/api/characters/${char.id}`, {
+          profileImage: {
+            url,
+            position: portrait.position ?? { x: 0.5, y: 0.5 },
+            scale: portrait.scale ?? 1,
+          },
+        });
       }
 
       return char.id;

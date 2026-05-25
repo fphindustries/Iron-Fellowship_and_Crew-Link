@@ -37,9 +37,10 @@ type Method = "table" | "random" | "manual" | "ai";
 
 export interface ChoosePathsStepProps {
   onComplete: (assets: AssetDocument[]) => void;
+  worldContext?: import("types/AI.type").WorldContext;
 }
 
-export function ChoosePathsStep({ onComplete }: ChoosePathsStepProps) {
+export function ChoosePathsStep({ onComplete, worldContext }: ChoosePathsStepProps) {
   const showAi = useAiGuide();
   const assetMap = useStore((store) => store.rules.assetMaps.assetMap);
 
@@ -112,7 +113,7 @@ export function ChoosePathsStep({ onComplete }: ChoosePathsStepProps) {
     setAiError(null);
     setRecommendations(null);
     try {
-      const result = await recommendCharacterPaths({ description });
+      const result = await recommendCharacterPaths({ description, worldContext });
       setRecommendations(result?.recommendations ?? []);
     } catch {
       setAiError("Failed to get recommendations. Please try again.");

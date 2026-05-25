@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and } from 'drizzle-orm';
@@ -14,7 +19,8 @@ export class CampaignMemberGuard implements CanActivate {
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest();
     const userId: string = req.user?.id;
-    const campaignId: string = req.params?.campaignId ?? req.params?.id ?? req.body?.campaignId;
+    const campaignId: string =
+      req.params?.campaignId ?? req.params?.id ?? req.body?.campaignId;
     if (!userId || !campaignId) throw new ForbiddenException();
 
     const [member] = await this.db

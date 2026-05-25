@@ -44,7 +44,7 @@ export interface CharacterDocument {
   adds?: number;
 
   profileImage?: Nullable<{
-    filename: string;
+    url: string;
     position: {
       x: number;
       y: number;

@@ -2,12 +2,8 @@ import { CreateSliceType } from "stores/store.type";
 import { NPCsSlice } from "./npcs.slice.type";
 import { defaultNPCsSlice } from "./npcs.slice.default";
 import { api } from "config/api.config";
-import { uploadImage, deleteImage, getImageUrl } from "lib/storage.lib";
+import { fileToBase64 } from "lib/storage.lib";
 import { NPC } from "types/NPCs.type";
-
-function constructNPCImagePath(worldId: string, npcId: string) {
-  return `/worlds/${worldId}/npcs/${npcId}`;
-}
 
 function toNPC(row: any): NPC {
   return {
@@ -62,10 +58,6 @@ export const createNPCsSlice: CreateSliceType<NPCsSlice> = (set, getState) => ({
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
     if (!worldId) return Promise.reject("No world found");
-    const filename = world.currentWorldNPCs.npcMap[npcId]?.imageFilenames?.[0];
-    if (filename) {
-      await deleteImage(constructNPCImagePath(worldId, npcId), filename).catch(() => {});
-    }
     await api.del(`/api/worlds/${worldId}/npcs/${npcId}`);
     set((store) => {
       delete store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
@@ -165,13 +157,9 @@ export const createNPCsSlice: CreateSliceType<NPCsSlice> = (set, getState) => ({
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
     if (!worldId) return Promise.reject("No world found");
-    const oldFilename = world.currentWorldNPCs.npcMap[npcId]?.imageFilenames?.[0];
-    const imagePath = constructNPCImagePath(worldId, npcId);
-    if (oldFilename) await deleteImage(imagePath, oldFilename).catch(() => {});
-    await uploadImage(imagePath, image);
-    const imageFilenames = [image.name];
+    const imageUrl = await fileToBase64(image);
+    const imageFilenames = [imageUrl];
     await api.patch(`/api/worlds/${worldId}/npcs/${npcId}`, { imageFilenames });
-    const imageUrl = await getImageUrl(`${imagePath}/${image.name}`);
     set((store) => {
       const npc = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];
       if (npc) {
@@ -185,10 +173,8 @@ export const createNPCsSlice: CreateSliceType<NPCsSlice> = (set, getState) => ({
   removeNPCImage: async (npcId) => {
     const world = getState().worlds.currentWorld;
     const worldId = world.currentWorldId;
-    const filename = world.currentWorldNPCs.npcMap[npcId]?.imageFilenames?.[0];
     if (!worldId) return Promise.reject("No world found");
-    if (!filename) return Promise.reject("No image found to remove");
-    await deleteImage(constructNPCImagePath(worldId, npcId), filename);
+    if (!world.currentWorldNPCs.npcMap[npcId]?.imageFilenames?.[0]) return Promise.reject("No image found to remove");
     await api.patch(`/api/worlds/${worldId}/npcs/${npcId}`, { imageFilenames: [] });
     set((store) => {
       const npc = store.worlds.currentWorld.currentWorldNPCs.npcMap[npcId];

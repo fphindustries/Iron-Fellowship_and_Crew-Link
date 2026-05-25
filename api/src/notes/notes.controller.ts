@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { NotesService } from './notes.service';
 
@@ -8,7 +18,10 @@ export class NotesController {
   constructor(private readonly svc: NotesService) {}
 
   @Get()
-  findAll(@Query('entityType') entityType: string, @Query('entityId') entityId: string) {
+  findAll(
+    @Query('entityType') entityType: string,
+    @Query('entityId') entityId: string,
+  ) {
     return this.svc.findAll(entityType, entityId);
   }
 
@@ -18,7 +31,11 @@ export class NotesController {
   }
 
   @Post()
-  create(@Query('entityType') entityType: string, @Query('entityId') entityId: string, @Body() body: any) {
+  create(
+    @Query('entityType') entityType: string,
+    @Query('entityId') entityId: string,
+    @Body() body: any,
+  ) {
     return this.svc.create(entityType, entityId, body);
   }
 

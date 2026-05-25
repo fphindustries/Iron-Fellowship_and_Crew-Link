@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { HomebrewService } from './homebrew.service';
 
@@ -32,7 +42,9 @@ export class HomebrewController {
   }
 
   @Get(':id/content')
-  getContent(@Param('id') id: string) { return this.svc.getContent(id); }
+  getContent(@Param('id') id: string) {
+    return this.svc.getContent(id);
+  }
 
   @Post(':id/content')
   addContent(@Param('id') id: string, @Body() body: any) {
@@ -45,13 +57,19 @@ export class HomebrewController {
   }
 
   @Delete(':id/content/:contentId')
-  removeContent(@Param('contentId') cid: string) { return this.svc.removeContent(cid); }
+  removeContent(@Param('contentId') cid: string) {
+    return this.svc.removeContent(cid);
+  }
 
   @Post(':id/invite-keys')
-  createInviteKey(@Param('id') id: string) { return this.svc.createInviteKey(id); }
+  createInviteKey(@Param('id') id: string) {
+    return this.svc.createInviteKey(id);
+  }
 
   @Get('invite/:key')
-  resolveInviteKey(@Param('key') key: string) { return this.svc.resolveInviteKey(key); }
+  resolveInviteKey(@Param('key') key: string) {
+    return this.svc.resolveInviteKey(key);
+  }
 
   @Post('invite/:key/accept')
   acceptInvite(@Req() req: any, @Param('key') key: string) {

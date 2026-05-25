@@ -12,14 +12,16 @@ import { HomebrewModule } from './homebrew/homebrew.module';
 import { NotesModule } from './notes/notes.module';
 import { GameLogModule } from './game-log/game-log.module';
 import { SettingsModule } from './settings/settings.module';
-import { StorageModule } from './storage/storage.module';
 import { AiModule } from './ai/ai.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { YjsModule } from './yjs/yjs.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.local', '.env'] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+    }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 30 }]),
     DatabaseModule,
     MailModule,
@@ -32,7 +34,6 @@ import { YjsModule } from './yjs/yjs.module';
     NotesModule,
     GameLogModule,
     SettingsModule,
-    StorageModule,
     AiModule,
     RealtimeModule,
     YjsModule,

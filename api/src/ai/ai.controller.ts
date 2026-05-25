@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AiService } from './ai.service';
 
@@ -32,9 +44,45 @@ export class AiController {
     return this.svc.generateBackstory(body);
   }
 
+  @Post('character/backstory/stream')
+  async generateBackstoryStream(@Body() body: any, @Res() res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+    try {
+      for await (const event of this.svc.generateBackstoryStream(body)) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+      res.write('data: [DONE]\n\n');
+    } catch {
+      res.write(`data: ${JSON.stringify({ error: 'Generation failed' })}\n\n`);
+    } finally {
+      res.end();
+    }
+  }
+
   @Post('character/vow')
   generateVow(@Body() body: any) {
     return this.svc.generateVow(body);
+  }
+
+  @Post('character/vow/stream')
+  async generateVowStream(@Body() body: any, @Res() res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+    try {
+      for await (const event of this.svc.generateVowStream(body)) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+      res.write('data: [DONE]\n\n');
+    } catch {
+      res.write(`data: ${JSON.stringify({ error: 'Generation failed' })}\n\n`);
+    } finally {
+      res.end();
+    }
   }
 
   @Post('character/asset')
@@ -60,6 +108,27 @@ export class AiController {
   @Post('character/summary')
   generateCharacterSummary(@Body() body: any) {
     return this.svc.generateCharacterSummary(body);
+  }
+
+  @Post('character/summary/stream')
+  async generateCharacterSummaryStream(
+    @Body() body: any,
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+    try {
+      for await (const event of this.svc.generateCharacterSummaryStream(body)) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+      res.write('data: [DONE]\n\n');
+    } catch {
+      res.write(`data: ${JSON.stringify({ error: 'Generation failed' })}\n\n`);
+    } finally {
+      res.end();
+    }
   }
 
   @Post('world/description')

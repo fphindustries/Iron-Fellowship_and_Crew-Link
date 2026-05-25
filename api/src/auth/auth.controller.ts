@@ -1,5 +1,13 @@
 import {
-  Controller, Get, Post, Body, Query, Res, UseGuards, Req, UnauthorizedException,
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  Res,
+  UseGuards,
+  Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
@@ -16,13 +24,18 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  googleLogin() { /* Passport redirects */ }
+  googleLogin() {
+    /* Passport redirects */
+  }
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   googleCallback(@Req() req: any, @Res() res: any) {
     const user = req.user as { id: string; email: string };
-    const { accessToken, refreshToken } = this.authService.issueTokens(user.id, user.email);
+    const { accessToken, refreshToken } = this.authService.issueTokens(
+      user.id,
+      user.email,
+    );
     this.setCookies(res, accessToken, refreshToken);
     res.redirect(this.config.getOrThrow<string>('FRONTEND_URL'));
   }
@@ -37,7 +50,10 @@ export class AuthController {
   @Get('magic-link/verify')
   async verifyMagicLink(@Query('token') token: string, @Res() res: any) {
     const user = await this.authService.verifyMagicLink(token);
-    const { accessToken, refreshToken } = this.authService.issueTokens(user.id, user.email);
+    const { accessToken, refreshToken } = this.authService.issueTokens(
+      user.id,
+      user.email,
+    );
     this.setCookies(res, accessToken, refreshToken);
     res.redirect(this.config.getOrThrow<string>('FRONTEND_URL'));
   }
@@ -59,10 +75,16 @@ export class AuthController {
   private setCookies(res: any, accessToken: string, refreshToken: string) {
     const secure = this.config.get<string>('NODE_ENV') === 'production';
     res.cookie('access_token', accessToken, {
-      httpOnly: true, secure, sameSite: 'lax', maxAge: 15 * 60 * 1000,
+      httpOnly: true,
+      secure,
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000,
     });
     res.cookie('refresh_token', refreshToken, {
-      httpOnly: true, secure, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
   }
 }

@@ -15,7 +15,7 @@ import CasinoIcon from "@mui/icons-material/Casino";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { useState } from "react";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
-import { generateCharacterBackstory } from "api/ai/generateCharacterBackstory";
+import { generateCharacterBackstoryStream } from "api/ai/generateCharacterBackstory";
 import { WorldContext } from "types/AI.type";
 import {
   BACKSTORY_PROMPTS,
@@ -27,10 +27,11 @@ type Method = "write" | "table" | "random" | "custom";
 
 export interface CreateBackstoryStepProps {
   onComplete: (backstory: string) => void;
+  paths?: string[];
   worldContext?: WorldContext;
 }
 
-export function CreateBackstoryStep({ onComplete, worldContext }: CreateBackstoryStepProps) {
+export function CreateBackstoryStep({ onComplete, paths, worldContext }: CreateBackstoryStepProps) {
   const showAi = useAiGuide();
 
   const [method, setMethod] = useState<Method>("write");
@@ -56,8 +57,9 @@ export function CreateBackstoryStep({ onComplete, worldContext }: CreateBackstor
     setAiError(null);
     setBackstory("");
     try {
-      const result = await generateCharacterBackstory({ prompt, worldContext });
-      setBackstory(result?.backstory ?? "");
+      for await (const chunk of generateCharacterBackstoryStream({ prompt, paths, worldContext })) {
+        setBackstory((prev) => prev + chunk);
+      }
     } catch {
       setAiError("Failed to generate backstory. Please try again.");
     } finally {
@@ -105,20 +107,22 @@ export function CreateBackstoryStep({ onComplete, worldContext }: CreateBackstor
           Write My Own
         </ToggleButton>
         {showAi && (
-          <>
-            <ToggleButton value="table" sx={{ gap: 0.5 }}>
-              <ListAltIcon fontSize="small" />
-              Pick a Prompt
-            </ToggleButton>
-            <ToggleButton value="random" sx={{ gap: 0.5 }}>
-              <CasinoIcon fontSize="small" />
-              Roll Randomly
-            </ToggleButton>
-            <ToggleButton value="custom" sx={{ gap: 0.5 }}>
-              <AutoAwesomeIcon fontSize="small" />
-              Custom Prompt
-            </ToggleButton>
-          </>
+          <ToggleButton value="table" sx={{ gap: 0.5 }}>
+            <ListAltIcon fontSize="small" />
+            Pick a Prompt
+          </ToggleButton>
+        )}
+        {showAi && (
+          <ToggleButton value="random" sx={{ gap: 0.5 }}>
+            <CasinoIcon fontSize="small" />
+            Roll Randomly
+          </ToggleButton>
+        )}
+        {showAi && (
+          <ToggleButton value="custom" sx={{ gap: 0.5 }}>
+            <AutoAwesomeIcon fontSize="small" />
+            Custom Prompt
+          </ToggleButton>
         )}
       </ToggleButtonGroup>
 
@@ -177,29 +181,32 @@ export function CreateBackstoryStep({ onComplete, worldContext }: CreateBackstor
       {/* AI-generated editable result (shown for non-write methods) */}
       {method !== "write" && showAi && (
         <Box mt={2}>
-          {aiLoading ? (
+          {aiLoading && !backstory && (
             <Stack direction="row" alignItems="center" spacing={1} mb={2}>
               <CircularProgress size={16} />
               <Typography variant="body2" color="text.secondary">
                 Generating backstory…
               </Typography>
             </Stack>
-          ) : (
-            backstory && (
-              <>
-                <Typography variant="subtitle2" gutterBottom>
+          )}
+          {backstory && (
+            <>
+              <Stack direction="row" alignItems="center" spacing={1} mb={0.5}>
+                <Typography variant="subtitle2">
                   Generated backstory — feel free to edit:
                 </Typography>
-                <TextField
-                  multiline
-                  minRows={5}
-                  fullWidth
-                  value={backstory}
-                  onChange={(e) => setBackstory(e.target.value)}
-                  sx={{ mb: 2 }}
-                />
-              </>
-            )
+                {aiLoading && <CircularProgress size={14} />}
+              </Stack>
+              <TextField
+                multiline
+                minRows={5}
+                fullWidth
+                value={backstory}
+                onChange={(e) => setBackstory(e.target.value)}
+                disabled={aiLoading}
+                sx={{ mb: 2 }}
+              />
+            </>
           )}
         </Box>
       )}
@@ -207,7 +214,7 @@ export function CreateBackstoryStep({ onComplete, worldContext }: CreateBackstor
       <Button
         variant="contained"
         onClick={() => onComplete(backstory.trim())}
-        disabled={!canConfirm}
+        disabled={!canConfirm || aiLoading}
       >
         Confirm Backstory
       </Button>
