@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useStore } from "stores/store";
 import { useCampaignCharactersQueries } from "hooks/queries/useCampaignsQuery";
+import { toCharacterDocument } from "stores/character/character.slice";
 
 export function useListenToCurrentCampaignCharacters() {
   const characterIds = useStore(
@@ -17,7 +18,7 @@ export function useListenToCurrentCampaignCharacters() {
     let hasData = false;
     results.forEach((result, i) => {
       if (result.data) {
-        newMap[characterIds[i]] = result.data;
+        newMap[characterIds[i]] = toCharacterDocument(result.data);
         hasData = true;
       }
     });
