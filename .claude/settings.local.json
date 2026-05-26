@@ -5,7 +5,8 @@
       "WebSearch",
       "mcp__plugin_firebase_firebase__firestore_update_document",
       "mcp__plugin_firebase_firebase__firebase_get_security_rules",
-      "Read(*)"
+      "Read(*)",
+      "Bash(git commit *)"
     ],
     "additionalDirectories": [
       "/home/ckent/repos/starforged-api"

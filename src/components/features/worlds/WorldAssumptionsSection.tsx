@@ -26,8 +26,8 @@ export function WorldAssumptionsSection() {
     settings?.assumptions ?? DEFAULT_ASSUMPTIONS
   );
 
-  // Only sync from store on initial load; ignore subsequent subscription updates
-  // so in-progress edits are not overwritten by Firestore round-trips.
+  // Only sync from store on initial load; ignore subsequent updates
+  // so in-progress edits are not overwritten by background refetches.
   const isInitializedRef = useRef(false);
   useEffect(() => {
     if (settings && !isInitializedRef.current) {
