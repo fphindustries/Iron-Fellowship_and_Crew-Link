@@ -156,7 +156,7 @@ The dev scripts (`pnpm dev:all`, `nest start --watch`) compile on the fly and ar
    ```
    Or directly:
    ```bash
-   node api/dist/main.js
+   node api/dist/src/main.js
    ```
 
 Repeat steps 1–3 and restart the process whenever you pull new code that includes schema or source changes.
