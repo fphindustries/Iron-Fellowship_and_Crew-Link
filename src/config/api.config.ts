@@ -12,15 +12,64 @@ export const SOCKET_NAMESPACES = {
 
 export const ignoreApiError = (_error?: unknown): void => undefined;
 
+// Attempt a token refresh. Returns true on success, false if the refresh
+// token is also expired (user must re-login).
+let refreshPromise: Promise<boolean> | null = null;
+async function tryRefresh(): Promise<boolean> {
+  // Deduplicate concurrent refresh attempts
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+    .then((r) => r.ok)
+    .catch(() => false)
+    .finally(() => { refreshPromise = null; });
+  return refreshPromise;
+}
+
+// Called when all refresh attempts fail — sign the user out.
+function handleAuthFailure() {
+  // Lazy import to avoid circular dep with the store
+  import('stores/store').then(({ useStore }) => {
+    useStore.setState((s) => {
+      s.auth.user = undefined;
+      s.auth.uid = '';
+      // AUTH_STATE.UNAUTHENTICATED = 'unauthenticated'
+      s.auth.status = 'unauthenticated' as any;
+    });
+  });
+}
+
+async function fetchWithRefresh(
+  input: RequestInfo,
+  init: RequestInit
+): Promise<Response> {
+  const res = await fetch(input, init);
+  if (res.status !== 401) return res;
+
+  // Don't try to refresh the refresh call itself
+  const url = typeof input === 'string' ? input : input.url;
+  if (url.includes('/api/auth/')) return res;
+
+  const refreshed = await tryRefresh();
+  if (!refreshed) {
+    handleAuthFailure();
+    return res;
+  }
+  // Retry the original request once with fresh cookies
+  return fetch(input, init);
+}
+
 export const api = {
   url: (path: string) => `${API_BASE_URL}${path}`,
   async get<T>(path: string): Promise<T> {
-    const res = await fetch(`${API_BASE_URL}${path}`, { credentials: 'include' });
+    const res = await fetchWithRefresh(`${API_BASE_URL}${path}`, { credentials: 'include' });
     if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
     return res.json() as Promise<T>;
   },
   async post<T>(path: string, body?: unknown): Promise<T> {
-    const res = await fetch(`${API_BASE_URL}${path}`, {
+    const res = await fetchWithRefresh(`${API_BASE_URL}${path}`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -31,7 +80,7 @@ export const api = {
     return (text ? JSON.parse(text) : undefined) as T;
   },
   async patch<T>(path: string, body: unknown): Promise<T> {
-    const res = await fetch(`${API_BASE_URL}${path}`, {
+    const res = await fetchWithRefresh(`${API_BASE_URL}${path}`, {
       method: 'PATCH',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

@@ -10,8 +10,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import type { Response } from 'express';
+import type { Response, Request } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
@@ -20,6 +21,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
+    private readonly jwt: JwtService,
   ) {}
 
   @Get('google')
@@ -63,6 +65,28 @@ export class AuthController {
   async getMe(@Req() req: any) {
     const user = req.user as { id: string };
     return this.authService.getMe(user.id);
+  }
+
+  @Post('refresh')
+  refresh(@Req() req: Request, @Res() res: any) {
+    const token = (req.cookies as Record<string, string>)?.['refresh_token'];
+    if (!token) throw new UnauthorizedException('No refresh token');
+
+    let payload: { sub: string; email: string };
+    try {
+      payload = this.jwt.verify(token, {
+        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const { accessToken, refreshToken } = this.authService.issueTokens(
+      payload.sub,
+      payload.email,
+    );
+    this.setCookies(res, accessToken, refreshToken);
+    res.json({ ok: true });
   }
 
   @Post('logout')
