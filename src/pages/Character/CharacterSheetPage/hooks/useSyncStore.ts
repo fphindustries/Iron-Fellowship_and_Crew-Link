@@ -17,6 +17,7 @@ import { useListenToSectorLocations } from "stores/world/currentWorld/sector/sec
 import { useListenToSharedAssets } from "stores/campaign/currentCampaign/sharedAssets/useListenToSharedAssets";
 import { useListenToHomebrewContent } from "stores/homebrew/useListenToHomebrewContent";
 import { useSyncTheme } from "providers/ThemeProvider/useSyncTheme";
+import { useListenToCurrentCharacter } from "stores/character/currentCharacter/useListenToCurrentCharacter";
 
 export function useSyncStore() {
   const { characterId } = useParams();
@@ -93,6 +94,7 @@ export function useSyncStore() {
   useListenToSectors();
   useListenToSectorLocations();
 
+  useListenToCurrentCharacter();
   useListenToLogs();
   useListenToSessionLog();
   useListenToCurrentCampaignCharacters();

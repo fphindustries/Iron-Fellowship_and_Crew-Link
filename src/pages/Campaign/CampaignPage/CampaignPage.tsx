@@ -1,7 +1,9 @@
 import { useStore } from "stores/store";
 import { useSyncStore } from "./hooks/useSyncStore";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, LinearProgress, Stack } from "@mui/material";
+import { useParams } from "react-router-dom";
+import { useCampaignQuery } from "hooks/queries/useCampaignsQuery";
 import { PageContent, PageHeader } from "components/shared/Layout";
 import { EmptyState } from "components/shared/EmptyState";
 import { LinkComponent } from "components/shared/LinkComponent";
@@ -18,8 +20,9 @@ import { InviteUsersDialog } from "./components/InviteUsersDialog";
 
 export function CampaignPage() {
   useSyncStore();
+  const { campaignId } = useParams();
+  const { isPending: campaignLoading } = useCampaignQuery(campaignId);
 
-  const loading = useStore((store) => store.campaigns.loading);
   const campaignName = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaign?.name
   );
@@ -31,16 +34,6 @@ export function CampaignPage() {
       (store) => store.campaigns.currentCampaign.currentCampaign?.gmIds ?? []
     ).length > 0;
   const { showGuidedPlayerView, campaignType } = useCampaignType();
-  const [syncLoading, setSyncLoading] = useState(true);
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setSyncLoading(false);
-    }, 2 * 1000);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, []);
 
   const [inviteUsersDialogOpen, setInviteUsersDialogOpen] =
     useState<boolean>(false);
@@ -50,7 +43,7 @@ export function CampaignPage() {
     (store) => store.campaigns.currentCampaign.updateCampaignGM
   );
 
-  if (loading || (!isCampaignLoaded && syncLoading)) {
+  if (campaignLoading) {
     return <LinearProgress />;
   }
 

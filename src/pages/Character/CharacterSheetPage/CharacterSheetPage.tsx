@@ -8,16 +8,18 @@ import { PageContent, PageHeader } from "components/shared/Layout";
 import { Head } from "providers/HeadProvider/Head";
 import { useStore } from "stores/store";
 import { useSyncStore } from "./hooks/useSyncStore";
-import { useEffect, useState } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { SectionWithSidebar } from "components/shared/Layout/SectionWithSidebar";
 import { useIsMobile } from "hooks/useIsMobile";
 import { StatsSectionMobile } from "./components/StatsSectionMobile";
 import { LinkComponent } from "components/shared/LinkComponent";
+import { useParams } from "react-router-dom";
+import { useCharacterQuery } from "hooks/queries/useCharactersQuery";
 
 export function CharacterSheetPage() {
   useSyncStore();
-  const loading = useStore((store) => store.characters.loading);
+  const { characterId } = useParams();
+  const { isPending: characterLoading } = useCharacterQuery(characterId);
   const isCharacterLoaded = useStore(
     (store) => !!store.characters.currentCharacter.currentCharacter
   );
@@ -27,19 +29,7 @@ export function CharacterSheetPage() {
 
   const isMobile = useIsMobile();
 
-  const [syncLoading, setSyncLoading] = useState(true);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setSyncLoading(false);
-    }, 2 * 1000);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, []);
-
-  if (loading || (!isCharacterLoaded && syncLoading)) {
+  if (characterLoading) {
     return <LinearProgress />;
   }
 

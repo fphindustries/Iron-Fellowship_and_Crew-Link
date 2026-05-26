@@ -7,7 +7,7 @@ import { momentumTrack } from "data/defaultTracks";
 import { api } from "config/api.config";
 import { fileToBase64 } from "lib/storage.lib";
 
-function toCharacterDocument(row: any): any {
+export function toCharacterDocument(row: any): any {
   return {
     uid: row.userId,
     name: row.name,

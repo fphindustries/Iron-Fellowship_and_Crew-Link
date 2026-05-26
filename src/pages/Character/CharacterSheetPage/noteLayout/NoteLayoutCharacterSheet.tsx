@@ -1,6 +1,5 @@
 import { useStore } from "stores/store";
 import { useSyncStore } from "../hooks/useSyncStore";
-import { useEffect, useState } from "react";
 import { Box, Button, LinearProgress } from "@mui/material";
 import { PageContent, PageHeader } from "components/shared/Layout";
 import { EmptyState } from "components/shared/EmptyState";
@@ -14,11 +13,13 @@ import { PageSidebar } from "./PageSidebar";
 import { CharacterSidebar } from "./CharacterSidebar/CharacterSidebar";
 import { ReferenceSidebar } from "./ReferenceSidebar";
 import { NotesSection } from "./NotesSection";
+import { useParams } from "react-router-dom";
+import { useCharacterQuery } from "hooks/queries/useCharactersQuery";
 
 export function NoteLayoutCharacterSheet() {
   useSyncStore();
-
-  const loading = useStore((store) => store.characters.loading);
+  const { characterId } = useParams();
+  const { isPending: characterLoading } = useCharacterQuery(characterId);
   const isCharacterLoaded = useStore(
     (store) => !!store.characters.currentCharacter.currentCharacter
   );
@@ -26,19 +27,7 @@ export function NoteLayoutCharacterSheet() {
     (store) => store.characters.currentCharacter.currentCharacter?.name
   );
 
-  const [syncLoading, setSyncLoading] = useState(true);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setSyncLoading(false);
-    }, 2 * 1000);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, []);
-
-  if (loading || (!isCharacterLoaded && syncLoading)) {
+  if (characterLoading) {
     return <LinearProgress />;
   }
 
