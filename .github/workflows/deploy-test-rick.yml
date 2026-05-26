@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Pull latest code
         run: |
-          cd /opt/starforged
+          cd /opt/starforged_test
           git fetch origin
           git checkout dev
           git reset --hard origin/dev
