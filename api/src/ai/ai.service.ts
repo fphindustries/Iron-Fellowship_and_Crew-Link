@@ -693,4 +693,55 @@ export class AiService {
     });
     return { ...JSON.parse(raw.text), _debug: raw._debug };
   }
+
+  // ─── AI Guide Narrative ────────────────────────────────────────────────────
+
+  async *generateNarrativeStream(
+    body: any,
+  ): AsyncGenerator<{ text: string } | { _debug: object }> {
+    const { moveEvent, gameContext, prompt, debugOverride } = body;
+    const systemLines = [
+      'You are a narrative guide for Ironsworn: Starforged, a sci-fi tabletop RPG.',
+      'Write 2-4 sentences of vivid, immersive narrative describing what just happened in the story.',
+      'Use second-person present tense ("You ..."). Match the tone: gritty, desperate, hopeful.',
+      `Character: ${gameContext?.characterName ?? 'the character'}.`,
+      gameContext?.characteristics ? `Character description: ${gameContext.characteristics}` : '',
+      gameContext?.characterPronouns ? `Pronouns: ${gameContext.characterPronouns}` : '',
+      gameContext?.callsign ? `Callsign: ${gameContext.callsign}` : '',
+      gameContext?.activeCombat
+        ? `Active combat — objective: ${gameContext.activeCombat.objective}, enemies: ${gameContext.activeCombat.enemies?.join(', ')}, position: ${gameContext.activeCombat.position}`
+        : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+    const userParts: string[] = [];
+    if (gameContext?.recentEvents?.length) {
+      userParts.push(`Recent events:\n${gameContext.recentEvents.slice(-5).join('\n')}`);
+    }
+    if (moveEvent) {
+      userParts.push(
+        `Move: ${moveEvent.moveName} — outcome: ${moveEvent.outcome ?? 'unknown'}.${moveEvent.playerContext ? ` Context: ${moveEvent.playerContext}` : ''}`,
+      );
+    }
+    if (prompt) userParts.push(`Additional context: ${prompt}`);
+    const userPrompt = userParts.join('\n\n') || 'Describe what happens next.';
+    const model =
+      debugOverride?.model ?? this.resolveModel(this.guideProviderName, 'default');
+    yield {
+      _debug: {
+        provider: this.guideProviderName,
+        model,
+        systemPromptStatic: systemLines,
+        userPrompt,
+      },
+    };
+    for await (const chunk of this.guideProvider.generateTextStream({
+      model,
+      systemPromptStatic: systemLines,
+      systemPromptDynamic: '',
+      userPrompt,
+    })) {
+      yield { text: chunk };
+    }
+  }
 }

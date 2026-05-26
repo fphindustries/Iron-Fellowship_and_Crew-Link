@@ -140,4 +140,22 @@ export class AiController {
   generateSectorContent(@Body() body: any) {
     return this.svc.generateSectorContent(body);
   }
+
+  @Post('narrative/stream')
+  async generateNarrativeStream(@Body() body: any, @Res() res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+    try {
+      for await (const event of this.svc.generateNarrativeStream(body)) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+      res.write('data: [DONE]\n\n');
+    } catch {
+      res.write(`data: ${JSON.stringify({ error: 'Generation failed' })}\n\n`);
+    } finally {
+      res.end();
+    }
+  }
 }

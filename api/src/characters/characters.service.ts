@@ -5,15 +5,19 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { DB } from '../db/database.module';
+import { SessionsService } from '../sessions/sessions.service';
 
 type Db = NodePgDatabase<typeof schema>;
 
 @Injectable()
 export class CharactersService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(
+    @Inject(DB) private readonly db: Db,
+    private readonly sessions: SessionsService,
+  ) {}
 
   async findAllForUser(userId: string) {
     return this.db
@@ -128,5 +132,55 @@ export class CharactersService {
     await this.db
       .delete(schema.characterTracks)
       .where(eq(schema.characterTracks.id, id));
+  }
+
+  // ─── Sessions ──────────────────────────────────────────────────────────────
+
+  getSessions(characterId: string) {
+    return this.sessions.findAllForCharacter(characterId);
+  }
+
+  // ─── Combat ────────────────────────────────────────────────────────────────
+
+  async getActiveCombat(characterId: string) {
+    const rows = await this.db
+      .select()
+      .from(schema.combats)
+      .where(
+        and(
+          eq(schema.combats.characterId, characterId),
+          isNull(schema.combats.campaignId),
+          eq(schema.combats.active, true),
+        ),
+      )
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  async createCombat(characterId: string, dataJson: object) {
+    const [row] = await this.db
+      .insert(schema.combats)
+      .values({ characterId, dataJson, active: true })
+      .returning();
+    return row;
+  }
+
+  async updateCombat(id: string, dataJson: object) {
+    const [row] = await this.db
+      .update(schema.combats)
+      .set({ dataJson })
+      .where(eq(schema.combats.id, id))
+      .returning();
+    return row;
+  }
+
+  async endCombat(id: string) {
+    const [row] = await this.db
+      .update(schema.combats)
+      .set({ active: false, endedAt: new Date() })
+      .where(eq(schema.combats.id, id))
+      .returning();
+    if (!row) throw new NotFoundException('Combat not found');
+    return row;
   }
 }

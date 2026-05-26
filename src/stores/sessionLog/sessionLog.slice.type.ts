@@ -1,4 +1,3 @@
-import { Unsubscribe } from "firebase/firestore";
 import {
   SessionDocument,
   SessionLogEvent,
@@ -56,14 +55,14 @@ export interface SessionLogSliceActions {
   subscribeToActiveSession: (params: {
     campaignId?: string;
     characterId?: string;
-  }) => Unsubscribe;
+  }) => () => void;
 
   subscribeToSessionEvents: (params: {
     sessionId: string;
     campaignId?: string;
     characterId?: string;
     totalEventsToLoad: number;
-  }) => Unsubscribe;
+  }) => () => void;
 
   loadMostRecentPastSession: (params: {
     campaignId?: string;

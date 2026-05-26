@@ -40,6 +40,7 @@ import { ReviewStep } from "./components/ReviewStep";
 import { WorldContext, WorldAiSettings } from "types/AI.type";
 import { CUSTOM_TRUTH_INDEX } from "components/features/worlds/WorldTruths/customTruthIndex";
 import { useAllWorldsQuery } from "hooks/queries/useWorldsQuery";
+import { useCampaignQuery } from "hooks/queries/useCampaignsQuery";
 
 interface GuidedForm {
   enabledExpansionMap: Record<string, boolean>;
@@ -89,19 +90,7 @@ export function CharacterGuidedCreatePageContent() {
   });
 
   // Campaign context
-  const [campaign, setCampaign] = useState<CampaignDocument | null>(null);
-
-  useEffect(() => {
-    if (!campaignId) return;
-    const cached = campaignMap[campaignId];
-    if (cached) {
-      setCampaign(cached);
-    } else {
-      getCampaign(campaignId)
-        .then(setCampaign)
-        .catch(() => {});
-    }
-  }, [campaignId, campaignMap, getCampaign]);
+  const { data: campaign } = useCampaignQuery(campaignId ?? undefined);
 
   const campaignWorldId = campaign?.worldId ?? null;
   const campaignWorld = campaignWorldId ? worldMap[campaignWorldId] : null;

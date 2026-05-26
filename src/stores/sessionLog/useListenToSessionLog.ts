@@ -1,6 +1,10 @@
-import { Unsubscribe } from "firebase/firestore";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useStore } from "stores/store";
+import {
+  useActiveSessionQuery,
+  useSessionEventsQuery,
+} from "hooks/queries/useSessionLogQuery";
+import { SessionDocument, SessionLogEvent, SESSION_EVENT_TYPE } from "types/SessionLog.type";
 
 export function useListenToSessionLog() {
   const characterId = useStore(
@@ -10,76 +14,60 @@ export function useListenToSessionLog() {
     (store) => store.campaigns.currentCampaign.currentCampaignId
   );
 
-  const subscribeToActiveSession = useStore(
-    (store) => store.sessionLog.subscribeToActiveSession
-  );
-  const previousSessionUnsubscribe = useRef<Unsubscribe | undefined>(
-    undefined
-  );
+  const { data: activeSessionData } = useActiveSessionQuery({
+    characterId: characterId ?? undefined,
+    campaignId: campaignId ?? undefined,
+  });
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe | undefined = undefined;
-
-    if (characterId || campaignId) {
-      unsubscribe = subscribeToActiveSession({ campaignId, characterId });
-    }
-    if (previousSessionUnsubscribe.current) {
-      previousSessionUnsubscribe.current();
-    }
-    if (unsubscribe) {
-      previousSessionUnsubscribe.current = unsubscribe;
-    }
-  }, [characterId, campaignId, subscribeToActiveSession]);
-
-  useEffect(() => {
-    return () => {
-      previousSessionUnsubscribe.current &&
-        previousSessionUnsubscribe.current();
-    };
-  }, []);
+    if (activeSessionData === undefined) return;
+    useStore.setState((store) => {
+      if (activeSessionData) {
+        store.sessionLog.activeSessionId = activeSessionData.id;
+        store.sessionLog.activeSession = {
+          characterId: activeSessionData.characterId,
+          campaignId: activeSessionData.campaignId,
+          startedAt: new Date(activeSessionData.startedAt),
+          endedAt: activeSessionData.endedAt
+            ? new Date(activeSessionData.endedAt)
+            : undefined,
+          title: activeSessionData.title,
+          isActive: activeSessionData.isActive,
+          summary: activeSessionData.summary,
+        } as SessionDocument;
+      } else {
+        store.sessionLog.activeSessionId = undefined;
+        store.sessionLog.activeSession = undefined;
+      }
+    });
+  }, [activeSessionData]);
 
   const activeSessionId = useStore(
     (store) => store.sessionLog.activeSessionId
   );
-  const totalEventsToLoad = useStore(
-    (store) => store.sessionLog.totalEventsToLoad
-  );
-  const subscribeToSessionEvents = useStore(
-    (store) => store.sessionLog.subscribeToSessionEvents
-  );
-  const previousEventsUnsubscribe = useRef<Unsubscribe | undefined>(undefined);
+
+  const { data: eventsData } = useSessionEventsQuery(activeSessionId);
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe | undefined = undefined;
-
-    if (activeSessionId && (characterId || campaignId)) {
-      unsubscribe = subscribeToSessionEvents({
-        sessionId: activeSessionId,
-        campaignId,
-        characterId,
-        totalEventsToLoad,
-      });
+    if (!eventsData) return;
+    const eventsMap: Record<string, SessionLogEvent> = {};
+    for (const row of eventsData) {
+      const event = {
+        ...(row.dataJson ?? {}),
+        type: row.type as SESSION_EVENT_TYPE,
+        sessionId: row.sessionId,
+        characterId: row.characterId,
+        characterName: row.characterName,
+        uid: row.createdBy ?? "",
+        timestamp: new Date(row.createdAt),
+      } as SessionLogEvent;
+      eventsMap[row.id] = event;
     }
-    if (previousEventsUnsubscribe.current) {
-      previousEventsUnsubscribe.current();
-    }
-    if (unsubscribe) {
-      previousEventsUnsubscribe.current = unsubscribe;
-    }
-  }, [
-    activeSessionId,
-    campaignId,
-    characterId,
-    totalEventsToLoad,
-    subscribeToSessionEvents,
-  ]);
-
-  useEffect(() => {
-    return () => {
-      previousEventsUnsubscribe.current &&
-        previousEventsUnsubscribe.current();
-    };
-  }, []);
+    useStore.setState((store) => {
+      store.sessionLog.events = eventsMap;
+      store.sessionLog.loading = false;
+    });
+  }, [eventsData]);
 
   const loadMostRecentPastSession = useStore(
     (store) => store.sessionLog.loadMostRecentPastSession
@@ -87,7 +75,10 @@ export function useListenToSessionLog() {
 
   useEffect(() => {
     if (!activeSessionId && (characterId || campaignId)) {
-      loadMostRecentPastSession({ campaignId, characterId });
+      loadMostRecentPastSession({
+        campaignId: campaignId ?? undefined,
+        characterId: characterId ?? undefined,
+      });
     }
   }, [activeSessionId, campaignId, characterId, loadMostRecentPastSession]);
 }

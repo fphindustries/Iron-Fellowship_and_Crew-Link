@@ -1,16 +1,33 @@
 import { CreateSliceType } from "stores/store.type";
 import { SessionLogSlice } from "./sessionLog.slice.type";
 import { defaultSessionLogSlice } from "./sessionLog.slice.default";
-import { startSession as startSessionApi } from "api-calls/session-log/startSession";
-import { endSession as endSessionApi } from "api-calls/session-log/endSession";
-import { addSessionEvent } from "api-calls/session-log/addSessionEvent";
-import { updateSessionEventNarrative } from "api-calls/session-log/updateSessionEventNarrative";
-import { deleteSessionEvent } from "api-calls/session-log/deleteSessionEvent";
-import { listenToActiveSession } from "api-calls/session-log/listenToActiveSession";
-import { listenToSessionEvents } from "api-calls/session-log/listenToSessionEvents";
-import { getMostRecentSession } from "api-calls/session-log/getMostRecentSession";
-import { OracleSessionEvent, SESSION_EVENT_TYPE, SessionLogEvent, CombatStartSessionEvent, CombatEndSessionEvent } from "types/SessionLog.type";
-import { ignoreApiError } from "api-calls/createApiFunction";
+import { api } from "config/api.config";
+import {
+  OracleSessionEvent,
+  SESSION_EVENT_TYPE,
+  SessionLogEvent,
+  CombatStartSessionEvent,
+  CombatEndSessionEvent,
+} from "types/SessionLog.type";
+
+function buildBaseEvent(state: ReturnType<typeof import("stores/store").useStore.getState>) {
+  const sessionId = state.sessionLog.activeSessionId;
+  const campaignId = state.campaigns.currentCampaign.currentCampaignId;
+  const characterId = state.characters.currentCharacter.currentCharacterId ?? null;
+  const characterName = state.characters.currentCharacter.currentCharacter?.name ?? "";
+  const uid = state.auth.uid ?? "";
+  return { sessionId, campaignId, characterId, characterName, uid };
+}
+
+async function postEvent(sessionId: string, event: SessionLogEvent): Promise<string> {
+  const row = await api.post<{ id: string }>(`/api/sessions/${sessionId}/events`, {
+    characterId: event.characterId,
+    characterName: event.characterName,
+    type: event.type,
+    dataJson: event,
+  });
+  return row.id;
+}
 
 export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
   set,
@@ -18,58 +35,41 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
 ) => ({
   ...defaultSessionLogSlice,
 
-  startSession: (params) => {
+  startSession: async (params) => {
     const state = getState();
     if (state.sessionLog.activeSessionId) {
       return Promise.reject("A session is already active.");
     }
-    return startSessionApi(params).then((sessionId) => {
-      set((store) => {
-        store.sessionLog.activeSessionId = sessionId;
-        store.sessionLog.activeSession = {
-          startedAt: new Date(),
-          isActive: true,
-          characterId: params.characterId,
-          campaignId: params.campaignId,
-          title: params.title,
-        };
-        store.sessionLog.events = {};
-      });
-      return sessionId;
+    const row = await api.post<{ id: string }>("/api/sessions", params);
+    set((store) => {
+      store.sessionLog.activeSessionId = row.id;
+      store.sessionLog.activeSession = {
+        startedAt: new Date(),
+        isActive: true,
+        characterId: params.characterId,
+        campaignId: params.campaignId,
+        title: params.title,
+      };
+      store.sessionLog.events = {};
     });
+    return row.id;
   },
 
-  endSession: (summary) => {
+  endSession: async (summary) => {
     const state = getState();
     const sessionId = state.sessionLog.activeSessionId;
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      state.characters.currentCharacter.currentCharacterId;
-
-    if (!sessionId) {
-      return Promise.reject("No active session to end.");
-    }
-
-    return endSessionApi({ sessionId, characterId, campaignId, summary }).then(() => {
-      set((store) => {
-        store.sessionLog.activeSessionId = undefined;
-        store.sessionLog.activeSession = undefined;
-      });
+    if (!sessionId) return Promise.reject("No active session to end.");
+    await api.patch(`/api/sessions/${sessionId}`, { isActive: false, summary });
+    set((store) => {
+      store.sessionLog.activeSessionId = undefined;
+      store.sessionLog.activeSession = undefined;
     });
   },
 
   logMoveEvent: (eventData) => {
     const state = getState();
-    const sessionId = state.sessionLog.activeSessionId;
+    const { sessionId, characterId, characterName, uid } = buildBaseEvent(state);
     if (!sessionId) return Promise.resolve("");
-
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      state.characters.currentCharacter.currentCharacterId ?? null;
-    const characterName =
-      state.characters.currentCharacter.currentCharacter?.name ?? "";
-    const uid = state.auth.uid;
-
     const event: SessionLogEvent = {
       ...eventData,
       type: SESSION_EVENT_TYPE.MOVE,
@@ -79,30 +79,16 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
       characterName,
       uid,
     };
-
-    return addSessionEvent({
-      sessionId,
-      event,
-      characterId: characterId ?? undefined,
-      campaignId,
-    }).catch((e) => {
-      ignoreApiError(e);
-      return "";
-    });
+    return postEvent(sessionId, event).then((id) => {
+      set((store) => { store.sessionLog.events[id] = { ...event, sessionId: id }; });
+      return id;
+    }).catch(() => "");
   },
 
   logStatChangeEvent: (eventData) => {
     const state = getState();
-    const sessionId = state.sessionLog.activeSessionId;
+    const { sessionId, characterId, characterName, uid } = buildBaseEvent(state);
     if (!sessionId) return;
-
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      state.characters.currentCharacter.currentCharacterId ?? null;
-    const characterName =
-      state.characters.currentCharacter.currentCharacter?.name ?? "";
-    const uid = state.auth.uid;
-
     const event: SessionLogEvent = {
       ...eventData,
       type: SESSION_EVENT_TYPE.STAT_CHANGE,
@@ -112,27 +98,15 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
       characterName,
       uid,
     };
-
-    addSessionEvent({
-      sessionId,
-      event,
-      characterId: characterId ?? undefined,
-      campaignId,
-    }).catch(ignoreApiError);
+    postEvent(sessionId, event).then((id) => {
+      set((store) => { store.sessionLog.events[id] = { ...event, sessionId: id }; });
+    }).catch(() => {});
   },
 
   logProgressEvent: (eventData) => {
     const state = getState();
-    const sessionId = state.sessionLog.activeSessionId;
+    const { sessionId, characterId, characterName, uid } = buildBaseEvent(state);
     if (!sessionId) return;
-
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      state.characters.currentCharacter.currentCharacterId ?? null;
-    const characterName =
-      state.characters.currentCharacter.currentCharacter?.name ?? "";
-    const uid = state.auth.uid;
-
     const event: SessionLogEvent = {
       ...eventData,
       type: SESSION_EVENT_TYPE.PROGRESS,
@@ -142,27 +116,15 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
       characterName,
       uid,
     };
-
-    addSessionEvent({
-      sessionId,
-      event,
-      characterId: characterId ?? undefined,
-      campaignId,
-    }).catch(ignoreApiError);
+    postEvent(sessionId, event).then((id) => {
+      set((store) => { store.sessionLog.events[id] = { ...event, sessionId: id }; });
+    }).catch(() => {});
   },
 
   logJournalEvent: (text, isAiGenerated = false) => {
     const state = getState();
-    const sessionId = state.sessionLog.activeSessionId;
+    const { sessionId, characterId, characterName, uid } = buildBaseEvent(state);
     if (!sessionId) return;
-
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      state.characters.currentCharacter.currentCharacterId ?? null;
-    const characterName =
-      state.characters.currentCharacter.currentCharacter?.name ?? "";
-    const uid = state.auth.uid;
-
     const event: SessionLogEvent = {
       type: SESSION_EVENT_TYPE.JOURNAL,
       text,
@@ -173,27 +135,15 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
       characterName,
       uid,
     };
-
-    addSessionEvent({
-      sessionId,
-      event,
-      characterId: characterId ?? undefined,
-      campaignId,
-    }).catch(ignoreApiError);
+    postEvent(sessionId, event).then((id) => {
+      set((store) => { store.sessionLog.events[id] = { ...event, sessionId: id }; });
+    }).catch(() => {});
   },
 
   logOracleEvent: (eventData) => {
     const state = getState();
-    const sessionId = state.sessionLog.activeSessionId;
+    const { sessionId, characterId, characterName, uid } = buildBaseEvent(state);
     if (!sessionId) return;
-
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      state.characters.currentCharacter.currentCharacterId ?? null;
-    const characterName =
-      state.characters.currentCharacter.currentCharacter?.name ?? "";
-    const uid = state.auth.uid;
-
     const event: OracleSessionEvent = {
       ...eventData,
       type: SESSION_EVENT_TYPE.ORACLE,
@@ -203,27 +153,15 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
       characterName,
       uid,
     };
-
-    addSessionEvent({
-      sessionId,
-      event,
-      characterId: characterId ?? undefined,
-      campaignId,
-    }).catch(ignoreApiError);
+    postEvent(sessionId, event).then((id) => {
+      set((store) => { store.sessionLog.events[id] = { ...event, sessionId: id }; });
+    }).catch(() => {});
   },
 
   logCombatStartEvent: (eventData) => {
     const state = getState();
-    const sessionId = state.sessionLog.activeSessionId;
+    const { sessionId, characterId, characterName, uid } = buildBaseEvent(state);
     if (!sessionId) return;
-
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      state.characters.currentCharacter.currentCharacterId ?? null;
-    const characterName =
-      state.characters.currentCharacter.currentCharacter?.name ?? "";
-    const uid = state.auth.uid;
-
     const event: CombatStartSessionEvent = {
       ...eventData,
       type: SESSION_EVENT_TYPE.COMBAT_START,
@@ -233,27 +171,15 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
       characterName,
       uid,
     };
-
-    addSessionEvent({
-      sessionId,
-      event,
-      characterId: characterId ?? undefined,
-      campaignId,
-    }).catch(ignoreApiError);
+    postEvent(sessionId, event).then((id) => {
+      set((store) => { store.sessionLog.events[id] = { ...event, sessionId: id }; });
+    }).catch(() => {});
   },
 
   logCombatEndEvent: (eventData) => {
     const state = getState();
-    const sessionId = state.sessionLog.activeSessionId;
+    const { sessionId, characterId, characterName, uid } = buildBaseEvent(state);
     if (!sessionId) return;
-
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      state.characters.currentCharacter.currentCharacterId ?? null;
-    const characterName =
-      state.characters.currentCharacter.currentCharacter?.name ?? "";
-    const uid = state.auth.uid;
-
     const event: CombatEndSessionEvent = {
       ...eventData,
       type: SESSION_EVENT_TYPE.COMBAT_END,
@@ -263,128 +189,75 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
       characterName,
       uid,
     };
-
-    addSessionEvent({
-      sessionId,
-      event,
-      characterId: characterId ?? undefined,
-      campaignId,
-    }).catch(ignoreApiError);
+    postEvent(sessionId, event).then((id) => {
+      set((store) => { store.sessionLog.events[id] = { ...event, sessionId: id }; });
+    }).catch(() => {});
   },
 
   updateMoveEventNarrative: (eventId, narrative) => {
     const state = getState();
     const sessionId = state.sessionLog.activeSessionId;
     if (!sessionId) return;
-
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      state.characters.currentCharacter.currentCharacterId ?? undefined;
-
     set((store) => {
       const event = store.sessionLog.events[eventId];
-      if (event && event.type === "move") {
-        (event as import("types/SessionLog.type").MoveSessionEvent).narrative =
-          narrative;
+      if (event && event.type === SESSION_EVENT_TYPE.MOVE) {
+        (event as import("types/SessionLog.type").MoveSessionEvent).narrative = narrative;
       }
     });
-
-    updateSessionEventNarrative({
-      sessionId,
-      eventId,
-      narrative,
-      characterId,
-      campaignId,
-    }).catch(ignoreApiError);
+    api
+      .patch(`/api/sessions/${sessionId}/events/${eventId}`, {
+        dataJson: { narrative },
+      })
+      .catch(() => {});
   },
 
   deleteEvent: (eventId) => {
     const state = getState();
     const sessionId = state.sessionLog.activeSessionId;
     if (!sessionId) return;
-
-    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-    const characterId =
-      state.characters.currentCharacter.currentCharacterId ?? undefined;
-
-    set((store) => {
-      delete store.sessionLog.events[eventId];
-    });
-
-    deleteSessionEvent({
-      sessionId,
-      eventId,
-      characterId,
-      campaignId,
-    }).catch(ignoreApiError);
+    set((store) => { delete store.sessionLog.events[eventId]; });
+    api.del(`/api/sessions/${sessionId}/events/${eventId}`).catch(() => {});
   },
 
   loadMoreEvents: () => {
     const state = getState();
-    if (state.sessionLog.loading) {
-      return;
-    }
-
-    set((store) => {
-      store.sessionLog.totalEventsToLoad += 20;
-    });
+    if (state.sessionLog.loading) return;
+    set((store) => { store.sessionLog.totalEventsToLoad += 20; });
   },
 
-  subscribeToActiveSession: (params) => {
-    return listenToActiveSession({
-      ...params,
-      onSession: (sessionId, session) => {
-        set((store) => {
-          store.sessionLog.activeSessionId = sessionId;
-          store.sessionLog.activeSession = session;
-        });
-      },
-      onNoSession: () => {
-        set((store) => {
-          store.sessionLog.activeSessionId = undefined;
-          store.sessionLog.activeSession = undefined;
-        });
-      },
-      onError: (error) => {
-        console.error(error);
-      },
-    });
+  subscribeToActiveSession: (_params) => {
+    // Handled by useListenToSessionLog hook via TanStack Query
+    return () => {};
   },
 
-  subscribeToSessionEvents: (params) => {
-    set((store) => {
-      store.sessionLog.loading = true;
-    });
-    return listenToSessionEvents({
-      ...params,
-      updateEvent: (eventId, event) => {
-        set((store) => {
-          store.sessionLog.events[eventId] = event;
-          store.sessionLog.loading = false;
-        });
-      },
-      removeEvent: (eventId) => {
-        set((store) => {
-          delete store.sessionLog.events[eventId];
-        });
-      },
-      onError: (error) => {
-        console.error(error);
-        set((store) => {
-          store.sessionLog.loading = false;
-        });
-      },
-    });
+  subscribeToSessionEvents: (_params) => {
+    // Handled by useListenToSessionLog hook via TanStack Query
+    return () => {};
   },
 
   loadMostRecentPastSession: (params) => {
-    getMostRecentSession(params)
-      .then((result) => {
-        if (result) {
+    const query = new URLSearchParams();
+    if (params.campaignId) query.set("campaignId", params.campaignId);
+    if (params.characterId) query.set("characterId", params.characterId);
+    const endpoint = params.campaignId
+      ? `/api/campaigns/${params.campaignId}/sessions`
+      : `/api/characters/${params.characterId}/sessions`;
+    api
+      .get<any[]>(endpoint)
+      .then((rows) => {
+        const inactive = rows?.filter((r) => !r.isActive) ?? [];
+        if (inactive.length > 0) {
+          const r = inactive[0];
           set((store) => {
             store.sessionLog.mostRecentPastSession = {
-              ...result.session,
-              id: result.id,
+              id: r.id,
+              characterId: r.characterId,
+              campaignId: r.campaignId,
+              startedAt: new Date(r.startedAt),
+              endedAt: r.endedAt ? new Date(r.endedAt) : undefined,
+              title: r.title,
+              isActive: r.isActive,
+              summary: r.summary,
             };
           });
         } else {
@@ -394,9 +267,7 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
           });
         }
       })
-      .catch((e) => {
-        console.error(e);
-      });
+      .catch(console.error);
   },
 
   resetStore: () => {

@@ -4,6 +4,8 @@ import { useSocketRoom } from "./useSocketRoom";
 import { characterKeys } from "./queries/useCharactersQuery";
 import { campaignKeys } from "./queries/useCampaignsQuery";
 import { worldKeys } from "./queries/useWorldsQuery";
+import { sessionLogKeys } from "./queries/useSessionLogQuery";
+import { combatKeys } from "./queries/useCombatQuery";
 
 export function useSocketInvalidation() {
   useCharacterSocketInvalidation();
@@ -23,6 +25,13 @@ function useCharacterSocketInvalidation() {
       qc.invalidateQueries({ queryKey: characterKeys.detail(characterId) });
       qc.invalidateQueries({ queryKey: characterKeys.assets(characterId) });
       qc.invalidateQueries({ queryKey: characterKeys.tracks(characterId) });
+      qc.invalidateQueries({
+        queryKey: sessionLogKeys.active({ characterId }),
+      });
+      qc.invalidateQueries({
+        queryKey: sessionLogKeys.list("character", characterId),
+      });
+      qc.invalidateQueries({ queryKey: combatKeys.active({ characterId }) });
     },
   });
 }
@@ -39,6 +48,13 @@ function useCampaignSocketInvalidation() {
       qc.invalidateQueries({ queryKey: campaignKeys.detail(campaignId) });
       qc.invalidateQueries({ queryKey: campaignKeys.assets(campaignId) });
       qc.invalidateQueries({ queryKey: campaignKeys.tracks(campaignId) });
+      qc.invalidateQueries({
+        queryKey: sessionLogKeys.active({ campaignId }),
+      });
+      qc.invalidateQueries({
+        queryKey: sessionLogKeys.list("campaign", campaignId),
+      });
+      qc.invalidateQueries({ queryKey: combatKeys.active({ campaignId }) });
     },
   });
 }

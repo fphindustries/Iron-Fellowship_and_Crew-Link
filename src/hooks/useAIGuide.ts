@@ -4,7 +4,7 @@ import { AIGuideState, NarrativeGameContext, NarrativeRequestPayload } from "typ
 import { MoveSessionEvent } from "types/SessionLog.type";
 import { useAIGuideContext } from "./useAIGuideContext";
 import { recordAiCall, AiDebugFullPrompt, useAiDebugStore } from "stores/aiDebug";
-import { streamNarrative } from "api-calls/ai/streamNarrative";
+import { streamNarrative } from "api/ai/streamNarrative";
 
 const AUTO_NARRATE_KEY = "session-log-auto-narrate";
 

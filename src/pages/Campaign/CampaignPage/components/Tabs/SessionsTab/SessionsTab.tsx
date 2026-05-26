@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -20,9 +20,6 @@ import { Virtuoso } from "react-virtuoso";
 import { EmptyState } from "components/shared/EmptyState";
 import { SessionLogEventCard } from "pages/Character/CharacterSheetPage/Tabs/SessionLogSection/SessionLogEventCard";
 import { JournalInput } from "pages/Character/CharacterSheetPage/Tabs/SessionLogSection/JournalInput";
-import { listenToCampaignSessions } from "api-calls/session-log/listenToCampaignSessions";
-import { listenToSessionEvents } from "api-calls/session-log/listenToSessionEvents";
-import { deleteSession } from "api-calls/session-log/deleteSession";
 import {
   MoveSessionEvent,
   SESSION_EVENT_TYPE,
@@ -30,6 +27,35 @@ import {
   SessionLogEvent,
 } from "types/SessionLog.type";
 import { useAIGuide } from "hooks/useAIGuide";
+import { useSessionsListQuery, useSessionEventsQuery } from "hooks/queries/useSessionLogQuery";
+import { api } from "config/api.config";
+import { useQueryClient } from "@tanstack/react-query";
+import { sessionLogKeys } from "hooks/queries/useSessionLogQuery";
+
+function rowToSessionDocument(row: any): SessionDocument {
+  return {
+    characterId: row.characterId ?? undefined,
+    campaignId: row.campaignId ?? undefined,
+    startedAt: new Date(row.startedAt),
+    endedAt: row.endedAt ? new Date(row.endedAt) : undefined,
+    title: row.title ?? undefined,
+    isActive: row.isActive,
+    summary: row.summary ?? undefined,
+  };
+}
+
+function rowToSessionEvent(row: any): SessionLogEvent {
+  const data = row.dataJson ?? {};
+  return {
+    type: row.type as SESSION_EVENT_TYPE,
+    sessionId: row.sessionId,
+    timestamp: new Date(row.createdAt),
+    characterId: row.characterId ?? null,
+    characterName: row.characterName ?? "",
+    uid: row.createdBy ?? "",
+    ...data,
+  } as SessionLogEvent;
+}
 
 export function SessionsTab() {
   const campaignId = useStore(
@@ -39,11 +65,22 @@ export function SessionsTab() {
   const activeEvents = useStore((s) => s.sessionLog.events);
   const endSession = useStore((s) => s.sessionLog.endSession);
 
+  const qc = useQueryClient();
+
   // All campaign sessions list
-  const [sessions, setSessions] = useState<
-    { id: string; session: SessionDocument }[]
-  >([]);
-  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const { data: sessionsData, isLoading: sessionsLoading } = useSessionsListQuery(
+    "campaign",
+    campaignId ?? undefined
+  );
+
+  const sessions: { id: string; session: SessionDocument }[] = useMemo(
+    () =>
+      (sessionsData ?? []).map((row: any) => ({
+        id: row.id,
+        session: rowToSessionDocument(row),
+      })),
+    [sessionsData]
+  );
 
   // Selected session id for browsing
   const [selectedSessionId, setSelectedSessionId] = useState<
@@ -54,29 +91,6 @@ export function SessionsTab() {
   const [deleteTarget, setDeleteTarget] = useState<
     { id: string; session: SessionDocument } | undefined
   >(undefined);
-
-  // Events for a selected past session (not the active one)
-  const [pastEvents, setPastEvents] = useState<{
-    [key: string]: SessionLogEvent;
-  }>({});
-  const pastEventsUnsubRef = useRef<(() => void) | undefined>(undefined);
-
-  // Subscribe to all campaign sessions list
-  useEffect(() => {
-    if (!campaignId) return;
-    const unsub = listenToCampaignSessions({
-      campaignId,
-      onUpdate: (s) => {
-        setSessions(s);
-        setSessionsLoading(false);
-      },
-      onError: (e) => {
-        console.error(e);
-        setSessionsLoading(false);
-      },
-    });
-    return () => unsub();
-  }, [campaignId]);
 
   // Default selection: active session, else first session
   useEffect(() => {
@@ -95,48 +109,22 @@ export function SessionsTab() {
     }
   }, [activeSessionId]);
 
-  // Subscribe to past session events when viewing a non-active session
-  useEffect(() => {
-    if (!selectedSessionId || !campaignId) return;
-    if (selectedSessionId === activeSessionId) {
-      if (pastEventsUnsubRef.current) {
-        pastEventsUnsubRef.current();
-        pastEventsUnsubRef.current = undefined;
-      }
-      setPastEvents({});
-      return;
-    }
-
-    setPastEvents({});
-    const unsub = listenToSessionEvents({
-      sessionId: selectedSessionId,
-      campaignId,
-      totalEventsToLoad: 200,
-      updateEvent: (eventId, event) => {
-        setPastEvents((prev) => ({ ...prev, [eventId]: event }));
-      },
-      removeEvent: (eventId) => {
-        setPastEvents((prev) => {
-          const next = { ...prev };
-          delete next[eventId];
-          return next;
-        });
-      },
-      onError: console.error,
-    });
-
-    if (pastEventsUnsubRef.current) {
-      pastEventsUnsubRef.current();
-    }
-    pastEventsUnsubRef.current = unsub;
-
-    return () => {
-      unsub();
-      pastEventsUnsubRef.current = undefined;
-    };
-  }, [selectedSessionId, activeSessionId, campaignId]);
-
   const isSelectedActive = selectedSessionId === activeSessionId;
+
+  // Events for a selected past session
+  const { data: pastEventsData } = useSessionEventsQuery(
+    !isSelectedActive ? selectedSessionId : undefined
+  );
+
+  const pastEvents: { [key: string]: SessionLogEvent } = useMemo(() => {
+    if (!pastEventsData) return {};
+    const map: { [key: string]: SessionLogEvent } = {};
+    (pastEventsData as any[]).forEach((row: any) => {
+      map[row.id] = rowToSessionEvent(row);
+    });
+    return map;
+  }, [pastEventsData]);
+
   const displayEvents = isSelectedActive ? activeEvents : pastEvents;
 
   const orderedEventKeys = useMemo(
@@ -165,10 +153,14 @@ export function SessionsTab() {
 
   const handleDeleteConfirm = () => {
     if (!deleteTarget || !campaignId) return;
-    deleteSession({ sessionId: deleteTarget.id, campaignId }).catch(
-      console.error
-    );
-    // If the deleted session was selected, move selection to first remaining
+    api
+      .del(`/api/sessions/${deleteTarget.id}`)
+      .then(() => {
+        qc.invalidateQueries({
+          queryKey: sessionLogKeys.list("campaign", campaignId),
+        });
+      })
+      .catch(console.error);
     if (selectedSessionId === deleteTarget.id) {
       const remaining = sessions.filter((s) => s.id !== deleteTarget.id);
       setSelectedSessionId(remaining[0]?.id);

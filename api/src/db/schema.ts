@@ -113,6 +113,10 @@ export const characters = pgTable('characters', {
   customTracksJson: jsonb('custom_tracks_json').notNull().default([]),
   theme: text('theme'),
   backstory: text('backstory'),
+  pronouns: text('pronouns'),
+  callsign: text('callsign'),
+  role: text('role'),
+  characteristicsJson: jsonb('characteristics_json').notNull().default({}),
   initiativeStatus: initiativeStatusEnum('initiative_status')
     .notNull()
     .default('outOfCombat'),
@@ -551,6 +555,66 @@ export const homebrewInviteKeys = pgTable('homebrew_invite_keys', {
     .references(() => homebrewCollections.id, { onDelete: 'cascade' }),
   key: text('key').notNull().unique(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+});
+
+// ─── Session Log ──────────────────────────────────────────────────────────────
+
+export const sessions = pgTable('sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  characterId: uuid('character_id').references(() => characters.id, {
+    onDelete: 'cascade',
+  }),
+  campaignId: uuid('campaign_id').references(() => campaigns.id, {
+    onDelete: 'cascade',
+  }),
+  title: text('title'),
+  isActive: boolean('is_active').notNull().default(true),
+  summary: text('summary'),
+  startedAt: timestamp('started_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  endedAt: timestamp('ended_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const sessionEvents = pgTable('session_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sessionId: uuid('session_id')
+    .notNull()
+    .references(() => sessions.id, { onDelete: 'cascade' }),
+  characterId: uuid('character_id').references(() => characters.id, {
+    onDelete: 'set null',
+  }),
+  characterName: text('character_name').notNull().default(''),
+  createdBy: uuid('created_by').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  type: text('type').notNull(),
+  dataJson: jsonb('data_json').notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const combats = pgTable('combats', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  characterId: uuid('character_id').references(() => characters.id, {
+    onDelete: 'cascade',
+  }),
+  campaignId: uuid('campaign_id').references(() => campaigns.id, {
+    onDelete: 'cascade',
+  }),
+  sessionId: uuid('session_id').references(() => sessions.id, {
+    onDelete: 'set null',
+  }),
+  dataJson: jsonb('data_json').notNull().default({}),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  endedAt: timestamp('ended_at', { withTimezone: true }),
 });
 
 // ─── Yjs Documents ────────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import { WorldsModule } from './worlds/worlds.module';
 import { HomebrewModule } from './homebrew/homebrew.module';
 import { NotesModule } from './notes/notes.module';
 import { GameLogModule } from './game-log/game-log.module';
+import { SessionsModule } from './sessions/sessions.module';
 import { SettingsModule } from './settings/settings.module';
 import { AiModule } from './ai/ai.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -33,6 +34,7 @@ import { YjsModule } from './yjs/yjs.module';
     HomebrewModule,
     NotesModule,
     GameLogModule,
+    SessionsModule,
     SettingsModule,
     AiModule,
     RealtimeModule,

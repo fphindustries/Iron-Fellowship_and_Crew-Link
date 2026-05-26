@@ -43,6 +43,13 @@
       "when": 1748476800000,
       "tag": "0005_db_image_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779754500851,
+      "tag": "0006_session_log_combat",
+      "breakpoints": true
     }
   ]
 }

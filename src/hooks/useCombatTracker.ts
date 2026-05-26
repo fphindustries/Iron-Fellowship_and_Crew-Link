@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { addDoc } from "firebase/firestore";
+import { useMemo } from "react";
 import { useStore } from "stores/store";
 import { CombatDocument, CombatEnemy, CombatPosition } from "types/combat.types";
 import {
@@ -10,22 +9,13 @@ import {
 } from "types/Track.type";
 import { ROLL_RESULT } from "types/DieRolls.type";
 import { getDifficultyStep } from "functions/moveUtils";
-import { createCombat } from "api-calls/combat/createCombat";
-import { updateCombat } from "api-calls/combat/updateCombat";
-import { endCombat as endCombatApi } from "api-calls/combat/endCombat";
-import { listenToActiveCombat } from "api-calls/combat/listenToActiveCombat";
-import {
-  convertToDatabase,
-  getCampaignTracksCollection,
-  getCharacterTracksCollection,
-} from "api-calls/tracks/_getRef";
+import { useActiveCombatQuery } from "hooks/queries/useCombatQuery";
+import { api } from "config/api.config";
+import { useQueryClient } from "@tanstack/react-query";
+import { combatKeys } from "hooks/queries/useCombatQuery";
 
 export function useCombatTracker() {
-  const [activeCombat, setActiveCombat] = useState<
-    (CombatDocument & { id: string }) | null
-  >(null);
-  const [loading, setLoading] = useState(true);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const qc = useQueryClient();
 
   const characterId = useStore(
     (s) => s.characters.currentCharacter.currentCharacterId
@@ -40,12 +30,17 @@ export function useCombatTracker() {
   );
   const logCombatEndEvent = useStore((s) => s.sessionLog.logCombatEndEvent);
 
-
   const updateCharacterTrack = useStore(
     (s) => s.characters.currentCharacter.tracks.updateTrack
   );
   const updateCampaignTrack = useStore(
     (s) => s.campaigns.currentCampaign.tracks.updateTrack
+  );
+  const addCharacterTrack = useStore(
+    (s) => s.characters.currentCharacter.tracks.addTrack
+  );
+  const addCampaignTrack = useStore(
+    (s) => s.campaigns.currentCampaign.tracks.addTrack
   );
   const deleteCharacterTrack = useStore(
     (s) => s.characters.currentCharacter.tracks.deleteTrack
@@ -54,7 +49,6 @@ export function useCombatTracker() {
     (s) => s.campaigns.currentCampaign.tracks.deleteTrack
   );
 
-  // Read the fray track from the store by trackId
   const characterFrayTracks = useStore(
     (s) =>
       s.characters.currentCharacter.tracks.trackMap[TrackStatus.Active][
@@ -68,10 +62,26 @@ export function useCombatTracker() {
       ]
   );
 
+  const { data: activeCombatRaw, isLoading: loading } = useActiveCombatQuery({
+    characterId: campaignId ? undefined : characterId ?? undefined,
+    campaignId,
+  });
+
+  const activeCombat = useMemo((): (CombatDocument & { id: string }) | null => {
+    if (!activeCombatRaw) return null;
+    return {
+      ...activeCombatRaw.dataJson,
+      id: activeCombatRaw.id,
+      active: activeCombatRaw.active,
+      createdAt: activeCombatRaw.createdAt
+        ? new Date(activeCombatRaw.createdAt)
+        : new Date(),
+    };
+  }, [activeCombatRaw]);
+
   const frayTrack = useMemo((): (ProgressTrack & { id: string }) | null => {
     if (!activeCombat?.trackId) return null;
     const { trackId } = activeCombat;
-    // Campaign track takes priority if in a campaign
     if (campaignId && campaignFrayTracks?.[trackId]) {
       return { ...campaignFrayTracks[trackId], id: trackId };
     }
@@ -81,28 +91,14 @@ export function useCombatTracker() {
     return null;
   }, [activeCombat, campaignId, campaignFrayTracks, characterFrayTracks]);
 
-  useEffect(() => {
-    if (!characterId) {
-      setActiveCombat(null);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    const unsub = listenToActiveCombat(
-      characterId,
-      (combat) => {
-        setActiveCombat(combat);
-        setLoading(false);
-      },
-      campaignId
-    );
-    unsubscribeRef.current = unsub;
-    return () => {
-      unsub();
-      unsubscribeRef.current = null;
-    };
-  }, [characterId, campaignId]);
+  const invalidateCombat = () => {
+    qc.invalidateQueries({
+      queryKey: combatKeys.active({
+        characterId: campaignId ? undefined : characterId ?? undefined,
+        campaignId,
+      }),
+    });
+  };
 
   const startCombat = async (
     objective: string,
@@ -110,36 +106,41 @@ export function useCombatTracker() {
     position: CombatPosition,
     difficulty: Difficulty
   ): Promise<void> => {
-    if (!characterId || !sessionId) return;
+    if (!characterId) return;
 
-    // Create the Fray progress track in Firestore and get its ID
-    const frayTrackData: Omit<ProgressTrack, "createdDate"> = {
+    // Create the Fray progress track via REST
+    const frayTrackData: ProgressTrack = {
       label: objective || "Combat",
       type: TrackTypes.Fray,
       difficulty,
       value: 0,
       status: TrackStatus.Active,
-    };
-    const dbTrack = convertToDatabase({
-      ...frayTrackData,
       createdDate: new Date(),
-    });
-    const tracksRef = campaignId
-      ? getCampaignTracksCollection(campaignId)
-      : getCharacterTracksCollection(characterId);
-    const trackDocRef = await addDoc(tracksRef, dbTrack);
-    const trackId = trackDocRef.id;
+    };
+    let trackId: string | undefined;
+    if (campaignId) {
+      const row = await addCampaignTrack(frayTrackData);
+      trackId = (row as any)?.id;
+    } else {
+      const row = await addCharacterTrack(frayTrackData);
+      trackId = (row as any)?.id;
+    }
 
-    await createCombat({
-      characterId,
-      campaignId,
-      sessionId,
+    const combatData = {
       objective,
       enemies,
       position,
       difficulty,
       trackId,
-    });
+      characterId,
+      sessionId,
+    };
+    if (campaignId) {
+      await api.post(`/api/campaigns/${campaignId}/combat`, combatData);
+    } else {
+      await api.post(`/api/characters/${characterId}/combat`, combatData);
+    }
+    invalidateCombat();
 
     logCombatStartEvent({
       objective,
@@ -148,26 +149,35 @@ export function useCombatTracker() {
     });
   };
 
-  const setPosition = async (position: CombatPosition): Promise<void> => {
-    if (!activeCombat || !characterId) return;
-    await updateCombat(activeCombat.id, characterId, { position }, campaignId);
+  const patchCombat = async (patch: object) => {
+    if (!activeCombatRaw || !characterId) return;
+    const newDataJson = { ...(activeCombatRaw.dataJson ?? {}), ...patch };
+    if (campaignId) {
+      await api.patch(
+        `/api/campaigns/${campaignId}/combat/${activeCombatRaw.id}`,
+        newDataJson
+      );
+    } else {
+      await api.patch(
+        `/api/characters/${characterId}/combat/${activeCombatRaw.id}`,
+        newDataJson
+      );
+    }
+    invalidateCombat();
   };
 
-  const addEnemy = async (enemy: CombatEnemy): Promise<void> => {
-    if (!activeCombat || !characterId) return;
-    const enemies = [...activeCombat.enemies, enemy];
-    await updateCombat(activeCombat.id, characterId, { enemies }, campaignId);
+  const setPosition = (position: CombatPosition) => patchCombat({ position });
+
+  const addEnemy = (enemy: CombatEnemy) => {
+    const enemies = [...(activeCombat?.enemies ?? []), enemy];
+    return patchCombat({ enemies });
   };
 
-  const removeEnemy = async (index: number): Promise<void> => {
-    if (!activeCombat || !characterId) return;
-    const enemies = activeCombat.enemies.filter((_, i) => i !== index);
-    await updateCombat(activeCombat.id, characterId, { enemies }, campaignId);
+  const removeEnemy = (index: number) => {
+    const enemies = (activeCombat?.enemies ?? []).filter((_, i) => i !== index);
+    return patchCombat({ enemies });
   };
 
-  /**
-   * Mark combat progress `times` times (usually 1 or 2) per the fray track difficulty.
-   */
   const markCombatProgress = async (times: 1 | 2 = 1): Promise<void> => {
     if (!frayTrack || !characterId) return;
     const step = getDifficultyStep(frayTrack.difficulty) * times;
@@ -183,10 +193,9 @@ export function useCombatTracker() {
     outcome: ROLL_RESULT,
     description?: string
   ): Promise<void> => {
-    if (!activeCombat || !characterId) return;
+    if (!activeCombatRaw || !characterId) return;
 
-    // Delete the fray track
-    if (activeCombat.trackId) {
+    if (activeCombat?.trackId) {
       if (campaignId) {
         await deleteCampaignTrack(activeCombat.trackId);
       } else {
@@ -194,7 +203,16 @@ export function useCombatTracker() {
       }
     }
 
-    await endCombatApi(activeCombat.id, characterId, campaignId);
+    if (campaignId) {
+      await api.del(
+        `/api/campaigns/${campaignId}/combat/${activeCombatRaw.id}`
+      );
+    } else {
+      await api.del(
+        `/api/characters/${characterId}/combat/${activeCombatRaw.id}`
+      );
+    }
+    invalidateCombat();
     logCombatEndEvent({ outcome, description });
   };
 

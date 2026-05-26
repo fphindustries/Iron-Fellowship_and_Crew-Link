@@ -25,6 +25,10 @@ function toCharacterDocument(row: any): any {
     theme: row.theme ?? undefined,
     backstory: row.backstory ?? undefined,
     initiativeStatus: row.initiativeStatus ?? "outOfCombat",
+    pronouns: row.pronouns ?? undefined,
+    callsign: row.callsign ?? undefined,
+    role: row.role ?? undefined,
+    characteristics: row.characteristicsJson ?? undefined,
   };
 }
 

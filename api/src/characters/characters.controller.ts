@@ -122,4 +122,42 @@ export class CharactersController {
     await this.svc.removeTrack(id);
     this.gateway.emit('updated', cid, {});
   }
+
+  @Get(':characterId/sessions')
+  getSessions(@Param('characterId') cid: string) {
+    return this.svc.getSessions(cid);
+  }
+
+  @Get(':characterId/combat/active')
+  getActiveCombat(@Param('characterId') cid: string) {
+    return this.svc.getActiveCombat(cid);
+  }
+
+  @Post(':characterId/combat')
+  async createCombat(@Param('characterId') cid: string, @Body() body: any) {
+    const result = await this.svc.createCombat(cid, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
+  }
+
+  @Patch(':characterId/combat/:combatId')
+  async updateCombat(
+    @Param('characterId') cid: string,
+    @Param('combatId') combatId: string,
+    @Body() body: any,
+  ) {
+    const result = await this.svc.updateCombat(combatId, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
+  }
+
+  @Delete(':characterId/combat/:combatId')
+  async endCombat(
+    @Param('characterId') cid: string,
+    @Param('combatId') combatId: string,
+  ) {
+    const result = await this.svc.endCombat(combatId);
+    this.gateway.emit('updated', cid, {});
+    return result;
+  }
 }

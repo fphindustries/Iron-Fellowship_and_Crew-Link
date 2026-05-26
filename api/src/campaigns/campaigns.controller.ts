@@ -197,4 +197,47 @@ export class CampaignsController {
     await this.svc.removeTrack(id);
     this.gateway.emit('updated', cid, {});
   }
+
+  @Get(':campaignId/sessions')
+  @UseGuards(CampaignMemberGuard)
+  getSessions(@Param('campaignId') cid: string) {
+    return this.svc.getSessions(cid);
+  }
+
+  @Get(':campaignId/combat/active')
+  @UseGuards(CampaignMemberGuard)
+  getActiveCombat(@Param('campaignId') cid: string) {
+    return this.svc.getActiveCombat(cid);
+  }
+
+  @Post(':campaignId/combat')
+  @UseGuards(CampaignMemberGuard)
+  async createCombat(@Param('campaignId') cid: string, @Body() body: any) {
+    const result = await this.svc.createCombat(cid, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
+  }
+
+  @Patch(':campaignId/combat/:combatId')
+  @UseGuards(CampaignMemberGuard)
+  async updateCombat(
+    @Param('campaignId') cid: string,
+    @Param('combatId') combatId: string,
+    @Body() body: any,
+  ) {
+    const result = await this.svc.updateCombat(combatId, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
+  }
+
+  @Delete(':campaignId/combat/:combatId')
+  @UseGuards(CampaignMemberGuard)
+  async endCombat(
+    @Param('campaignId') cid: string,
+    @Param('combatId') combatId: string,
+  ) {
+    const result = await this.svc.endCombat(combatId);
+    this.gateway.emit('updated', cid, {});
+    return result;
+  }
 }

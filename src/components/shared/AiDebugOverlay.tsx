@@ -38,7 +38,7 @@ import {
   GUIDE_DEFAULT_MODEL,
   GUIDE_DEFAULT_MAX_TOKENS,
 } from "hooks/useAIGuide";
-import { streamNarrative } from "api-calls/ai/streamNarrative";
+import { streamNarrative } from "api/ai/streamNarrative";
 import { useStore } from "stores/store";
 import { NarrativeRequestPayload } from "types/aiGuide.types";
 

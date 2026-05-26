@@ -8,12 +8,16 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, inArray } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { DB } from '../db/database.module';
+import { SessionsService } from '../sessions/sessions.service';
 
 type Db = NodePgDatabase<typeof schema>;
 
 @Injectable()
 export class CampaignsService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(
+    @Inject(DB) private readonly db: Db,
+    private readonly sessions: SessionsService,
+  ) {}
 
   private async hydrate(campaign: typeof schema.campaigns.$inferSelect) {
     const [members, gms, chars] = await Promise.all([
@@ -243,5 +247,54 @@ export class CampaignsService {
     await this.db
       .delete(schema.campaignTracks)
       .where(eq(schema.campaignTracks.id, id));
+  }
+
+  // ─── Sessions ──────────────────────────────────────────────────────────────
+
+  getSessions(campaignId: string) {
+    return this.sessions.findAllForCampaign(campaignId);
+  }
+
+  // ─── Combat ────────────────────────────────────────────────────────────────
+
+  async getActiveCombat(campaignId: string) {
+    const rows = await this.db
+      .select()
+      .from(schema.combats)
+      .where(
+        and(
+          eq(schema.combats.campaignId, campaignId),
+          eq(schema.combats.active, true),
+        ),
+      )
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  async createCombat(campaignId: string, dataJson: object) {
+    const [row] = await this.db
+      .insert(schema.combats)
+      .values({ campaignId, dataJson, active: true })
+      .returning();
+    return row;
+  }
+
+  async updateCombat(id: string, dataJson: object) {
+    const [row] = await this.db
+      .update(schema.combats)
+      .set({ dataJson })
+      .where(eq(schema.combats.id, id))
+      .returning();
+    return row;
+  }
+
+  async endCombat(id: string) {
+    const [row] = await this.db
+      .update(schema.combats)
+      .set({ active: false, endedAt: new Date() })
+      .where(eq(schema.combats.id, id))
+      .returning();
+    if (!row) throw new NotFoundException('Combat not found');
+    return row;
   }
 }
