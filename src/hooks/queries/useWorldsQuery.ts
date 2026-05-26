@@ -32,7 +32,11 @@ function toWorldDocument(row: WorldApiRow): WorldWithId {
     settingKey: row.settingKey ?? "",
     newTruths: row.newTruthsJson ?? row.newTruths ?? {},
     worldDescription: row.worldDescriptionBytes
-      ? new Uint8Array(row.worldDescriptionBytes)
+      ? new Uint8Array(
+          Array.isArray(row.worldDescriptionBytes)
+            ? row.worldDescriptionBytes
+            : (row.worldDescriptionBytes as { data?: number[] }).data ?? []
+        )
       : undefined,
   };
 }

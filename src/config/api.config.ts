@@ -125,7 +125,7 @@ export const api = {
     }
   },
   async del<_T = void>(path: string, body?: unknown): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}${path}`, {
+    const res = await fetchWithRefresh(`${API_BASE_URL}${path}`, {
       method: 'DELETE',
       credentials: 'include',
       headers: body ? { 'Content-Type': 'application/json' } : {},

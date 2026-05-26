@@ -15,6 +15,8 @@ import { AssetCard } from "components/features/assets/AssetCard";
 import { InitiativeStatusChip } from "components/features/characters/InitiativeStatusChip";
 import { PortraitAvatar } from "components/features/characters/PortraitAvatar/PortraitAvatar";
 import { useStore } from "stores/store";
+import { useQueryClient } from "@tanstack/react-query";
+import { campaignKeys } from "hooks/queries/useCampaignsQuery";
 import { useUserQuery } from "hooks/queries/useUsersQuery";
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
@@ -70,9 +72,20 @@ export function CharacterCard(props: CharacterCardProps) {
     updateCharacter(characterId, { initiativeStatus }).catch(ignoreApiError);
   };
 
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId ?? ""
+  );
+  const qc = useQueryClient();
+
   const removeCharacterFromCampaign = useStore(
     (store) => store.campaigns.currentCampaign.removeCharacter
   );
+
+  const handleRemove = () => {
+    removeCharacterFromCampaign(uid, characterId)
+      .then(() => qc.invalidateQueries({ queryKey: campaignKeys.detail(campaignId) }))
+      .catch(ignoreApiError);
+  };
 
   return (
     <Card variant={"outlined"}>
@@ -184,7 +197,7 @@ export function CharacterCard(props: CharacterCardProps) {
             {(uid === currentUserUid || !showGuidedPlayerView) && (
               <Button
                 color={"error"}
-                onClick={() => removeCharacterFromCampaign(uid, characterId)}
+                onClick={handleRemove}
               >
                 Remove Character
               </Button>
