@@ -126,6 +126,45 @@ SMTP_PASS=
 # ANTHROPIC_API_KEY=
 ```
 
+## Running in Production (Server Deployment)
+
+The dev scripts (`pnpm dev:all`, `nest start --watch`) compile on the fly and are not suitable for a server. For a permanent deployment you need to build both the API and the frontend first.
+
+1. **Install dependencies:**
+   ```bash
+   pnpm install
+   ```
+
+2. **Run database migrations:**
+   ```bash
+   pnpm --filter api run drizzle:migrate
+   ```
+
+3. **Build the API:**
+   ```bash
+   pnpm api:build          # compiles TypeScript → api/dist/
+   ```
+
+4. **Build the frontend** (only needed if the API is serving the static files):
+   ```bash
+   pnpm build              # type-checks + Vite build → dist/
+   ```
+
+5. **Start the API server:**
+   ```bash
+   pnpm --filter api run start:prod   # runs: node api/dist/main
+   ```
+   Or directly:
+   ```bash
+   node api/dist/main.js
+   ```
+
+Repeat steps 1–3 and restart the process whenever you pull new code that includes schema or source changes.
+
+> **Tip:** Use a process manager such as [PM2](https://pm2.keymetrics.io/) or a systemd service to keep the API running and restart it automatically on crashes or reboots.
+
+---
+
 ## PostgreSQL Setup
 
 1. Create a database owned by the user in your `DATABASE_URL` (this avoids schema permission issues on PostgreSQL 15+):
