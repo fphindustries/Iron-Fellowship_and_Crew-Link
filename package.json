@@ -66,15 +66,6 @@
     "yjs": "^13.6.15",
     "zustand": "^4.5.2"
   },
-  "pnpm": {
-    "allowBuilds": [
-      "@nestjs/core",
-      "core-js",
-      "esbuild",
-      "protobufjs",
-      "unrs-resolver"
-    ]
-  },
   "overrides": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0"
