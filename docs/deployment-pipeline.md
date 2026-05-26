@@ -109,13 +109,17 @@ VITE_FAVICON_PATH=/theme/eidolon.svg
 VITE_OPENGRAPH_PATH=/assets/starforged/opengraph-default.png
 ```
 
-### 6. Install dependencies and run initial migration
+### 6. Install dependencies, build, and run initial migration
 
 ```bash
 cd /opt/starforged
 pnpm install
 pnpm --filter api run drizzle:migrate
+pnpm api:build   # compiles TypeScript → api/dist/ (required before starting the service)
+pnpm build       # builds the Vite frontend → dist/
 ```
+
+> The systemd service runs `node dist/main`, so the API **must** be built at least once before you start it. After the initial setup, the GitHub Actions workflow handles all subsequent builds automatically.
 
 ### 7. Create the systemd service for the API
 
