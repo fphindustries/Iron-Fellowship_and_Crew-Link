@@ -11,7 +11,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { CharacterList } from "components/features/characters/CharacterList";
 import { Link } from "react-router-dom";
-import { constructCharacterCreateInCampaignUrl } from "pages/Character/routes";
+import { constructCharacterCreateInCampaignUrl, constructCharacterGuidedCreateInCampaignUrl } from "pages/Character/routes";
 import { useStore } from "stores/store";
 import { useState } from "react";
 
@@ -84,6 +84,21 @@ export function AddCharacterDialog(props: AddCharacterDialogProps) {
         {Object.keys(characters).length > 0 && (
           <Divider sx={{ my: 3 }}>OR</Divider>
         )}
+        <Box
+          display={"flex"}
+          alignItems={"center"}
+          justifyContent={"center"}
+          mt={2}
+        >
+          <Button
+            variant={"contained"}
+            component={Link}
+            to={constructCharacterGuidedCreateInCampaignUrl(campaignId)}
+            disabled={addCharacterLoading}
+          >
+            Guided Character Creation
+          </Button>
+        </Box>        
         <Box
           display={"flex"}
           alignItems={"center"}

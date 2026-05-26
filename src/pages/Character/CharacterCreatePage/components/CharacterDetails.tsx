@@ -6,7 +6,7 @@ import { useCallback } from "react";
 import { useRoller } from "stores/appState/useRoller";
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
-import { Box } from "@mui/material";
+import { Box, TextField } from "@mui/material";
 import { ImageInput } from "./ImageInput";
 
 export interface CharacterDetailsProps {
@@ -92,6 +92,58 @@ export function CharacterDetails(props: CharacterDetailsProps) {
               onChange={field.onChange}
               onBlur={field.onBlur}
               sx={{ maxWidth: 350, ml: 2 }}
+            />
+          )}
+        />
+      </Box>
+      <Box display="flex" gap={2} mt={2} flexWrap="wrap">
+        <Controller
+          name="pronouns"
+          control={control}
+          defaultValue=""
+          render={({ field, formState }) => (
+            <TextField
+              {...field}
+              label="Pronouns"
+              size="small"
+              disabled={formState.disabled}
+              placeholder="they/them"
+              sx={{ maxWidth: 180 }}
+            />
+          )}
+        />
+        <Controller
+          name="callsign"
+          control={control}
+          defaultValue=""
+          render={({ field, formState }) => (
+            <TextField
+              {...field}
+              label="Callsign"
+              size="small"
+              disabled={formState.disabled}
+              placeholder="e.g. Ghost, Ember"
+              sx={{ maxWidth: 180 }}
+            />
+          )}
+        />
+      </Box>
+      <Box mt={2}>
+        <Controller
+          name="characteristics"
+          control={control}
+          defaultValue=""
+          render={({ field, formState }) => (
+            <TextField
+              {...field}
+              label="Characteristics"
+              size="small"
+              disabled={formState.disabled}
+              placeholder="e.g. Ace pilot with a grudge, Cybernetic eye, wears a bright red flight suit"
+              fullWidth
+              multiline
+              minRows={2}
+              sx={{ maxWidth: 540 }}
             />
           )}
         />

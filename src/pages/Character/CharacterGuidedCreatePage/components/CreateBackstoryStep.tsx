@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Stack,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -28,10 +27,12 @@ type Method = "write" | "table" | "random" | "custom";
 export interface CreateBackstoryStepProps {
   onComplete: (backstory: string) => void;
   paths?: string[];
+  pathNames?: string[];
+  role?: string;
   worldContext?: WorldContext;
 }
 
-export function CreateBackstoryStep({ onComplete, paths, worldContext }: CreateBackstoryStepProps) {
+export function CreateBackstoryStep({ onComplete, paths, pathNames, role, worldContext }: CreateBackstoryStepProps) {
   const showAi = useAiGuide();
 
   const [method, setMethod] = useState<Method>("write");
@@ -57,7 +58,7 @@ export function CreateBackstoryStep({ onComplete, paths, worldContext }: CreateB
     setAiError(null);
     setBackstory("");
     try {
-      for await (const chunk of generateCharacterBackstoryStream({ prompt, paths, worldContext })) {
+      for await (const chunk of generateCharacterBackstoryStream({ prompt, paths, pathNames, role, worldContext })) {
         setBackstory((prev) => prev + chunk);
       }
     } catch {
@@ -100,7 +101,11 @@ export function CreateBackstoryStep({ onComplete, paths, worldContext }: CreateB
         value={method}
         exclusive
         onChange={handleMethodChange}
-        sx={{ flexWrap: "wrap", gap: 1, mb: 3 }}
+        sx={(theme) => ({
+          ["& button"]: {
+            borderColor: theme.palette.grey[500],
+          },
+        })}
       >
         <ToggleButton value="write" sx={{ gap: 0.5 }}>
           <EditIcon fontSize="small" />

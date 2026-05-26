@@ -36,7 +36,7 @@ import {
 type Method = "table" | "random" | "manual" | "ai";
 
 export interface ChoosePathsStepProps {
-  onComplete: (assets: AssetDocument[]) => void;
+  onComplete: (assets: AssetDocument[], role: string) => void;
   worldContext?: import("types/AI.type").WorldContext;
 }
 
@@ -58,6 +58,9 @@ export function ChoosePathsStep({ onComplete, worldContext }: ChoosePathsStepPro
   // Random roll
   const [rollResult, setRollResult] = useState<number | null>(null);
 
+  // Role
+  const [role, setRole] = useState("");
+
   // AI
   const [description, setDescription] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -75,11 +78,13 @@ export function ChoosePathsStep({ onComplete, worldContext }: ChoosePathsStepPro
     setRollResult(null);
     setRecommendations(null);
     setAiError(null);
+    setRole("");
   };
 
   const selectBackground = (bg: Background) => {
     setSelectedBackground(bg);
     setPreviewAssets(resolvePathAssets(bg.assetNames, assetMap));
+    setRole(bg.name);
   };
 
   const handleRoll = () => {
@@ -123,8 +128,8 @@ export function ChoosePathsStep({ onComplete, worldContext }: ChoosePathsStepPro
   };
 
   const handleConfirm = () => {
-    if (!previewAssets || previewAssets.length !== 2) return;
-    onComplete(previewAssets);
+    if (!previewAssets || previewAssets.length !== 2 || !role.trim()) return;
+    onComplete(previewAssets, role.trim());
   };
 
   return (
@@ -141,7 +146,12 @@ export function ChoosePathsStep({ onComplete, worldContext }: ChoosePathsStepPro
         value={method}
         exclusive
         onChange={handleMethodChange}
-        sx={{ flexWrap: "wrap", gap: 1, mb: 3 }}
+         sx={(theme) => ({
+            ["& button"]: {
+              borderColor: theme.palette.grey[500],
+              
+            },
+          })}
       >
         <ToggleButton value="table" sx={{ gap: 0.5 }}>
           <ListAltIcon fontSize="small" />
@@ -211,6 +221,8 @@ export function ChoosePathsStep({ onComplete, worldContext }: ChoosePathsStepPro
               setSelectedBackground(null);
               setPreviewAssets(assets.length === 2 ? assets : null);
             }
+            // Use AI-suggested role name (overrides background name set by selectBackground)
+            setRole(rec.roleName || rec.backgroundName);
           }}
           selectedBackground={selectedBackground}
           assetMap={assetMap}
@@ -232,9 +244,25 @@ export function ChoosePathsStep({ onComplete, worldContext }: ChoosePathsStepPro
               </Grid>
             ))}
           </Grid>
-          <Button variant="contained" onClick={handleConfirm}>
-            Confirm Selection
-          </Button>
+          <TextField
+            label="Role"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            required
+            size="small"
+            sx={{ mb: 2, minWidth: 280 }}
+            helperText="A short title for your character's role (e.g. Soldier, Scout, Medic)"
+            error={role.trim() === ""}
+          />
+          <Box>
+            <Button
+              variant="contained"
+              onClick={handleConfirm}
+              disabled={!role.trim()}
+            >
+              Confirm Selection
+            </Button>
+          </Box>
         </Box>
       )}
 

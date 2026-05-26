@@ -1,7 +1,7 @@
 import { CreateSliceType } from "stores/store.type";
 import { CharacterTracksSlice } from "./characterTracks.slice.type";
 import { defaultCharacterTracksSlice } from "./characterTracks.slice.default";
-import { TrackStatus, Track } from "types/Track.type";
+import { TrackStatus, TrackTypes, Track } from "types/Track.type";
 import { api } from "config/api.config";
 
 function toTrack(row: any): Track {
@@ -41,14 +41,38 @@ export const createCharacterTracksSlice: CreateSliceType<
   },
 
   updateTrack: (trackId, track) => {
-    const characterId = getState().characters.currentCharacter.currentCharacterId;
+    const state = getState();
+    const characterId = state.characters.currentCharacter.currentCharacterId;
     const existing = Object.values(TrackStatus).flatMap((status) =>
-      Object.values(getState().characters.currentCharacter.tracks.trackMap[status]).flatMap((typeMap) =>
+      Object.values(state.characters.currentCharacter.tracks.trackMap[status]).flatMap((typeMap) =>
         Object.entries(typeMap as Record<string, Track>)
           .filter(([id]) => id === trackId)
           .map(([, t]) => t)
       )
     )[0];
+    if (track.value !== undefined && existing) {
+      const trackTypes = [
+        TrackTypes.Fray,
+        TrackTypes.Journey,
+        TrackTypes.Vow,
+        TrackTypes.SceneChallenge,
+        TrackTypes.Clock,
+      ] as const;
+      const activeTrackMap = state.characters.currentCharacter.tracks.trackMap[TrackStatus.Active];
+      let foundTrack: { label: string; value: number; type: string } | undefined;
+      for (const type of trackTypes) {
+        const t = activeTrackMap[type][trackId];
+        if (t) { foundTrack = t; break; }
+      }
+      if (foundTrack) {
+        state.sessionLog.logProgressEvent({
+          trackName: foundTrack.label,
+          trackType: foundTrack.type,
+          previousValue: foundTrack.value,
+          newValue: track.value,
+        });
+      }
+    }
     const merged = { ...(existing ?? {}), ...track };
     return api
       .patch<any>(`/api/characters/${characterId}/tracks/${trackId}`, { dataJson: merged })

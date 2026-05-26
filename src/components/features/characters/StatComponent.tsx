@@ -21,10 +21,12 @@ export interface StatComponentProps {
     name: string;
     id: string;
   };
+  playerContext?: string;
+  onRollComplete?: () => void;
 }
 
 export function StatComponent(props: StatComponentProps) {
-  const { label, value, updateTrack, disableRoll, moveInfo, sx } = props;
+  const { label, value, updateTrack, disableRoll, moveInfo, sx, playerContext, onRollComplete } = props;
 
   const [inputValue, setInputValue] = useState<string>(value + "");
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -106,8 +108,9 @@ export function StatComponent(props: StatComponentProps) {
       component={updateTrack || disableRoll ? "div" : ButtonBase}
       onClick={() => {
         if (!(updateTrack || disableRoll)) {
-          rollStat(label, value, moveInfo, adds);
+          rollStat(label, value, moveInfo, adds, true, playerContext);
           resetAdds({ adds: 0 }).catch(ignoreApiError);
+          onRollComplete?.();
         }
       }}
     >

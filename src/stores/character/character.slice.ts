@@ -82,7 +82,7 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
       }
     },
 
-    createCharacter: async (name, stats, assets, portrait, expansionIds, backstory, backgroundVow) => {
+    createCharacter: async (name, stats, assets, portrait, expansionIds, backstory, backgroundVow, pronouns, callsign, characteristics, role) => {
       const uid = getState().auth.user?.id;
       if (!uid) throw new Error("You must be logged in to create a character");
 
@@ -92,6 +92,10 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
         statsJson: stats,
         expansionIds: expansionIds ?? [],
         backstory: backstory ?? null,
+        pronouns: pronouns ?? null,
+        callsign: callsign ?? null,
+        role: role ?? null,
+        characteristicsJson: characteristics ?? {},
       });
 
       const postCreation: Promise<unknown>[] = [];

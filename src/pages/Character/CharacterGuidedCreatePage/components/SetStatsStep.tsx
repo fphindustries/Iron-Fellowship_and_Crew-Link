@@ -177,29 +177,31 @@ export function SetStatsStep({
       </Box>
 
       {showAi && (
-        <Button
-          variant="outlined"
-          startIcon={
-            aiLoading ? <CircularProgress size={16} /> : <AutoAwesomeIcon />
-          }
-          onClick={handleRecommend}
-          disabled={aiLoading}
-          sx={{ mb: 2 }}
-        >
-          {aiLoading ? "Recommending…" : "Recommend Stats"}
-        </Button>
-      )}
+        <Box display="flex" flexWrap="wrap" mb={2}>
+          <Button
+            variant="outlined"
+            startIcon={
+              aiLoading ? <CircularProgress size={16} /> : <AutoAwesomeIcon />
+            }
+            onClick={handleRecommend}
+            disabled={aiLoading}
+            sx={{ mb: 2 }}
+          >
+            {aiLoading ? "Recommending…" : "Recommend Stats"}
+          </Button>
 
-      {aiError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {aiError}
-        </Alert>
-      )}
+          {aiError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {aiError}
+            </Alert>
+          )}
 
-      {aiReasoning && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {aiReasoning}
-        </Typography>
+          {aiReasoning && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {aiReasoning}
+            </Typography>
+          )}
+        </Box>
       )}
 
       <Button

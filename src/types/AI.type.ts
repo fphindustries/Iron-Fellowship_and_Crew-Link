@@ -147,6 +147,7 @@ export interface AiGuideResponse {
 
 export interface PathRecommendation {
   backgroundName: string;
+  roleName: string;
   asset1: string;
   asset2: string;
   reasoning: string;
@@ -164,6 +165,8 @@ export interface PathRecommendationRequest {
 export interface BackstoryRequest {
   prompt: string;
   paths?: string[];
+  pathNames?: string[];
+  role?: string;
   worldContext?: WorldContext;
 }
 
@@ -175,6 +178,7 @@ export interface VowRequest {
   paths: string[];
   backstory: string;
   prompt: string;
+  role?: string;
   worldContext?: WorldContext;
 }
 
@@ -249,6 +253,7 @@ export interface PortraitGenerationRequest {
   wear: string;
   pronouns?: string;
   paths: string[];
+  role?: string;
   portraitStyleAnchor?: string;
 }
 

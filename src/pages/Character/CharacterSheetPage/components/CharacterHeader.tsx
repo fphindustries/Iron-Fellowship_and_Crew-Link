@@ -9,6 +9,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { InitiativeButtons } from "./InitiativeButtons";
+import { CombatPositionBadge } from "components/features/characters/CombatPositionBadge";
 import { StatsSection } from "./StatsSection";
 import { useStore } from "stores/store";
 import LinkIcon from "@mui/icons-material/Launch";
@@ -70,6 +71,7 @@ export function CharacterHeader() {
             </Typography>
             <Stack spacing={1} direction={"row"}>
               <InitiativeButtons />
+              <CombatPositionBadge />
               {campaignId && !isMobile && (
                 <Chip
                   size={"small"}

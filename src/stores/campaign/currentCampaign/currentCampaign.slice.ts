@@ -154,10 +154,17 @@ export const createCurrentCampaignSlice: CreateSliceType<
     },
 
     updateCampaignConditionMeter: (conditionMeterKey, value) => {
-      const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
+      const state = getState();
+      const campaignId = state.campaigns.currentCampaign.currentCampaignId;
       if (!campaignId) return Promise.reject("No campaign found.");
-      const existing = getState().campaigns.currentCampaign.currentCampaign;
+      const existing = state.campaigns.currentCampaign.currentCampaign;
+      const previousValue = existing?.conditionMeters?.[conditionMeterKey] ?? 0;
       const conditionMeters = { ...(existing?.conditionMeters ?? {}), [conditionMeterKey]: value };
+      state.sessionLog.logStatChangeEvent({
+        stat: conditionMeterKey,
+        previousValue,
+        newValue: value,
+      });
       return api.patch<void>(`/api/campaigns/${campaignId}`, { conditionMeters });
     },
 

@@ -1,8 +1,9 @@
 import { Datasworn } from "@datasworn/core";
-import { Box, Chip, Stack } from "@mui/material";
+import { Box, Chip, Stack, TextField, Typography } from "@mui/material";
 import { StatComponent } from "components/features/characters/StatComponent";
 import { useStore } from "stores/store";
 import { MoveAssetControl } from "./MoveAssetControl";
+import { useState } from "react";
 
 export interface MoveRollersProps {
   move: Datasworn.Move;
@@ -38,6 +39,13 @@ export function MoveRollers(props: MoveRollersProps) {
     (store) => store.characters.currentCharacter.updateCurrentCharacter
   );
 
+  const activeSessionId = useStore(
+    (store) => store.sessionLog.activeSessionId
+  );
+  const isSessionActive = !!activeSessionId;
+
+  const [playerContext, setPlayerContext] = useState("");
+
   const getConditionMeterValue = (conditionMeterKey: string): number => {
     const conditionMeter = conditionMeterRules[conditionMeterKey];
 
@@ -71,65 +79,90 @@ export function MoveRollers(props: MoveRollersProps) {
         }
       });
     });
-    return (
-      <Box display={"flex"} flexWrap={"wrap"} gap={0.5} mt={0.5}>
-        {Object.keys(statRules)
-          .filter((stat) => stats[stat])
-          .map((stat) =>
-            characterStats ? (
-              <StatComponent
-                key={stat}
-                label={statRules[stat].label}
-                value={characterStats[stat]}
-                moveInfo={{
-                  name: move.name,
-                  id: move._id,
-                }}
-              />
-            ) : (
-              <Chip
-                key={stat}
-                label={stat}
-                sx={{ textTransform: "capitalize" }}
-              />
-            )
-          )}
-        {Object.keys(conditionMeterRules)
-          .filter((cm) => conditionMeters[cm])
-          .map((conditionMeterKey) =>
-            characterConditionMeters ? (
-              <StatComponent
-                key={conditionMeterKey}
-                label={conditionMeterRules[conditionMeterKey].label}
-                value={getConditionMeterValue(conditionMeterKey)}
-                moveInfo={{
-                  name: move.name,
-                  id: move._id,
-                }}
-              />
-            ) : (
-              <Chip
-                key={conditionMeterKey}
-                label={conditionMeterRules[conditionMeterKey].label}
-                sx={{ textTransform: "capitalize" }}
-              />
-            )
-          )}
-        {Object.keys(assetControls).map((assetControl) => (
-          <MoveAssetControl
-            key={assetControl}
-            control={assetControl}
-            move={move}
-          />
-        ))}
+    const rollDisabled = isSessionActive && !playerContext.trim();
 
-        {hasCharacter && (
-          <StatComponent
-            label={"Adds"}
-            updateTrack={(newValue) => updateAdds({ adds: newValue })}
-            value={adds}
-          />
+    return (
+      <Box mt={0.5}>
+        {isSessionActive && (
+          <Box mb={1}>
+            <Typography variant="caption" color="textSecondary" display="block" mb={0.5}>
+              What are you doing?
+            </Typography>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Describe your action..."
+              value={playerContext}
+              onChange={(e) => setPlayerContext(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          </Box>
         )}
+        <Box display={"flex"} flexWrap={"wrap"} gap={0.5}>
+          {Object.keys(statRules)
+            .filter((stat) => stats[stat])
+            .map((stat) =>
+              characterStats ? (
+                <StatComponent
+                  key={stat}
+                  label={statRules[stat].label}
+                  value={characterStats[stat]}
+                  moveInfo={{
+                    name: move.name,
+                    id: move._id,
+                  }}
+                  disableRoll={rollDisabled}
+                  playerContext={playerContext}
+                  onRollComplete={() => setPlayerContext("")}
+                />
+              ) : (
+                <Chip
+                  key={stat}
+                  label={stat}
+                  sx={{ textTransform: "capitalize" }}
+                />
+              )
+            )}
+          {Object.keys(conditionMeterRules)
+            .filter((cm) => conditionMeters[cm])
+            .map((conditionMeterKey) =>
+              characterConditionMeters ? (
+                <StatComponent
+                  key={conditionMeterKey}
+                  label={conditionMeterRules[conditionMeterKey].label}
+                  value={getConditionMeterValue(conditionMeterKey)}
+                  moveInfo={{
+                    name: move.name,
+                    id: move._id,
+                  }}
+                  disableRoll={rollDisabled}
+                  playerContext={playerContext}
+                  onRollComplete={() => setPlayerContext("")}
+                />
+              ) : (
+                <Chip
+                  key={conditionMeterKey}
+                  label={conditionMeterRules[conditionMeterKey].label}
+                  sx={{ textTransform: "capitalize" }}
+                />
+              )
+            )}
+          {Object.keys(assetControls).map((assetControl) => (
+            <MoveAssetControl
+              key={assetControl}
+              control={assetControl}
+              move={move}
+            />
+          ))}
+
+          {hasCharacter && (
+            <StatComponent
+              label={"Adds"}
+              updateTrack={(newValue) => updateAdds({ adds: newValue })}
+              value={adds}
+            />
+          )}
+        </Box>
       </Box>
     );
   } else if (move.roll_type === "progress_roll") {

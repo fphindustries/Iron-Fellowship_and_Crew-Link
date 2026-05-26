@@ -32,10 +32,17 @@ export const createCurrentCharacterSlice: CreateSliceType<
     },
 
     updateCharacterConditionMeter: (conditionMeterKey, value) => {
-      const characterId = getState().characters.currentCharacter.currentCharacterId;
+      const state = getState();
+      const characterId = state.characters.currentCharacter.currentCharacterId;
       if (!characterId) return Promise.reject("Character ID must be defined");
-      const existing = getState().characters.currentCharacter.currentCharacter;
+      const existing = state.characters.currentCharacter.currentCharacter;
+      const previousValue = existing?.conditionMeters?.[conditionMeterKey] ?? 0;
       const conditionMeters = { ...(existing?.conditionMeters ?? {}), [conditionMeterKey]: value };
+      state.sessionLog.logStatChangeEvent({
+        stat: conditionMeterKey,
+        previousValue,
+        newValue: value,
+      });
       return api.patch<void>(`/api/characters/${characterId}`, { conditionMeters });
     },
 

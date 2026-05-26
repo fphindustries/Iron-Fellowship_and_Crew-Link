@@ -69,7 +69,16 @@ export function TracksSection() {
     return conditionMeter.value;
   };
 
+  const logStatChangeEvent = useStore(
+    (store) => store.sessionLog.logStatChangeEvent
+  );
+
   const updateMomentum = (newValue: number) => {
+    logStatChangeEvent({
+      stat: "Momentum",
+      previousValue: momentum,
+      newValue,
+    });
     return updateCharacter({
       momentum: newValue,
     });

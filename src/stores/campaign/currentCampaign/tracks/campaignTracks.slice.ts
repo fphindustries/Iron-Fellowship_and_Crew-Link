@@ -1,7 +1,7 @@
 import { CreateSliceType } from "stores/store.type";
 import { CampaignTracksSlice } from "./campaignTracks.slice.type";
 import { defaultCampaignTracksSlice } from "./campaignTracks.slice.default";
-import { TrackStatus, Track } from "types/Track.type";
+import { TrackStatus, TrackTypes, Track } from "types/Track.type";
 import { api } from "config/api.config";
 
 function toTrack(row: any): Track {
@@ -42,14 +42,23 @@ export const createCampaignTracksSlice: CreateSliceType<CampaignTracksSlice> = (
   },
 
   updateTrack: (trackId, track) => {
-    const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
+    const state = getState();
+    const campaignId = state.campaigns.currentCampaign.currentCampaignId;
     const existing = Object.values(TrackStatus).flatMap((status) =>
-      Object.values(getState().campaigns.currentCampaign.tracks.trackMap[status]).flatMap((typeMap) =>
+      Object.values(state.campaigns.currentCampaign.tracks.trackMap[status]).flatMap((typeMap) =>
         Object.entries(typeMap as Record<string, Track>)
           .filter(([id]) => id === trackId)
           .map(([, t]) => t)
       )
     )[0];
+    if (track.value !== undefined && existing) {
+      state.sessionLog.logProgressEvent({
+        trackName: (existing as any).label ?? trackId,
+        trackType: (existing as any).type ?? "",
+        previousValue: (existing as any).value ?? 0,
+        newValue: track.value,
+      });
+    }
     const merged = { ...(existing ?? {}), ...track };
     return api
       .patch<any>(`/api/campaigns/${campaignId}/tracks/${trackId}`, { dataJson: merged })

@@ -30,6 +30,7 @@ export interface CreateBackgroundVowStepProps {
   onComplete: (vow: string) => void;
   pathNames: string[];
   backstory: string;
+  role?: string;
   worldContext?: WorldContext;
 }
 
@@ -48,6 +49,7 @@ export function CreateBackgroundVowStep({
   onComplete,
   pathNames,
   backstory,
+  role,
   worldContext,
 }: CreateBackgroundVowStepProps) {
   const showAi = useAiGuide();
@@ -79,6 +81,7 @@ export function CreateBackgroundVowStep({
         paths: pathNames,
         backstory,
         prompt,
+        role,
         worldContext,
       })) {
         setVowText((prev) => prev + chunk);
@@ -129,7 +132,11 @@ export function CreateBackgroundVowStep({
         value={method}
         exclusive
         onChange={handleMethodChange}
-        sx={{ flexWrap: "wrap", gap: 1, mb: 3 }}
+        sx={(theme) => ({
+          ["& button"]: {
+            borderColor: theme.palette.grey[500],
+          },
+        })}
       >
         <ToggleButton value="write" sx={{ gap: 0.5 }}>
           <EditIcon fontSize="small" />

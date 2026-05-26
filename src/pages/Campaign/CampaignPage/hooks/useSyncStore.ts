@@ -15,6 +15,7 @@ import { useListenToSectorLocations } from "stores/world/currentWorld/sector/sec
 import { useListenToSharedAssets } from "stores/campaign/currentCampaign/sharedAssets/useListenToSharedAssets";
 import { useListenToLogs } from "stores/gameLog/useListenToLogs";
 import { useListenToHomebrewContent } from "stores/homebrew/useListenToHomebrewContent";
+import { useListenToSessionLog } from "stores/sessionLog/useListenToSessionLog";
 import { useSyncTheme } from "providers/ThemeProvider/useSyncTheme";
 import { useCampaignQuery } from "hooks/queries/useCampaignsQuery";
 import { toCampaignDocument } from "stores/campaign/campaign.slice";
@@ -70,6 +71,7 @@ export function useSyncStore() {
 
   useListenToSettings();
   useListenToLogs();
+  useListenToSessionLog();
 
   useListenToHomebrewContent(expansionIds ?? []);
 

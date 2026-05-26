@@ -14,6 +14,7 @@ import { createAppStateSlice } from "./appState/appState.slice";
 import { createHomebrewSlice } from "./homebrew/homebrew.slice";
 import { createRulesSlice } from "./rules/rules.slice";
 import { createAiSlice } from "./ai/ai.slice";
+import { createSessionLogSlice } from "./sessionLog/sessionLog.slice";
 
 export const useStore = createWithEqualityFn<IStore>()(
   immer((...params) => ({
@@ -26,6 +27,7 @@ export const useStore = createWithEqualityFn<IStore>()(
     settings: createSettingsSlice(...params),
     notes: createNotesSlice(...params),
     gameLog: createGameLogSlice(...params),
+    sessionLog: createSessionLogSlice(...params),
     homebrew: createHomebrewSlice(...params),
     rules: createRulesSlice(...params),
     ai: createAiSlice(...params),
