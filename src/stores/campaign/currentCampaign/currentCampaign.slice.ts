@@ -139,18 +139,33 @@ export const createCurrentCampaignSlice: CreateSliceType<
       await api.del<void>(`/api/campaigns/${campaignId}/members/${uid}`);
     },
 
-    addCharacter: (characterId) => {
+    addCharacter: async (characterId, campaignId) => {
       const state = getState();
       const uid = state.auth.uid;
-      const campaignId = state.campaigns.currentCampaign.currentCampaignId;
-      if (!campaignId) return Promise.reject("No campaign found.");
-      return api.post<void>(`/api/campaigns/${campaignId}/characters`, { characterId, userId: uid });
+      const activeCampaignId = campaignId ?? state.campaigns.currentCampaign.currentCampaignId;
+      if (!activeCampaignId) return Promise.reject("No campaign found.");
+      await api.post<void>(`/api/campaigns/${activeCampaignId}/characters`, { characterId, userId: uid });
+      set((store) => {
+        const campaign = store.campaigns.currentCampaign.currentCampaign;
+        if (campaign) {
+          campaign.characters.push({ uid, characterId });
+        }
+      });
     },
 
-    removeCharacter: (uid, characterId) => {
+    removeCharacter: async (uid, characterId) => {
       const campaignId = getState().campaigns.currentCampaign.currentCampaignId;
       if (!campaignId) return Promise.reject("No campaign found.");
-      return api.del<void>(`/api/campaigns/${campaignId}/characters/${characterId}`);
+      await api.del<void>(`/api/campaigns/${campaignId}/characters/${characterId}`);
+      set((store) => {
+        const campaign = store.campaigns.currentCampaign.currentCampaign;
+        if (campaign) {
+          campaign.characters = campaign.characters.filter(
+            (c) => c.characterId !== characterId
+          );
+        }
+        delete store.campaigns.currentCampaign.characters.characterMap[characterId];
+      });
     },
 
     updateCampaignConditionMeter: (conditionMeterKey, value) => {

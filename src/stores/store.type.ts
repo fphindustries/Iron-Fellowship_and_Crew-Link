@@ -12,6 +12,7 @@ import { HomebrewSlice } from "./homebrew/homebrew.slice.type";
 import { RulesSlice } from "./rules/rules.slice.type";
 import { AiSlice } from "./ai/ai.slice.type";
 import { SessionLogSlice } from "./sessionLog/sessionLog.slice.type";
+import { AIGuideSlice } from "./aiGuide/aiGuide.slice.type";
 
 export type IStore = {
   appState: AppStateSlice;
@@ -27,6 +28,7 @@ export type IStore = {
   homebrew: HomebrewSlice;
   rules: RulesSlice;
   ai: AiSlice;
+  aiGuide: AIGuideSlice;
 };
 
 export type CreateSliceType<T> = StateCreator<

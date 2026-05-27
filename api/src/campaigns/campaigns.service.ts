@@ -297,4 +297,27 @@ export class CampaignsService {
     if (!row) throw new NotFoundException('Combat not found');
     return row;
   }
+
+  // ─── AI Guide State ────────────────────────────────────────────────────────
+
+  async getAiGuideState(campaignId: string) {
+    const [row] = await this.db
+      .select()
+      .from(schema.campaignAiGuideState)
+      .where(eq(schema.campaignAiGuideState.campaignId, campaignId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async upsertAiGuideState(campaignId: string, stateJson: object) {
+    const [row] = await this.db
+      .insert(schema.campaignAiGuideState)
+      .values({ campaignId, stateJson, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: schema.campaignAiGuideState.campaignId,
+        set: { stateJson, updatedAt: new Date() },
+      })
+      .returning();
+    return row;
+  }
 }

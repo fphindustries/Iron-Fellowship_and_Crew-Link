@@ -15,6 +15,7 @@ import { createHomebrewSlice } from "./homebrew/homebrew.slice";
 import { createRulesSlice } from "./rules/rules.slice";
 import { createAiSlice } from "./ai/ai.slice";
 import { createSessionLogSlice } from "./sessionLog/sessionLog.slice";
+import { createAIGuideSlice } from "./aiGuide/aiGuide.slice";
 
 export const useStore = createWithEqualityFn<IStore>()(
   immer((...params) => ({
@@ -31,6 +32,7 @@ export const useStore = createWithEqualityFn<IStore>()(
     homebrew: createHomebrewSlice(...params),
     rules: createRulesSlice(...params),
     ai: createAiSlice(...params),
+    aiGuide: createAIGuideSlice(...params),
   })),
   shallow
 );

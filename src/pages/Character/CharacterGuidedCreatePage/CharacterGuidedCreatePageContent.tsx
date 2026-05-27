@@ -40,7 +40,8 @@ import { ReviewStep } from "./components/ReviewStep";
 import { WorldContext, WorldAiSettings } from "types/AI.type";
 import { CUSTOM_TRUTH_INDEX } from "components/features/worlds/WorldTruths/customTruthIndex";
 import { useAllWorldsQuery } from "hooks/queries/useWorldsQuery";
-import { useCampaignQuery } from "hooks/queries/useCampaignsQuery";
+import { campaignKeys, useCampaignQuery } from "hooks/queries/useCampaignsQuery";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface GuidedForm {
   enabledExpansionMap: Record<string, boolean>;
@@ -64,6 +65,7 @@ const STEPS = [
 export function CharacterGuidedCreatePageContent() {
   const campaignId = useSearchParams()[0].get("campaignId");
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const appName = useAppName();
 
   const [activeStep, setActiveStep] = useState(0);
@@ -308,11 +310,17 @@ export function CharacterGuidedCreatePageContent() {
       .then((characterId) => {
         const afterSummary = () => {
           if (campaignId) {
-            addCharacterToCampaign(characterId).finally(() => {
-              navigate(
-                constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
-              );
-            });
+            addCharacterToCampaign(characterId, campaignId)
+              .then(() =>
+                queryClient.invalidateQueries({
+                  queryKey: campaignKeys.detail(campaignId),
+                })
+              )
+              .finally(() => {
+                navigate(
+                  constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
+                );
+              });
           } else {
             navigate(constructCharacterSheetPath(characterId));
           }

@@ -1,16 +1,29 @@
 // These types mirror functions/src/ai/_ai.type.ts.
 // Keep in sync when modifying either side.
 
-export type AiMode =
+export type AiCopilotMode =
   | "storyGenerator"
   | "actionElaborator"
   | "stuckPlayer"
   | "sessionRecap"
   | "bookkeeper";
 
+export type AiGuidedMode =
+  | "sceneFrame"
+  | "askOrAnswer"
+  | "moveSuggestion"
+  | "outcomeNarration"
+  | "priceProposal"
+  | "oracleInterpretation"
+  | "clockAdvance"
+  | "sceneChallengeGuidance"
+  | "bookkeepingProposal";
+
+export type AiMode = AiCopilotMode | AiGuidedMode;
+
 export type AiGameSystem = "ironsworn" | "starforged";
 
-export type AiCampaignType = "solo" | "co-op" | "guided";
+export type AiCampaignType = "solo" | "co-op" | "guided" | "ai-guided";
 
 // --- Provider & world AI settings ---
 
@@ -143,6 +156,7 @@ export interface AiGuideResponse {
   text?: string;
   bookkeeper?: BookkeeperOutput;
   recap?: SessionRecapOutput;
+  structured?: object;
 }
 
 export interface PathRecommendation {

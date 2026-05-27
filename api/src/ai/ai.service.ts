@@ -8,12 +8,39 @@ import { AiProvider, AiProviderName } from './ai.provider';
 import { OpenAiProvider } from './providers/openai.provider';
 import { AnthropicProvider } from './providers/anthropic.provider';
 import { buildPrompt } from './prompt-templates';
-import { BOOKKEEPER_JSON_SCHEMA } from './schemas';
+import {
+  BOOKKEEPER_JSON_SCHEMA,
+  PRICE_PROPOSAL_JSON_SCHEMA,
+  CLOCK_ADVANCE_JSON_SCHEMA,
+} from './schemas';
 import { appendWorldContextLines } from './world-context';
 
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 const DEFAULT_ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
-const HEAVY_MODES = new Set(['sessionRecap', 'bookkeeper']);
+const HEAVY_MODES = new Set([
+  'sessionRecap',
+  'bookkeeper',
+  'priceProposal',
+  'outcomeNarration',
+  'sceneFrame',
+  'bookkeepingProposal',
+]);
+
+function resolveStructuredOutputSchema(
+  mode: string,
+): { schema: Record<string, unknown>; schemaName: string } | null {
+  switch (mode) {
+    case 'bookkeeper':
+    case 'bookkeepingProposal':
+      return { schema: BOOKKEEPER_JSON_SCHEMA as Record<string, unknown>, schemaName: 'bookkeeper_output' };
+    case 'priceProposal':
+      return { schema: PRICE_PROPOSAL_JSON_SCHEMA as Record<string, unknown>, schemaName: 'price_proposal' };
+    case 'clockAdvance':
+      return { schema: CLOCK_ADVANCE_JSON_SCHEMA as Record<string, unknown>, schemaName: 'clock_advance' };
+    default:
+      return null;
+  }
+}
 
 @Injectable()
 export class AiService {
@@ -101,16 +128,25 @@ export class AiService {
 
     let _debug: object | undefined;
     if (useStructuredOutput) {
+      const schemaInfo = resolveStructuredOutputSchema(mode) ?? {
+        schema: BOOKKEEPER_JSON_SCHEMA as Record<string, unknown>,
+        schemaName: 'bookkeeper_output',
+      };
       const result = await provider.generateStructured({
         model,
         systemPromptStatic,
         systemPromptDynamic,
         userPrompt,
-        schema: BOOKKEEPER_JSON_SCHEMA,
-        schemaName: 'bookkeeper_output',
+        schema: schemaInfo.schema,
+        schemaName: schemaInfo.schemaName,
       });
       _debug = result._debug;
-      responseData = { mode, bookkeeper: JSON.parse(result.text) };
+      const parsed = JSON.parse(result.text);
+      if (mode === 'bookkeeper' || mode === 'bookkeepingProposal') {
+        responseData = { mode, bookkeeper: parsed };
+      } else {
+        responseData = { mode, structured: parsed };
+      }
     } else {
       const result = await provider.generateText({
         model,

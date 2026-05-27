@@ -21,7 +21,7 @@ import { InviteUsersDialog } from "./components/InviteUsersDialog";
 export function CampaignPage() {
   useSyncStore();
   const { campaignId } = useParams();
-  const { isPending: campaignLoading } = useCampaignQuery(campaignId);
+  const { isPending: campaignLoading, data: campaignQueryData } = useCampaignQuery(campaignId);
 
   const campaignName = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaign?.name
@@ -43,7 +43,7 @@ export function CampaignPage() {
     (store) => store.campaigns.currentCampaign.updateCampaignGM
   );
 
-  if (campaignLoading) {
+  if (campaignLoading || (!!campaignQueryData && !isCampaignLoaded)) {
     return <LinearProgress />;
   }
 

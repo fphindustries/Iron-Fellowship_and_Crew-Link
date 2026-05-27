@@ -100,6 +100,18 @@ export class CampaignsController {
     this.gateway.emit('updated', cid, {});
   }
 
+  @Get(':campaignId/ai-guide-state')
+  @UseGuards(CampaignMemberGuard)
+  getAiGuideState(@Param('campaignId') cid: string) {
+    return this.svc.getAiGuideState(cid);
+  }
+
+  @Patch(':campaignId/ai-guide-state')
+  @UseGuards(CampaignMemberGuard)
+  upsertAiGuideState(@Param('campaignId') cid: string, @Body() body: any) {
+    return this.svc.upsertAiGuideState(cid, body);
+  }
+
   @Get(':campaignId/ai-events')
   @UseGuards(CampaignMemberGuard)
   getAiEvents(@Param('campaignId') cid: string) {

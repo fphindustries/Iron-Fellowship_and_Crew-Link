@@ -19,6 +19,8 @@ import { LocationsSection } from "components/features/worlds/Locations";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { AiGuidePanel } from "components/features/aiCopilot/AiCopilotPanel";
+import { AIGuidedPanel } from "components/features/aiGuide/AIGuidedPanel";
+import { CampaignType } from "types/Campaign.type";
 
 enum CampaignTabs {
   Characters = "characters",
@@ -39,7 +41,8 @@ export interface CampaignContentProps {
 
 export function CampaignContent(props: CampaignContentProps) {
   const { openInviteDialog } = props;
-  const { showGuidedPlayerView, showGuideTips } = useCampaignType();
+  const { showGuidedPlayerView, showGuideTips, campaignType } = useCampaignType();
+  const isAIGuided = campaignType === CampaignType.AIGuided;
 
   const showNewLocations = useNewMaps();
   const shouldShowSectors =
@@ -94,7 +97,10 @@ export function CampaignContent(props: CampaignContentProps) {
         <StyledTab label="NPCs" value={CampaignTabs.NPCs} />
         <StyledTab label="Lore" value={CampaignTabs.Lore} />
         <StyledTab label="Sessions" value={CampaignTabs.Sessions} />
-        {showAiGuide && (
+        {isAIGuided && (
+          <StyledTab label="AI Guide" value={CampaignTabs.AiGuide} />
+        )}
+        {showAiGuide && !isAIGuided && (
           <StyledTab label="AI" value={CampaignTabs.AiGuide} />
         )}
       </StyledTabs>
@@ -145,7 +151,12 @@ export function CampaignContent(props: CampaignContentProps) {
       <ContainedTabPanel isVisible={selectedTab === CampaignTabs.Sessions}>
         <SessionsTab />
       </ContainedTabPanel>
-      {showAiGuide && (
+      {isAIGuided && (
+        <ContainedTabPanel isVisible={selectedTab === CampaignTabs.AiGuide}>
+          <AIGuidedPanel />
+        </ContainedTabPanel>
+      )}
+      {showAiGuide && !isAIGuided && (
         <ContainedTabPanel isVisible={selectedTab === CampaignTabs.AiGuide}>
           <AiGuidePanel />
         </ContainedTabPanel>

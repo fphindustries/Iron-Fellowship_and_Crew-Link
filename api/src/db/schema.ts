@@ -34,6 +34,7 @@ export const campaignTypeEnum = pgEnum('campaign_type', [
   'solo',
   'coop',
   'guided',
+  'ai-guided',
 ]);
 export const initiativeStatusEnum = pgEnum('initiative_status', [
   'hasInitiative',
@@ -305,6 +306,18 @@ export const campaignAiEvents = pgTable('campaign_ai_events', {
   createdBy: uuid('created_by')
     .notNull()
     .references(() => users.id),
+});
+
+export const campaignAiGuideState = pgTable('campaign_ai_guide_state', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  campaignId: uuid('campaign_id')
+    .notNull()
+    .unique()
+    .references(() => campaigns.id, { onDelete: 'cascade' }),
+  stateJson: jsonb('state_json').notNull().default({}),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ─── Worlds ───────────────────────────────────────────────────────────────────

@@ -50,6 +50,20 @@
       "when": 1779754500851,
       "tag": "0006_session_log_combat",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779758400000,
+      "tag": "0007_ai_guided_campaign_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779762000000,
+      "tag": "0008_campaign_ai_guide_state",
+      "breakpoints": true
     }
   ]
 }
