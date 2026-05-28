@@ -320,4 +320,33 @@ export class CampaignsService {
       .returning();
     return row;
   }
+
+  // ─── Starship ──────────────────────────────────────────────────────────────
+
+  async getStarship(campaignId: string) {
+    const [row] = await this.db
+      .select()
+      .from(schema.campaignStarship)
+      .where(eq(schema.campaignStarship.campaignId, campaignId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async upsertStarship(campaignId: string, patch: { name?: string | null; history?: string | null; quirks?: string[]; image?: object | null }) {
+    const [row] = await this.db
+      .insert(schema.campaignStarship)
+      .values({ campaignId, ...patch })
+      .onConflictDoUpdate({
+        target: schema.campaignStarship.campaignId,
+        set: patch,
+      })
+      .returning();
+    return row;
+  }
+
+  async deleteStarship(campaignId: string) {
+    await this.db
+      .delete(schema.campaignStarship)
+      .where(eq(schema.campaignStarship.campaignId, campaignId));
+  }
 }

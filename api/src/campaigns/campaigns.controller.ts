@@ -252,4 +252,25 @@ export class CampaignsController {
     this.gateway.emit('updated', cid, {});
     return result;
   }
+
+  @Get(':campaignId/starship')
+  @UseGuards(CampaignMemberGuard)
+  getStarship(@Param('campaignId') cid: string) {
+    return this.svc.getStarship(cid);
+  }
+
+  @Patch(':campaignId/starship')
+  @UseGuards(CampaignMemberGuard)
+  async upsertStarship(@Param('campaignId') cid: string, @Body() body: any) {
+    const result = await this.svc.upsertStarship(cid, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
+  }
+
+  @Delete(':campaignId/starship')
+  @UseGuards(CampaignMemberGuard)
+  async deleteStarship(@Param('campaignId') cid: string) {
+    await this.svc.deleteStarship(cid);
+    this.gateway.emit('updated', cid, {});
+  }
 }

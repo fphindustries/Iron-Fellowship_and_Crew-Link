@@ -7,6 +7,7 @@ export const campaignKeys = {
   detail: (id: string) => ["campaigns", "detail", id] as const,
   assets: (id: string) => ["campaigns", "assets", id] as const,
   tracks: (id: string) => ["campaigns", "tracks", id] as const,
+  starship: (id: string) => ["campaigns", "starship", id] as const,
 };
 
 export function useCampaignsQuery(uid: string | undefined) {
@@ -65,6 +66,40 @@ export function useCampaignCharacterTracksQueries(characterIds: string[]) {
       queryKey: ["characters", "tracks", characterId],
       queryFn: () => api.get<any[]>(`/api/characters/${characterId}/tracks`),
     })),
+  });
+}
+
+export interface CampaignStarship {
+  id: string;
+  campaignId: string;
+  name: string | null;
+  history: string | null;
+  quirks: string[];
+  image: { url: string; position: { x: number; y: number }; scale: number } | null;
+}
+
+export function useCampaignStarshipQuery(id: string | undefined) {
+  return useQuery<CampaignStarship | null>({
+    queryKey: campaignKeys.starship(id ?? ""),
+    queryFn: () => api.get<CampaignStarship | null>(`/api/campaigns/${id}/starship`),
+    enabled: !!id,
+  });
+}
+
+export function useUpsertCampaignStarshipMutation(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<Omit<CampaignStarship, "id" | "campaignId">>) =>
+      api.patch<CampaignStarship>(`/api/campaigns/${id}/starship`, body),
+    onSuccess: (data) => qc.setQueryData(campaignKeys.starship(id), data),
+  });
+}
+
+export function useDeleteCampaignStarshipMutation(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.del(`/api/campaigns/${id}/starship`),
+    onSuccess: () => qc.setQueryData(campaignKeys.starship(id), null),
   });
 }
 

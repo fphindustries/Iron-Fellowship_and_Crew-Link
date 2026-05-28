@@ -320,6 +320,18 @@ export const campaignAiGuideState = pgTable('campaign_ai_guide_state', {
     .defaultNow(),
 });
 
+export const campaignStarship = pgTable('campaign_starship', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  campaignId: uuid('campaign_id')
+    .notNull()
+    .unique()
+    .references(() => campaigns.id, { onDelete: 'cascade' }),
+  name: text('name'),
+  history: text('history'),
+  quirks: text('quirks').array().notNull().default([]),
+  image: jsonb('image'),
+});
+
 // ─── Worlds ───────────────────────────────────────────────────────────────────
 
 export const worlds = pgTable('worlds', {

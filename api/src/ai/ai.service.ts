@@ -535,6 +535,20 @@ export class AiService {
     return { ...JSON.parse(result.text), _debug: result._debug };
   }
 
+  async generateStarshipImages(body: any) {
+    const { description } = body;
+    const prompt = [
+      'Ironsworn Starforged sci-fi RPG starship illustration.',
+      'Full exterior view of the starship, dramatically lit against a star field or nebula.',
+      description ? `Ship description: ${description}.` : '',
+      'Digital art, cinematic composition, no text, no watermarks, no crew visible.',
+    ]
+      .filter(Boolean)
+      .join(' ');
+    const images = await this.openai.generateImage(prompt);
+    return { images };
+  }
+
   async generatePortraits(body: any) {
     const { look, act, wear, pronouns, paths, portraitStyleAnchor } = body;
     const pathsLine = paths?.length

@@ -4,6 +4,7 @@ import {
   Container,
   Grid,
   LinearProgress,
+  Stack,
   Typography,
 } from "@mui/material";
 import { AssetDocument } from "types/Asset.type";
@@ -16,11 +17,24 @@ import { useState } from "react";
 import { useStore } from "stores/store";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { ignoreApiError } from "config/api.config";
+import {
+  useCampaignStarshipQuery,
+} from "hooks/queries/useCampaignsQuery";
+import { StarshipCard, StarshipDialog } from "./StarshipSection";
 
 export function SharedAssetSection() {
   const isStarforged = useGameSystem().gameSystem === GAME_SYSTEMS.STARFORGED;
 
   const [isAssetDialogOpen, setIsAssetDialogOpen] = useState<boolean>(false);
+  const [isStarshipDialogOpen, setIsStarshipDialogOpen] = useState<boolean>(false);
+
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId ?? ""
+  );
+
+  const { data: starship } = useCampaignStarshipQuery(
+    isStarforged ? campaignId : undefined
+  );
 
   const sharedAssets = useStore(
     (store) => store.campaigns.currentCampaign.assets.assets
@@ -85,23 +99,48 @@ export function SharedAssetSection() {
 
   if (!isStarforged) return null;
 
+  const hasContent = sortedSharedAssetKeys.length > 0 || !!starship;
+
   return (
     <>
       <SectionHeading
         label={"Shared Assets"}
         action={
-          <Button
-            variant={"outlined"}
-            color={"inherit"}
-            onClick={() => setIsAssetDialogOpen(true)}
-          >
-            Add Shared Asset
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant={"outlined"}
+              color={"inherit"}
+              onClick={() => setIsStarshipDialogOpen(true)}
+            >
+              {starship ? "Edit Starship" : "Add Starship"}
+            </Button>
+            <Button
+              variant={"outlined"}
+              color={"inherit"}
+              onClick={() => setIsAssetDialogOpen(true)}
+            >
+              Add Shared Asset
+            </Button>
+          </Stack>
         }
       />
       <Container maxWidth={false}>
-        {sortedSharedAssetKeys.length > 0 ? (
+        {hasContent ? (
           <Grid container spacing={2}>
+            {starship && (
+              <Grid
+                item
+                xs={12}
+                lg={6}
+                xl={4}
+                sx={{ display: "flex", justifyContent: "center" }}
+              >
+                <StarshipCard
+                  starship={starship}
+                  onEdit={() => setIsStarshipDialogOpen(true)}
+                />
+              </Grid>
+            )}
             {sortedSharedAssetKeys.map((assetId, index) => (
               <Grid
                 key={index}
@@ -136,6 +175,7 @@ export function SharedAssetSection() {
           </Box>
         )}
       </Container>
+
       <AssetCardDialog
         open={isAssetDialogOpen}
         loading={addAssetLoading}
@@ -146,6 +186,13 @@ export function SharedAssetSection() {
             order: nextSharedAssetIndex,
           })
         }
+      />
+
+      <StarshipDialog
+        open={isStarshipDialogOpen}
+        onClose={() => setIsStarshipDialogOpen(false)}
+        campaignId={campaignId}
+        starship={starship ?? null}
       />
     </>
   );
