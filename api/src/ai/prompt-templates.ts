@@ -15,7 +15,10 @@ type AiGuidedMode =
   | 'oracleInterpretation'
   | 'clockAdvance'
   | 'sceneChallengeGuidance'
-  | 'bookkeepingProposal';
+  | 'bookkeepingProposal'
+  | 'actionSuggestions'
+  | 'intentToMove'
+  | 'spotlightNudge';
 
 type AiMode = AiCopilotMode | AiGuidedMode;
 
@@ -211,7 +214,7 @@ function buildGuideRoleBlock(
     `You are the Guide for a ${systemName} campaign — you replace the human GM role entirely.`,
     '',
     'CORE GUIDE PRINCIPLES (non-negotiable):',
-    '- Facilitate, don\'t impose. Never override a protagonist\'s declared action or intent.',
+    "- Facilitate, don't impose. Never override a protagonist's declared action or intent.",
     '- Let players choose their path. Present consequences and complications, not correct answers.',
     '- Deliver answers, ask questions. Confirm oracle results with authority, then ask an open question to build shared fiction.',
     '- Embrace chaos. Let dice and player choices steer the narrative. Avoid railroad plotting.',
@@ -240,11 +243,32 @@ function buildGuideRoleBlock(
 
 interface AiGuideContext extends AiCampaignContext {
   guideState?: {
-    currentScene?: { title: string; description: string; unresolvedQuestions: string[] };
+    currentScene?: {
+      title: string;
+      description: string;
+      unresolvedQuestions: string[];
+    };
     canonFacts?: string[];
-    npcIntents?: Record<string, { currentIntent: string; hiddenAspects: string[] }>;
-    tensionClocks?: Array<{ label: string; segments: number; filled: number; consequence: string }>;
-    sceneChallengeState?: { objective: string; progress: number; complicationsIntroduced: string[] } | null;
+    npcIntents?: Record<
+      string,
+      { currentIntent: string; hiddenAspects: string[]; firstImpressionRevealed?: boolean }
+    >;
+    tensionClocks?: Array<{
+      label: string;
+      segments: number;
+      filled: number;
+      consequence: string;
+    }>;
+    sceneChallengeState?: {
+      objective: string;
+      progress: number;
+      complicationsIntroduced: string[];
+    } | null;
+    spotlight?: {
+      current?: string;
+      recent: string[];
+      quiet: string[];
+    };
   };
 }
 
@@ -279,10 +303,35 @@ function buildGuideContextBlock(context: AiGuideContext): string {
 
   if (context.guideState?.sceneChallengeState) {
     const sc = context.guideState.sceneChallengeState;
-    extra.push('', `Active scene challenge: "${sc.objective}" (progress: ${sc.progress}/10)`);
+    extra.push(
+      '',
+      `Active scene challenge: "${sc.objective}" (progress: ${sc.progress}/10)`,
+    );
     if (sc.complicationsIntroduced.length) {
       extra.push('Complications introduced:');
       sc.complicationsIntroduced.forEach((c) => extra.push(`- ${c}`));
+    }
+  }
+
+  if (context.guideState?.spotlight) {
+    const sp = context.guideState.spotlight;
+    if (sp.current) {
+      extra.push('', `Current spotlight: ${sp.current}`);
+    }
+    if (sp.quiet.length) {
+      extra.push(`Characters not recently featured: ${sp.quiet.join(', ')}`);
+    }
+  }
+
+  if (context.guideState?.npcIntents) {
+    const npcs = Object.entries(context.guideState.npcIntents).filter(
+      ([, intent]) => intent.firstImpressionRevealed && intent.currentIntent,
+    );
+    if (npcs.length) {
+      extra.push('', 'Active NPC intents:');
+      npcs.forEach(([name, intent]) =>
+        extra.push(`- ${name}: ${intent.currentIntent}`),
+      );
     }
   }
 
@@ -302,7 +351,8 @@ function buildSceneFramePrompts(
     'Describe the environment with sensory details. Surface immediate tensions or opportunities.',
     'End with one open question that invites player action.',
   ];
-  if (options?.modeCustomInstructions) modeLines.push(options.modeCustomInstructions);
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
 
   const locationLine = context.currentLocation
     ? `Location: ${context.currentLocation.name}${context.currentLocation.type ? ` (${context.currentLocation.type})` : ''}`
@@ -316,7 +366,9 @@ function buildSceneFramePrompts(
     '1. A 3-4 sentence scene description (atmosphere, sights, sounds, immediate details).',
     '2. ONE potential threat or opportunity the characters notice.',
     '3. ONE open question that draws the players in.',
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return { modeInstructions: modeLines.join('\n'), userPrompt };
 }
@@ -326,11 +378,12 @@ function buildAskOrAnswerPrompts(
   options?: BuildPromptOptions,
 ): { modeInstructions: string; userPrompt: string } {
   const modeLines = [
-    'Answer the player\'s question about the world or fiction.',
+    "Answer the player's question about the world or fiction.",
     'If the answer is established in canon, state it directly.',
     'If the answer is unknown, make an evocative choice consistent with world truths — then ask a follow-up question to deepen shared fiction.',
   ];
-  if (options?.modeCustomInstructions) modeLines.push(options.modeCustomInstructions);
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
 
   const userPrompt = [
     `Player question: "${context.freeformInput ?? 'What happens next?'}"`,
@@ -351,7 +404,8 @@ function buildMoveSuggestionPrompts(
     'Each suggestion must be grounded in the fiction — not just a list of move names.',
     'Do not choose for the player; offer options.',
   ];
-  if (options?.modeCustomInstructions) modeLines.push(options.modeCustomInstructions);
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
 
   const primaryChar = context.characters[0];
   const situationLine = context.freeformInput
@@ -360,12 +414,16 @@ function buildMoveSuggestionPrompts(
 
   const userPrompt = [
     situationLine,
-    primaryChar ? `Character: ${primaryChar.name} (momentum: ${primaryChar.momentum})` : '',
+    primaryChar
+      ? `Character: ${primaryChar.name} (momentum: ${primaryChar.momentum})`
+      : '',
     '',
     'Suggest 3 possible moves:',
     '- Each entry: move name — one sentence of narrative framing.',
     '- Include at least one aggressive option, one cautious option, and one creative option.',
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return { modeInstructions: modeLines.join('\n'), userPrompt };
 }
@@ -375,11 +433,12 @@ function buildOutcomeNarrationPrompts(
   options?: BuildPromptOptions,
 ): { modeInstructions: string; userPrompt: string } {
   const modeLines = [
-    'Narrate the result of a player\'s move roll.',
+    "Narrate the result of a player's move roll.",
     'Ground the outcome firmly in the fiction. Do not invent mechanical consequences beyond what the roll demands.',
     'Moderate the tone: strong hits should feel earned, weak hits bittersweet, misses ominous — not crushing.',
   ];
-  if (options?.modeCustomInstructions) modeLines.push(options.modeCustomInstructions);
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
 
   const lastRoll = context.recentRolls[0];
   const rollLine = lastRoll
@@ -410,7 +469,8 @@ function buildPriceProposalPrompts(
     'Vary consequence types — not every miss is physical harm.',
     'Return a JSON object matching the price_proposal schema exactly.',
   ];
-  if (options?.modeCustomInstructions) modeLines.push(options.modeCustomInstructions);
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
 
   const lastRoll = context.recentRolls[0];
   const moveLine = lastRoll
@@ -423,7 +483,9 @@ function buildPriceProposalPrompts(
     '',
     'Characters:',
     formatCharacters(context),
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return { modeInstructions: modeLines.join('\n'), userPrompt };
 }
@@ -434,10 +496,11 @@ function buildOracleInterpretationPrompts(
 ): { modeInstructions: string; userPrompt: string } {
   const modeLines = [
     'Interpret an oracle roll result in the context of the current scene.',
-    'Connect the oracle result meaningfully to established fiction — don\'t treat it as abstract.',
+    "Connect the oracle result meaningfully to established fiction — don't treat it as abstract.",
     'Confirm the interpretation as canon, then ask one question to build on it.',
   ];
-  if (options?.modeCustomInstructions) modeLines.push(options.modeCustomInstructions);
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
 
   const lastRoll = context.recentRolls.find((r) => r.oracleResult);
   const oracleLine = lastRoll
@@ -462,11 +525,15 @@ function buildClockAdvancePrompts(
     'Only advance clocks when fiction clearly warrants it — not on every action.',
     'Return a JSON object matching the clock_advance schema.',
   ];
-  if (options?.modeCustomInstructions) modeLines.push(options.modeCustomInstructions);
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
 
   const clocksStr = context.guideState?.tensionClocks?.length
     ? context.guideState.tensionClocks
-        .map((c) => `- "${c.label}": ${c.filled}/${c.segments} (consequence: ${c.consequence})`)
+        .map(
+          (c) =>
+            `- "${c.label}": ${c.filled}/${c.segments} (consequence: ${c.consequence})`,
+        )
         .join('\n')
     : 'No active tension clocks.';
 
@@ -488,9 +555,10 @@ function buildSceneChallengeGuidancePrompts(
 ): { modeInstructions: string; userPrompt: string } {
   const modeLines = [
     'Guide the players through the current scene challenge.',
-    'Acknowledge the player\'s action, narrate its effect on the scene challenge, and introduce a complication or opportunity.',
+    "Acknowledge the player's action, narrate its effect on the scene challenge, and introduce a complication or opportunity.",
   ];
-  if (options?.modeCustomInstructions) modeLines.push(options.modeCustomInstructions);
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
 
   const sc = context.guideState?.sceneChallengeState;
   const scLine = sc
@@ -508,7 +576,9 @@ function buildSceneChallengeGuidancePrompts(
     context.freeformInput ? `Player action: ${context.freeformInput}` : '',
     '',
     'Narrate the outcome (2-3 sentences) and introduce ONE complication or opportunity that changes the dynamic.',
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return { modeInstructions: modeLines.join('\n'), userPrompt };
 }
@@ -524,10 +594,13 @@ function buildBookkeepingProposalPrompts(
     'For existing records, use exact names from the known lists when possible.',
     'Return a JSON object matching the bookkeeper_output schema exactly.',
   ];
-  if (options?.modeCustomInstructions) modeLines.push(options.modeCustomInstructions);
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
 
   const knownVows = context.activeVows.map((v) => `"${v.label}"`).join(', ');
-  const knownNPCs = (context.currentNPCs ?? []).map((n) => `"${n.name}"`).join(', ');
+  const knownNPCs = (context.currentNPCs ?? [])
+    .map((n) => `"${n.name}"`)
+    .join(', ');
   const knownLocation = context.currentLocation?.name ?? 'unknown';
 
   const userPrompt = [
@@ -537,6 +610,90 @@ function buildBookkeepingProposalPrompts(
     '',
     `Accepted consequence text:\n"${context.freeformInput ?? ''}"`,
   ].join('\n');
+
+  return { modeInstructions: modeLines.join('\n'), userPrompt };
+}
+
+function buildActionSuggestionsPrompts(
+  context: AiGuideContext,
+  options?: BuildPromptOptions,
+): { modeInstructions: string; userPrompt: string } {
+  const modeLines = [
+    'Generate 4-6 concrete player actions appropriate for the current scene.',
+    'Group them by intent: investigative (safe/curious), risky (direct/dangerous), social (people-focused), meta (oracle/recap).',
+    'For each action, identify the most likely Ironsworn/Starforged move and stat.',
+    'Rate confidence as high/medium/low based on how clearly the scene matches the move trigger.',
+    'Return a JSON object matching the action_suggestions schema exactly.',
+  ];
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
+
+  const sceneTitle = context.guideState?.currentScene?.title;
+  const sceneDesc = context.guideState?.currentScene?.description;
+
+  const userPrompt = [
+    sceneTitle ? `Current scene: ${sceneTitle}` : '',
+    sceneDesc ? sceneDesc.slice(0, 500) : '',
+    context.freeformInput ? `Additional context: ${context.freeformInput}` : '',
+    '',
+    'Generate action suggestions that fit the immediate fictional situation. Each should be a plain-language verb phrase (e.g. "Scan the debris field", "Confront the guard", "Ask the oracle about the signal").',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return { modeInstructions: modeLines.join('\n'), userPrompt };
+}
+
+function buildIntentToMovePrompts(
+  context: AiGuideContext,
+  options?: BuildPromptOptions,
+): { modeInstructions: string; userPrompt: string } {
+  const modeLines = [
+    "Map the player's declared intent to the most applicable Ironsworn/Starforged move.",
+    'Identify the stat that would be rolled.',
+    'List any character assets that might apply.',
+    'Rate confidence high/medium/low based on move trigger fit.',
+    'Return a JSON object matching the intent_to_move schema exactly.',
+  ];
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
+
+  const userPrompt = [
+    `Player intent: "${context.freeformInput ?? 'unspecified'}"`,
+    '',
+    'Identify: which move applies, which stat to roll, which assets might trigger, and why.',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return { modeInstructions: modeLines.join('\n'), userPrompt };
+}
+
+function buildSpotlightNudgePrompts(
+  context: AiGuideContext,
+  options?: BuildPromptOptions,
+): { modeInstructions: string; userPrompt: string } {
+  const modeLines = [
+    'A party member has been quiet and not featured in recent scene beats.',
+    'Suggest which character to bring into the spotlight next and what specific situation or question could draw them in naturally.',
+    'The suggestion should fit the current scene, not feel forced.',
+    'Return a JSON object matching the spotlight_nudge schema exactly.',
+  ];
+  if (options?.modeCustomInstructions)
+    modeLines.push(options.modeCustomInstructions);
+
+  const quiet = context.guideState?.spotlight?.quiet ?? [];
+  const charNames = context.characters.map((c) => c.name);
+
+  const userPrompt = [
+    `Characters: ${charNames.join(', ') || 'unknown'}`,
+    quiet.length > 0 ? `Characters who have been quiet: ${quiet.join(', ')}` : '',
+    context.freeformInput ? `Scene focus: ${context.freeformInput}` : '',
+    '',
+    'Suggest which quiet character to bring into focus and how.',
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   return { modeInstructions: modeLines.join('\n'), userPrompt };
 }
@@ -857,6 +1014,18 @@ export function buildPrompt(
       break;
     case 'bookkeepingProposal':
       modeResult = buildBookkeepingProposalPrompts(guideContext, options);
+      useStructuredOutput = true;
+      break;
+    case 'actionSuggestions':
+      modeResult = buildActionSuggestionsPrompts(guideContext, options);
+      useStructuredOutput = true;
+      break;
+    case 'intentToMove':
+      modeResult = buildIntentToMovePrompts(guideContext, options);
+      useStructuredOutput = true;
+      break;
+    case 'spotlightNudge':
+      modeResult = buildSpotlightNudgePrompts(guideContext, options);
       useStructuredOutput = true;
       break;
     default: {

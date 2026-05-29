@@ -17,9 +17,33 @@ export type AiGuidedMode =
   | "oracleInterpretation"
   | "clockAdvance"
   | "sceneChallengeGuidance"
-  | "bookkeepingProposal";
+  | "bookkeepingProposal"
+  | "actionSuggestions"
+  | "intentToMove"
+  | "spotlightNudge";
 
 export type AiMode = AiCopilotMode | AiGuidedMode;
+
+export interface SuggestedAction {
+  label: string;
+  intentCategory: "investigative" | "risky" | "social" | "meta";
+  moveName: string | null;
+  stat: string | null;
+  confidence: "high" | "medium" | "low";
+  reason: string;
+}
+
+export interface ActionSuggestionsOutput {
+  suggestions: SuggestedAction[];
+}
+
+export interface IntentToMoveOutput {
+  moveName: string | null;
+  stat: string | null;
+  confidence: "high" | "medium" | "low";
+  reason: string;
+  assetSuggestions: string[];
+}
 
 export type AiGameSystem = "ironsworn" | "starforged";
 
@@ -78,6 +102,32 @@ export interface AiNPCContext {
   goal?: string;
 }
 
+export interface AiGuideStateContext {
+  currentScene?: {
+    title: string;
+    description: string;
+    unresolvedQuestions: string[];
+  };
+  canonFacts?: string[];
+  npcIntents?: Record<string, { currentIntent: string; hiddenAspects: string[]; firstImpressionRevealed: boolean }>;
+  tensionClocks?: Array<{
+    label: string;
+    segments: number;
+    filled: number;
+    consequence: string;
+  }>;
+  sceneChallengeState?: {
+    objective: string;
+    progress: number;
+    complicationsIntroduced: string[];
+  } | null;
+  spotlight?: {
+    current?: string;
+    recent: string[];
+    quiet: string[];
+  };
+}
+
 export interface AiCampaignContext {
   gameSystem: AiGameSystem;
   campaignName: string;
@@ -91,6 +141,7 @@ export interface AiCampaignContext {
   currentNPCs?: AiNPCContext[];
   noteText?: string;
   freeformInput?: string;
+  guideState?: AiGuideStateContext;
 }
 
 export interface AiGuideRequest {
@@ -343,9 +394,19 @@ export interface SectorGenerationRequest {
   worldContext?: WorldContext;
 }
 
+export interface SectorGenerationSettlementOutput {
+  publicDescription: string;
+  gmNotes: string;
+  planetDescription: string | null;
+}
+
 export interface SectorGenerationOutput {
-  settlementDescriptions: string[];
-  npcDescription: string;
+  settlementOutputs: SectorGenerationSettlementOutput[];
+  npcPublicDescription: string;
+  npcFirstLook: string;
+  npcGoal: string;
+  npcRevealedAspect: string;
+  sectorGMNotes: string;
 }
 
 export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";

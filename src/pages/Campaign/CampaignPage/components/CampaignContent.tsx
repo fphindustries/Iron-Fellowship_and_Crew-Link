@@ -1,4 +1,5 @@
-import { Card } from "@mui/material";
+import { Box, Button, Card } from "@mui/material";
+import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import {
   ContainedTabPanel,
   StyledTab,
@@ -19,8 +20,8 @@ import { LocationsSection } from "components/features/worlds/Locations";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { AiGuidePanel } from "components/features/aiCopilot/AiCopilotPanel";
-import { AIGuidedPanel } from "components/features/aiGuide/AIGuidedPanel";
 import { CampaignType } from "types/Campaign.type";
+import { SessionPreflightDialog } from "./SessionPreflightDialog";
 
 enum CampaignTabs {
   Characters = "characters",
@@ -60,7 +61,11 @@ export function CampaignContent(props: CampaignContentProps) {
   const hasWorld = useStore(
     (store) => !!store.campaigns.currentCampaign.currentCampaign?.worldId
   );
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId ?? ""
+  );
   const showAiGuide = useAiGuide();
+  const [preflightOpen, setPreflightOpen] = useState(false);
 
   return (
     <Card
@@ -97,11 +102,29 @@ export function CampaignContent(props: CampaignContentProps) {
         <StyledTab label="NPCs" value={CampaignTabs.NPCs} />
         <StyledTab label="Lore" value={CampaignTabs.Lore} />
         <StyledTab label="Sessions" value={CampaignTabs.Sessions} />
-        {isAIGuided && (
-          <StyledTab label="AI Guide" value={CampaignTabs.AiGuide} />
-        )}
         {showAiGuide && !isAIGuided && (
           <StyledTab label="AI" value={CampaignTabs.AiGuide} />
+        )}
+        {isAIGuided && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              ml: "auto",
+              pr: 1,
+              flexShrink: 0,
+            }}
+          >
+            <Button
+              onClick={() => setPreflightOpen(true)}
+              size="small"
+              variant="contained"
+              startIcon={<RocketLaunchIcon sx={{ fontSize: 16 }} />}
+              sx={{ fontSize: 12, py: 0.5 }}
+            >
+              Play
+            </Button>
+          </Box>
         )}
       </StyledTabs>
       <ContainedTabPanel isVisible={selectedTab === CampaignTabs.Characters}>
@@ -151,16 +174,16 @@ export function CampaignContent(props: CampaignContentProps) {
       <ContainedTabPanel isVisible={selectedTab === CampaignTabs.Sessions}>
         <SessionsTab />
       </ContainedTabPanel>
-      {isAIGuided && (
-        <ContainedTabPanel isVisible={selectedTab === CampaignTabs.AiGuide}>
-          <AIGuidedPanel />
-        </ContainedTabPanel>
-      )}
       {showAiGuide && !isAIGuided && (
         <ContainedTabPanel isVisible={selectedTab === CampaignTabs.AiGuide}>
           <AiGuidePanel />
         </ContainedTabPanel>
       )}
+      <SessionPreflightDialog
+        open={preflightOpen}
+        campaignId={campaignId}
+        onClose={() => setPreflightOpen(false)}
+      />
     </Card>
   );
 }

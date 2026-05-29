@@ -7,7 +7,10 @@ export type AIGuideMode =
   | "oracleInterpretation"
   | "clockAdvance"
   | "sceneChallengeGuidance"
-  | "bookkeepingProposal";
+  | "bookkeepingProposal"
+  | "actionSuggestions"
+  | "intentToMove"
+  | "spotlightNudge";
 
 export interface AIGuideCurrentScene {
   title: string;
@@ -45,14 +48,33 @@ export interface AIGuideSceneChallengeState {
   complicationsIntroduced: string[];
 }
 
+export type FocusMode = "standard" | "combat" | "expedition" | "social";
+
+export interface SpotlightState {
+  current?: string;
+  recent: string[];
+  quiet: string[];
+}
+
+export interface CanonFact {
+  id: string;
+  text: string;
+  source: string;
+  status: "confirmed" | "proposed";
+  createdAt: string;
+}
+
 export interface AIGuideState {
   currentScene: AIGuideCurrentScene;
   canonFacts: string[];
+  canonLedger: CanonFact[];
   npcIntents: Record<string, AIGuideNPCIntent>;
   hiddenClocks: TensionClock[];
   tensionClocks: TensionClock[];
   sceneChallengeState: AIGuideSceneChallengeState | null;
   pendingProposals: AIGuideProposal[];
+  focusMode: FocusMode;
+  spotlight: SpotlightState;
 }
 
 export const defaultAIGuideState: AIGuideState = {
@@ -62,9 +84,12 @@ export const defaultAIGuideState: AIGuideState = {
     unresolvedQuestions: [],
   },
   canonFacts: [],
+  canonLedger: [],
   npcIntents: {},
   hiddenClocks: [],
   tensionClocks: [],
   sceneChallengeState: null,
   pendingProposals: [],
+  focusMode: "standard",
+  spotlight: { recent: [], quiet: [] },
 };

@@ -12,11 +12,16 @@ import {
   BOOKKEEPER_JSON_SCHEMA,
   PRICE_PROPOSAL_JSON_SCHEMA,
   CLOCK_ADVANCE_JSON_SCHEMA,
+  ACTION_SUGGESTIONS_JSON_SCHEMA,
+  INTENT_TO_MOVE_JSON_SCHEMA,
+  SPOTLIGHT_NUDGE_JSON_SCHEMA,
 } from './schemas';
 import { appendWorldContextLines } from './world-context';
 
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
+const DEFAULT_OPENAI_HEAVY_MODEL = 'gpt-4o';
 const DEFAULT_ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+const DEFAULT_ANTHROPIC_HEAVY_MODEL = 'claude-sonnet-4-6';
 const HEAVY_MODES = new Set([
   'sessionRecap',
   'bookkeeper',
@@ -24,6 +29,7 @@ const HEAVY_MODES = new Set([
   'outcomeNarration',
   'sceneFrame',
   'bookkeepingProposal',
+  'sectorGeneration',
 ]);
 
 function resolveStructuredOutputSchema(
@@ -32,11 +38,35 @@ function resolveStructuredOutputSchema(
   switch (mode) {
     case 'bookkeeper':
     case 'bookkeepingProposal':
-      return { schema: BOOKKEEPER_JSON_SCHEMA as Record<string, unknown>, schemaName: 'bookkeeper_output' };
+      return {
+        schema: BOOKKEEPER_JSON_SCHEMA,
+        schemaName: 'bookkeeper_output',
+      };
     case 'priceProposal':
-      return { schema: PRICE_PROPOSAL_JSON_SCHEMA as Record<string, unknown>, schemaName: 'price_proposal' };
+      return {
+        schema: PRICE_PROPOSAL_JSON_SCHEMA,
+        schemaName: 'price_proposal',
+      };
     case 'clockAdvance':
-      return { schema: CLOCK_ADVANCE_JSON_SCHEMA as Record<string, unknown>, schemaName: 'clock_advance' };
+      return {
+        schema: CLOCK_ADVANCE_JSON_SCHEMA,
+        schemaName: 'clock_advance',
+      };
+    case 'actionSuggestions':
+      return {
+        schema: ACTION_SUGGESTIONS_JSON_SCHEMA,
+        schemaName: 'action_suggestions',
+      };
+    case 'intentToMove':
+      return {
+        schema: INTENT_TO_MOVE_JSON_SCHEMA,
+        schemaName: 'intent_to_move',
+      };
+    case 'spotlightNudge':
+      return {
+        schema: SPOTLIGHT_NUDGE_JSON_SCHEMA,
+        schemaName: 'spotlight_nudge',
+      };
     default:
       return null;
   }
@@ -88,10 +118,12 @@ export class AiService {
   private resolveModel(provider: AiProviderName, mode: string): string {
     if (provider === 'anthropic') {
       return HEAVY_MODES.has(mode)
-        ? 'claude-sonnet-4-20250514'
-        : DEFAULT_ANTHROPIC_MODEL;
+        ? (this.config.get<string>('ANTHROPIC_HEAVY_MODEL') ?? DEFAULT_ANTHROPIC_HEAVY_MODEL)
+        : (this.config.get<string>('ANTHROPIC_DEFAULT_MODEL') ?? DEFAULT_ANTHROPIC_MODEL);
     }
-    return HEAVY_MODES.has(mode) ? 'gpt-4o' : DEFAULT_OPENAI_MODEL;
+    return HEAVY_MODES.has(mode)
+      ? (this.config.get<string>('OPENAI_HEAVY_MODEL') ?? DEFAULT_OPENAI_HEAVY_MODEL)
+      : (this.config.get<string>('OPENAI_DEFAULT_MODEL') ?? DEFAULT_OPENAI_MODEL);
   }
 
   private async getWorldAiSettings(worldId: string) {
@@ -129,7 +161,7 @@ export class AiService {
     let _debug: object | undefined;
     if (useStructuredOutput) {
       const schemaInfo = resolveStructuredOutputSchema(mode) ?? {
-        schema: BOOKKEEPER_JSON_SCHEMA as Record<string, unknown>,
+        schema: BOOKKEEPER_JSON_SCHEMA,
         schemaName: 'bookkeeper_output',
       };
       const result = await provider.generateStructured({
@@ -682,38 +714,81 @@ export class AiService {
   async generateSectorContent(body: any) {
     const { sectorName, region, trouble, settlements, npc, worldContext } =
       body;
+
     const OUTPUT_SCHEMA = {
       type: 'object',
       properties: {
-        settlementDescriptions: { type: 'array', items: { type: 'string' } },
-        npcDescription: { type: 'string' },
+        settlementOutputs: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              publicDescription: { type: 'string' },
+              gmNotes: { type: 'string' },
+              planetDescription: {
+                anyOf: [{ type: 'string' }, { type: 'null' }],
+              },
+            },
+            required: ['publicDescription', 'gmNotes', 'planetDescription'],
+            additionalProperties: false,
+          },
+        },
+        npcPublicDescription: { type: 'string' },
+        npcFirstLook: { type: 'string' },
+        npcGoal: { type: 'string' },
+        npcRevealedAspect: { type: 'string' },
+        sectorGMNotes: { type: 'string' },
       },
-      required: ['settlementDescriptions', 'npcDescription'],
+      required: [
+        'settlementOutputs',
+        'npcPublicDescription',
+        'npcFirstLook',
+        'npcGoal',
+        'npcRevealedAspect',
+        'sectorGMNotes',
+      ],
       additionalProperties: false,
     };
+
     const systemLines = [
-      'You are a creative writer for Ironsworn: Starforged, a gritty sci-fi tabletop RPG.',
-      'Write vivid, atmospheric descriptions for a newly generated sector of the Forge.',
-      "Each settlement description should be 1–2 sentences, player-facing, and evoke the settlement's character based on its oracle-generated attributes.",
-      "The NPC description should be 1–2 sentences capturing the character's appearance, manner, or reputation in a way that intrigues the players.",
-      'Write in present tense. Do not use headers or bullet points. Keep prose tight and evocative.',
+      'You are a creative writer for Ironsworn: Starforged, a gritty sci-fi tabletop RPG set in a dark, perilous galaxy called the Forge.',
+      'Generate story-ready content for a newly discovered sector. Your writing must give a GM enough material to run compelling sessions immediately.',
+      '',
+      'SETTLEMENT OUTPUTS (one per settlement):',
+      '  publicDescription — 3–4 player-facing sentences in present tense. Establish a sharp sense of place: sights, sounds, the social atmosphere. Ground it in the settlement\'s specific attributes (population scale, authority type, active projects). End with one visible tension or intriguing detail that makes players want to dig deeper.',
+      '  gmNotes — 2–3 GM-only sentences revealing the hidden side. Who actually holds power beneath the official authority? What is really driving the settlement\'s trouble — the true cause, not just the symptom? Include one specific secret (a person, a place, a deal) that could seed a future story arc.',
+      '  planetDescription — If the settlement has an associated planet: 2–3 sentences. Describe what the planet looks like from orbit (color, cloud cover, scars). Describe one feature on the surface (ruins, a resource, a hazard). State one reason a player might want to land here or desperately avoid it. Set to null if no planet is listed.',
+      '',
+      'NPC CONNECTION:',
+      '  npcPublicDescription — 2–3 sentences of player-facing impression: physical presence, how they carry themselves, one detail that sticks in the memory.',
+      '  npcFirstLook — A single sharp sentence: the one thing players notice the moment they see this person.',
+      '  npcGoal — One sentence: what this person is actively trying to make happen right now.',
+      '  npcRevealedAspect — One sentence: what players discover about this person as trust deepens — something that reframes who they are.',
+      '',
+      'SECTOR GM NOTES:',
+      '  sectorGMNotes — 3–4 GM-only sentences. Name who or what is concretely behind the sector trouble (not vague forces — a faction, a person, a thing). State what happens to the sector if players do nothing over the next few sessions. Give two specific escalation paths the trouble could take, each pointing toward a different kind of story.',
+      '',
+      'Write in present tense. No headers, bullet points, or markdown in output strings. Prose only.',
     ];
+
     if (worldContext?.assumptions)
       systemLines.push('', 'Setting assumptions:', worldContext.assumptions);
     if (worldContext?.truths?.length) {
       const truthsText = worldContext.truths
         .map((t: any) => `${t.name}: ${t.description}`)
         .join('\n');
-      systemLines.push('', 'World truths:', truthsText);
+      systemLines.push('', 'World truths (let these shape the tone and details):', truthsText);
     }
+
     const settlementLines = settlements.map((s: any, i: number) => {
       const lines = [
         `Settlement ${i + 1}: ${s.name}`,
         `  Location type: ${s.locationType}`,
         `  Population: ${s.population}`,
         `  Authority: ${s.authority}`,
-        `  Projects: ${s.projects}`,
-        `  Trouble: ${s.trouble}`,
+        `  Active projects: ${s.projects}`,
+        `  Settlement trouble: ${s.trouble}`,
+        `  Has planet: ${s.planet ? 'yes' : 'no'}`,
       ];
       if (s.planet) {
         lines.push(
@@ -722,8 +797,9 @@ export class AiService {
       }
       return lines.join('\n');
     });
+
     const userPrompt = [
-      `Sector: ${sectorName} (${region})`,
+      `Sector: ${sectorName} (${region} region)`,
       `Sector trouble: ${trouble}`,
       '',
       'Settlements:',
@@ -731,10 +807,11 @@ export class AiService {
       '',
       `NPC Connection: ${npc.name}, Role: ${npc.role}`,
       '',
-      `Generate exactly ${settlements.length} settlement description(s) and 1 NPC description.`,
+      `Generate exactly ${settlements.length} settlementOutput object(s) (in the same order as the settlements above), plus all NPC and sector fields.`,
     ].join('\n');
+
     const raw = await this.guideProvider.generateStructured({
-      model: this.resolveModel(this.guideProviderName, 'default'),
+      model: this.resolveModel(this.guideProviderName, 'sectorGeneration'),
       systemPromptStatic: systemLines.join('\n'),
       systemPromptDynamic: '',
       userPrompt,
@@ -755,8 +832,12 @@ export class AiService {
       'Write 2-4 sentences of vivid, immersive narrative describing what just happened in the story.',
       'Use second-person present tense ("You ..."). Match the tone: gritty, desperate, hopeful.',
       `Character: ${gameContext?.characterName ?? 'the character'}.`,
-      gameContext?.characteristics ? `Character description: ${gameContext.characteristics}` : '',
-      gameContext?.characterPronouns ? `Pronouns: ${gameContext.characterPronouns}` : '',
+      gameContext?.characteristics
+        ? `Character description: ${gameContext.characteristics}`
+        : '',
+      gameContext?.characterPronouns
+        ? `Pronouns: ${gameContext.characterPronouns}`
+        : '',
       gameContext?.callsign ? `Callsign: ${gameContext.callsign}` : '',
       gameContext?.activeCombat
         ? `Active combat — objective: ${gameContext.activeCombat.objective}, enemies: ${gameContext.activeCombat.enemies?.join(', ')}, position: ${gameContext.activeCombat.position}`
@@ -766,7 +847,9 @@ export class AiService {
       .join('\n');
     const userParts: string[] = [];
     if (gameContext?.recentEvents?.length) {
-      userParts.push(`Recent events:\n${gameContext.recentEvents.slice(-5).join('\n')}`);
+      userParts.push(
+        `Recent events:\n${gameContext.recentEvents.slice(-5).join('\n')}`,
+      );
     }
     if (moveEvent) {
       userParts.push(
@@ -776,7 +859,8 @@ export class AiService {
     if (prompt) userParts.push(`Additional context: ${prompt}`);
     const userPrompt = userParts.join('\n\n') || 'Describe what happens next.';
     const model =
-      debugOverride?.model ?? this.resolveModel(this.guideProviderName, 'default');
+      debugOverride?.model ??
+      this.resolveModel(this.guideProviderName, 'default');
     yield {
       _debug: {
         provider: this.guideProviderName,

@@ -7,10 +7,11 @@ import { useState } from "react";
 
 export interface MoveRollersProps {
   move: Datasworn.Move;
+  onRollComplete?: () => void;
 }
 
 export function MoveRollers(props: MoveRollersProps) {
-  const { move } = props;
+  const { move, onRollComplete } = props;
 
   const statRules = useStore((store) => store.rules.stats);
   const conditionMeterRules = useStore((store) => store.rules.conditionMeters);
@@ -113,7 +114,7 @@ export function MoveRollers(props: MoveRollersProps) {
                   }}
                   disableRoll={rollDisabled}
                   playerContext={playerContext}
-                  onRollComplete={() => setPlayerContext("")}
+                  onRollComplete={() => { setPlayerContext(""); onRollComplete?.(); }}
                 />
               ) : (
                 <Chip
@@ -137,7 +138,7 @@ export function MoveRollers(props: MoveRollersProps) {
                   }}
                   disableRoll={rollDisabled}
                   playerContext={playerContext}
-                  onRollComplete={() => setPlayerContext("")}
+                  onRollComplete={() => { setPlayerContext(""); onRollComplete?.(); }}
                 />
               ) : (
                 <Chip

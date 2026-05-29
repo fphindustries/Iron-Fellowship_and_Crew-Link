@@ -320,6 +320,21 @@ export const campaignAiGuideState = pgTable('campaign_ai_guide_state', {
     .defaultNow(),
 });
 
+export const campaignSceneEvents = pgTable('campaign_scene_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  campaignId: uuid('campaign_id')
+    .notNull()
+    .references(() => campaigns.id, { onDelete: 'cascade' }),
+  sceneId: text('scene_id').notNull(),
+  type: text('type').notNull(),
+  actorId: text('actor_id'),
+  visibility: text('visibility').notNull().default('public'),
+  payloadJson: jsonb('payload_json').notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const campaignStarship = pgTable('campaign_starship', {
   id: uuid('id').primaryKey().defaultRandom(),
   campaignId: uuid('campaign_id')

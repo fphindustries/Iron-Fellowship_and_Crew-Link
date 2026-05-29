@@ -93,6 +93,10 @@ const router = createBrowserRouter(
               path={campaignPaths[CAMPAIGN_ROUTES.JOIN]}
               lazy={() => import("pages/Campaign/CampaignJoinPage")}
             />
+            <Route
+              path={campaignPaths[CAMPAIGN_ROUTES.PLAY]}
+              lazy={() => import("pages/Campaign/CockpitPage")}
+            />
           </Route>
           <Route path={basePaths[BASE_ROUTES.WORLD]}>
             <Route index lazy={() => import("pages/World/WorldSelectPage")} />

@@ -76,6 +76,9 @@ const MODE_LABELS: Record<AiGuidedMode, string> = {
   clockAdvance: "Advance Clock",
   sceneChallengeGuidance: "Scene Challenge",
   bookkeepingProposal: "Bookkeeping",
+  actionSuggestions: "Action Suggestions",
+  intentToMove: "Move Mapping",
+  spotlightNudge: "Spotlight Nudge",
 };
 
 // Modes available in the manual request bar

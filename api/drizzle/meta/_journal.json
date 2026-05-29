@@ -71,6 +71,13 @@
       "when": 1748563200000,
       "tag": "0009_campaign_starship",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1748649600000,
+      "tag": "0010_campaign_scene_events",
+      "breakpoints": true
     }
   ]
 }

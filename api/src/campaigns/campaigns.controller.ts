@@ -253,6 +253,21 @@ export class CampaignsController {
     return result;
   }
 
+  @Get(':campaignId/scene-events')
+  @UseGuards(CampaignMemberGuard)
+  getSceneEvents(@Param('campaignId') cid: string, @Req() req: any) {
+    const userId = (req.user as { id: string }).id;
+    return this.svc.getSceneEvents(cid, userId);
+  }
+
+  @Post(':campaignId/scene-events')
+  @UseGuards(CampaignMemberGuard)
+  async addSceneEvent(@Param('campaignId') cid: string, @Body() body: any) {
+    const result = await this.svc.addSceneEvent(cid, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
+  }
+
   @Get(':campaignId/starship')
   @UseGuards(CampaignMemberGuard)
   getStarship(@Param('campaignId') cid: string) {

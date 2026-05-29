@@ -4,102 +4,332 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Iron Fellowship & Crew Link is a React web app for playing the Ironsworn and Starforged tabletop RPGs. It provides character sheets, campaign management, GM screens, and homebrew content creation with real-time collaborative sync via Firebase.
+Iron Fellowship & Crew Link is a React web app for playing the Ironsworn and Starforged tabletop RPGs. It provides character sheets, campaign management, world building, homebrew content creation, and an AI-guided play mode.
 
-The repo supports two deployed apps sharing the same codebase — **Iron Fellowship** (Ironsworn) and **Crew Link** (Starforged) — differentiated by environment variables pointing to separate Firebase projects.
+The repo supports two apps sharing the same codebase — **Iron Fellowship** (Ironsworn) and **Crew Link** (Starforged) — differentiated by environment variables (`VITE_GAME_SYSTEM`).
+
+> **Note:** There is no Firebase or Firestore in this project. The data layer is a NestJS REST API backed by PostgreSQL. Any mention of Firebase in older code comments is stale and should be ignored.
+
+---
+
+## Repo Structure
+
+This is a **pnpm monorepo**:
+
+```
+starforged/
+├── src/                    ← React frontend (Vite + React Router)
+├── api/                    ← NestJS backend (REST + Socket.IO)
+│   ├── src/
+│   └── drizzle/            ← SQL migrations
+├── packages/
+│   └── shared/             ← Shared TypeScript types (frontend + backend)
+└── pnpm-workspace.yaml
+```
+
+---
 
 ## Commands
 
 ```bash
-# Development
-npm i                              # Install all dependencies (root + functions)
-npm run dev                        # Start local dev server (Vite)
+# Development (from repo root)
+pnpm install                             # Install all dependencies
+pnpm dev:all                             # Start API + frontend together (watch mode)
+pnpm api:dev                             # NestJS API only, port 3001
+pnpm dev                                 # Vite frontend only, port 5173
 
 # Quality
-npm run lint                       # ESLint (zero warnings tolerance)
-npm --prefix functions run lint    # Lint Firebase functions
+pnpm lint                                # ESLint on frontend (zero warnings tolerance)
+pnpm --filter api run lint               # ESLint on backend
 
 # Build
-npm run build                      # TypeScript + Vite build
-npm --prefix functions run build   # Compile functions to functions/lib/
+pnpm build                               # TypeScript check + Vite build → dist/
+pnpm api:build                           # Compile NestJS → api/dist/
+
+# Database
+pnpm --filter api run drizzle:generate   # Generate migration from schema changes
+pnpm --filter api run drizzle:migrate    # Apply pending migrations
+pnpm --filter api run drizzle:studio     # Open Drizzle Studio (browser DB inspector)
 ```
 
 There are no unit tests in this project.
 
-To switch between Iron Fellowship and Crew Link while running locally, click the settings icon in the bottom left and select "Switch System".
+---
 
 ## Architecture
 
 ### Data Flow
 
-Data flows in one direction: **Firestore → api-calls → Zustand stores → React components**
+```
+REST API (NestJS) ──→ TanStack Query (server state) ──→ React components
+                              ↑
+                     Socket.IO room events
+                     (server broadcasts "updated";
+                      client calls invalidateQueries)
 
-1. **`src/api-calls/`** — All Firestore read/write operations, organized by feature (character, campaign, world, etc.). Firestore connections are usually long-lived websocket subscriptions, not one-time fetches.
-2. **`src/stores/`** — Zustand state slices that consume api-calls. Each feature area has a slice with a corresponding `useListenTo*` hook (e.g., `useListenToNPCs`) that must be called to populate the store with live data.
-3. **`src/pages/` + `src/components/`** — UI layer that reads from stores and dispatches store actions.
+Zustand stores ─── local UI state + AI Guide state (not server state)
+Yjs + TipTap ────── collaborative rich-text notes (synced via /yjs Socket.IO namespace)
+```
+
+**TanStack Query** is used for all server data. Query hooks live in `src/hooks/queries/`. Each entity type has a key factory (`campaignKeys`, `characterKeys`, etc.) used consistently across hooks and invalidation.
+
+**Zustand** manages local UI state and the AI Guide state (which is also persisted server-side as a JSON blob in `campaign_ai_guide_state.state_json`). The Zustand `aiGuide` slice is the source of truth during a play session; changes are flushed to the server via `saveGuideState`.
+
+**Socket.IO** provides real-time updates. The server broadcasts an `updated` event on the relevant room (e.g. `campaign`, `world`) after any write. `useSocketInvalidation` in `src/hooks/useSocketInvalidation.ts` subscribes to these events and calls `queryClient.invalidateQueries` for the affected keys.
+
+**`useListenTo*` hooks** (in `src/stores/`) register Socket.IO room subscriptions and fire the initial data load. They are called once at the router level in `src/Router.tsx`.
 
 ### Key Directories
 
 | Directory | Purpose |
 |-----------|---------|
-| `src/api-calls/` | Firestore read/write operations |
-| `src/stores/` | Zustand state + listener hooks |
+| `src/hooks/queries/` | TanStack Query hooks for all server data |
+| `src/stores/` | Zustand slices + `useListenTo*` subscription hooks |
 | `src/pages/` | Page components; page-specific subcomponents live here too |
 | `src/components/shared/` | Generic reusable components |
 | `src/components/features/` | Feature-specific components shared across pages |
-| `src/data/` | Datasworn library re-exports (game rules for Ironsworn/Starforged) |
-| `src/hooks/featureFlags/` | PostHog feature flag integration |
-| `src/functions/` | Non-React helper functions |
-| `src/types/` | TypeScript types for features and database objects |
-| `functions/src/` | Firebase Cloud Functions (homebrew editor invite management) |
+| `src/config/api.config.ts` | `api` fetch singleton (handles JWT refresh + 401 retry) |
+| `src/data/` | Datasworn library re-exports (game rules) |
+| `src/hooks/featureFlags/` | PostHog feature flag hooks |
+| `src/types/` | TypeScript types for frontend features |
+| `api/src/ai/` | AI service, prompt templates, schemas, providers |
+| `api/src/campaigns/` | Campaign REST endpoints and service |
+| `api/src/worlds/` | World/NPC/location REST endpoints |
+| `api/src/db/schema.ts` | Drizzle table definitions (single source of truth for DB shape) |
+| `api/drizzle/` | SQL migration files |
 
 ### Important Files
 
-- `src/Router.tsx` — All route definitions; listener hooks are called here to subscribe to data
-- `src/stores/store.ts` — Root Zustand store configuration
-- `firestore.rules` / `storage.rules` — Firebase security rules
-- `firebase.json` — Firebase configuration including predeploy hooks
+- `src/Router.tsx` — All route definitions; `useListenTo*` hooks are called here
+- `src/stores/store.ts` — Root Zustand store combining all slices
+- `src/config/api.config.ts` — Shared `api` fetch wrapper (JWT refresh, 401 retry)
+- `api/src/db/schema.ts` — All Drizzle table definitions
+- `api/src/ai/prompt-templates.ts` — All AI mode prompt builders
+- `api/src/ai/schemas.ts` — Structured output JSON schemas for AI modes
+- `api/src/ai/ai.service.ts` — AI orchestration, model selection, provider routing
 
-### Feature Flags
+### Route Lazy Loading
 
-New features can be gated behind PostHog feature flags until fully tested. See `src/hooks/featureFlags/` for examples.
+Pages are lazy-loaded in the router. Each page entry file must export the page component as a **named `Component` export**:
+
+```ts
+// src/pages/Campaign/CockpitPage/index.ts
+export { CockpitPage as Component } from "./CockpitPage";
+```
+
+---
+
+## Campaign Types
+
+`CampaignType` enum in `src/types/Campaign.type.ts`:
+
+| Type | Description |
+|------|-------------|
+| `Solo` | Single player, no GM |
+| `Coop` | Multiple players, no GM |
+| `Guided` | GM + players |
+| `AIGuided` | AI-guided solo/coop — enables the Session Cockpit |
+
+---
+
+## AI Guide System (AIGuided Campaigns)
+
+AIGuided campaigns unlock the **Session Cockpit** at `/campaigns/:id/play` — a full-screen play surface replacing the tab-based campaign view.
+
+### State
+
+All AI guide state lives in `src/stores/aiGuide/`. Key shape (from `src/types/AIGuideState.type.ts`):
+
+```ts
+interface AIGuideState {
+  currentScene: { title, description, unresolvedQuestions }
+  canonFacts: string[]          // legacy flat list (still read)
+  canonLedger: CanonFact[]      // source of truth: { id, text, source, status, createdAt }
+  npcIntents: Record<string, AIGuideNPCIntent>
+  tensionClocks: TensionClock[]
+  hiddenClocks: TensionClock[]
+  pendingProposals: AIGuideProposal[]
+  sceneChallengeState: AIGuideSceneChallengeState | null
+  focusMode: "standard" | "combat" | "expedition" | "social"
+  spotlight: { current?, recent, quiet }  // character tracking
+}
+```
+
+Persisted to `campaign_ai_guide_state.state_json` on every `saveGuideState` call.
+
+### AI Modes
+
+Defined in `api/src/ai/prompt-templates.ts`. Two tiers:
+
+- **HEAVY_MODES** (use `claude-sonnet` / `gpt-4o`): `sessionRecap`, `bookkeeper`, `bookkeepingProposal`, `priceProposal`, `outcomeNarration`, `sceneFrame`, `sectorGeneration`
+- **Default** (use `claude-haiku` / `gpt-4o-mini`): everything else
+
+All structured-output modes have their JSON schemas in `api/src/ai/schemas.ts`.
+
+**Ephemeral modes** (`actionSuggestions`, `intentToMove`, `spotlightNudge`) are consumed inline by the cockpit — they are auto-removed from `pendingProposals` after the response arrives. All other modes produce persistent proposals the player must accept/reject.
+
+The active AI provider is set by `AI_PROVIDER` in `api/.env` (`openai` or `anthropic`).
+
+### Cockpit Layout
+
+```
+src/pages/Campaign/CockpitPage/
+  CockpitPage.tsx          ← route entry, gate for AIGuided only
+  layout/
+    CockpitTopBar.tsx       ← location breadcrumb, scene state
+    CockpitLeftRail.tsx     ← party cards, NPC status, SpotlightIndicator
+    CockpitCenter.tsx       ← scene panel + proposal feed
+    CockpitComposer.tsx     ← action input + AI chips
+  composer/
+    SuggestedActionChips.tsx
+  guide/
+    AskGuideDrawer.tsx      ← quick-prompt sidecar (slides over right rail)
+  history/
+    SessionHistoryDrawer.tsx   ← Timeline / Recap / Canon tabs
+  shared/
+    CockpitContext.tsx      ← openEntity() for drawer navigation
+    EntityDrawer.tsx        ← discriminated entity detail drawer
+    KnowledgeBadge.tsx      ← Known/Suspected/Hidden chip
+    SpotlightIndicator.tsx  ← spotlight state + nudge AI
+    useCockpitAiRequest.ts  ← builds AiCampaignContext + fires AI request
+```
+
+`useCockpitAiRequest` is the single hook for all cockpit AI calls. It builds the full `AiCampaignContext` (including `guideState`) from the Zustand store before every request.
+
+---
+
+## AI-Powered Sector Generation
+
+`GenerateSectorDialog` in `src/components/features/worlds/SectorSection/` orchestrates full sector creation:
+1. Rolls oracle tables (sector name, trouble, settlements, NPC)
+2. Calls `POST /api/ai/sector/content` with oracle results + world truths
+3. Creates all locations (sector, settlements, planets) and an NPC in Postgres
+4. Writes AI-generated content to the right storage slots:
+   - Settlement **public notes** → `updateLocationNotes` (player-facing)
+   - Settlement **GM notes** → `updateLocationGMProperties({ gmNotes })` (GM-only)
+   - Planet **public notes** → `updateLocationNotes` (AI description)
+   - NPC **public notes** → `updateNPCNotes` (player-facing)
+   - NPC **GM properties** → `firstLook`, `goal`, `revealedAspect` in `updateNPCGMProperties`
+   - Sector **GM notes** → `updateLocationGMProperties({ gmNotes })` (trouble narrative)
+
+---
+
+## Database
+
+All tables defined in `api/src/db/schema.ts` using Drizzle ORM. Key tables:
+
+| Table | Purpose |
+|-------|---------|
+| `users`, `magic_link_tokens` | Auth |
+| `campaigns`, `campaign_members`, `campaign_gms`, `campaign_characters` | Campaign membership |
+| `campaign_ai_events`, `campaign_ai_guide_state` | AI Guide persistence |
+| `campaign_scene_events` | Structured event log (cockpit history) |
+| `campaign_starship` | Starship per campaign |
+| `worlds`, `world_locations`, `world_npcs`, `world_lore`, `world_sectors` | World builder |
+| `characters`, `character_assets`, `character_tracks` | Character sheets |
+
+Rich-text notes (player and GM) are stored as Yjs update bytes in separate `*_notes` tables.
+
+After any schema change: `pnpm --filter api run drizzle:generate` then `drizzle:migrate`. Add the new migration entry to `api/drizzle/meta/_journal.json` with the correct `idx` and `tag`.
+
+---
+
+## Rich Text (Yjs + TipTap)
+
+Notes on characters, NPCs, locations, and lore are collaborative Yjs documents. The frontend uses TipTap with the Collaboration extension. The backend syncs documents via a dedicated `/yjs` Socket.IO namespace.
+
+To write AI-generated text into a note programmatically:
+
+```ts
+import { TiptapTransformer } from "@hocuspocus/transformer";
+import * as Y from "yjs";
+
+function textToYjsBytes(text: string): Uint8Array {
+  const paragraphs = text.split(/\n\n+/).filter(Boolean)
+    .map((t) => ({ type: "paragraph", content: [{ type: "text", text: t }] }));
+  const tiptapJson = { type: "doc", content: paragraphs };
+  const ydoc = TiptapTransformer.toYdoc(tiptapJson, "default");
+  return Y.encodeStateAsUpdate(ydoc);
+}
+```
+
+---
+
+## Authentication
+
+- **Google OAuth** — `GET /api/auth/google` → callback sets JWT + refresh token as `httpOnly` cookies
+- **Magic link** — `POST /api/auth/magic-link` → email with token; `GET /api/auth/magic-link/verify?token=...` exchanges it for cookies
+- **JWT** — access token (short-lived) + refresh token (long-lived), both in cookies
+- The `api` fetch wrapper in `src/config/api.config.ts` automatically retries 401s with a refresh attempt before signing the user out
+
+---
 
 ## Environment Variables
 
-Create `.env.local` at the repo root:
+### Frontend (`.env.local`)
 
-```
-VITE_IRON_FELLOWSHIP_FIREBASE_APIKEY=
-VITE_IRON_FELLOWSHIP_FIREBASE_AUTHDOMAIN=
-VITE_IRON_FELLOWSHIP_FIREBASE_PROJECTID=
-VITE_IRON_FELLOWSHIP_FIREBASE_STORAGEBUCKET=
-VITE_IRON_FELLOWSHIP_FIREBASE_MESSAGINGSENDERID=
-VITE_IRON_FELLOWSHIP_FIREBASE_APPID=
-
-VITE_CREW_LINK_FIREBASE_APIKEY=
-VITE_CREW_LINK_FIREBASE_AUTHDOMAIN=
-VITE_CREW_LINK_FIREBASE_PROJECTID=
-VITE_CREW_LINK_FIREBASE_STORAGEBUCKET=
-VITE_CREW_LINK_FIREBASE_MESSAGINGSENDERID=
-VITE_CREW_LINK_FIREBASE_APPID=
-
+```env
+VITE_API_URL=http://localhost:3001        # defaults to localhost:3001 if omitted
+VITE_GAME_SYSTEM=starforged               # or "ironsworn"
 VITE_TITLE="Starforged Crew Link"
 VITE_FAVICON_PATH=/theme/eidolon.svg
 VITE_OPENGRAPH_PATH=/assets/starforged/opengraph-default.png
-
-# Optional: PostHog analytics + feature flags
-VITE_POSTHOG_KEY=
-VITE_POSTHOG_HOST=
+# VITE_POSTHOG_KEY=                       # optional analytics + feature flags
+# VITE_POSTHOG_HOST=
 ```
+
+### Backend (`api/.env`)
+
+```env
+PORT=3001
+NODE_ENV=development
+APP_URL=http://localhost:3001
+FRONTEND_URL=http://localhost:5173
+DATABASE_URL=postgresql://postgres:password@localhost:5432/starforged
+JWT_SECRET=
+JWT_REFRESH_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_CALLBACK_URL=http://localhost:3001/api/auth/google/callback
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=starforged
+SMTP_HOST=localhost
+SMTP_PORT=1025
+# AI (optional — only needed for AI features)
+# AI_PROVIDER=openai                      # "openai" (default) or "anthropic"
+# OPENAI_API_KEY=
+# ANTHROPIC_API_KEY=
+# Model overrides (fall back to hardcoded defaults if omitted)
+# ANTHROPIC_DEFAULT_MODEL=claude-haiku-4-5-20251001
+# ANTHROPIC_HEAVY_MODEL=claude-sonnet-4-6
+# OPENAI_DEFAULT_MODEL=gpt-4o-mini
+# OPENAI_HEAVY_MODEL=gpt-4o
+```
+
+---
 
 ## Key Libraries
 
-- **[Zustand](https://docs.pmnd.rs/zustand/getting-started/introduction)** — Global state management between Firebase and components
-- **[Firebase](https://firebase.google.com/docs)** — Auth, Firestore database, and Cloud Storage
-- **[Material UI](https://mui.com/material-ui/getting-started/)** — Component library and styling
-- **[Datasworn](https://github.com/rsek/datasworn)** — Digitized Ironsworn game rules used throughout the app
-- **Tiptap + Yjs** — Collaborative rich text editing in notes
+- **[Zustand](https://docs.pmnd.rs/zustand/getting-started/introduction)** — Local UI state + AI Guide state
+- **[TanStack Query](https://tanstack.com/query/latest)** — Server state, caching, and invalidation
+- **[Material UI v5](https://mui.com/material-ui/getting-started/)** — Component library and theming
+- **[React Router v6](https://reactrouter.com/)** — Client-side routing with lazy-loaded pages
+- **[Socket.IO client](https://socket.io/docs/v4/client-api/)** — Real-time room subscriptions + Yjs sync
+- **[Drizzle ORM](https://orm.drizzle.team/)** — Type-safe PostgreSQL on the backend
+- **[NestJS](https://nestjs.com/)** — Backend framework (REST + WebSockets)
+- **[Datasworn](https://github.com/rsek/datasworn)** — Digitized Ironsworn/Starforged game rules
+- **Tiptap + Yjs** — Collaborative rich text editing for notes
+- **PostHog** — Analytics + remote feature flags (optional)
 
+---
+
+## Feature Flags
+
+PostHog feature flags gate in-progress features. See `src/hooks/featureFlags/` for the pattern. The `useAiGuide` flag gates the legacy AI copilot tab; the `useAiCopilot` flag is used by the new cockpit.
+
+---
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 

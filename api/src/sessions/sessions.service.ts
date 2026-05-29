@@ -1,8 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { eq, desc, asc, and, isNull } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DB } from '../db/database.module';
@@ -79,7 +75,10 @@ export class SessionsService {
     return row;
   }
 
-  async update(id: string, data: { summary?: string; isActive?: boolean; title?: string }) {
+  async update(
+    id: string,
+    data: { summary?: string; isActive?: boolean; title?: string },
+  ) {
     const patch: Partial<typeof schema.sessions.$inferInsert> = {};
     if (data.summary !== undefined) patch.summary = data.summary;
     if (data.title !== undefined) patch.title = data.title;

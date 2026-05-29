@@ -332,7 +332,15 @@ export class CampaignsService {
     return row ?? null;
   }
 
-  async upsertStarship(campaignId: string, patch: { name?: string | null; history?: string | null; quirks?: string[]; image?: object | null }) {
+  async upsertStarship(
+    campaignId: string,
+    patch: {
+      name?: string | null;
+      history?: string | null;
+      quirks?: string[];
+      image?: object | null;
+    },
+  ) {
     const [row] = await this.db
       .insert(schema.campaignStarship)
       .values({ campaignId, ...patch })
@@ -348,5 +356,60 @@ export class CampaignsService {
     await this.db
       .delete(schema.campaignStarship)
       .where(eq(schema.campaignStarship.campaignId, campaignId));
+  }
+
+  // ─── Scene Events ──────────────────────────────────────────────────────────
+
+  private async isGm(campaignId: string, userId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select()
+      .from(schema.campaignGms)
+      .where(
+        and(
+          eq(schema.campaignGms.campaignId, campaignId),
+          eq(schema.campaignGms.userId, userId),
+        ),
+      )
+      .limit(1);
+    return Boolean(row);
+  }
+
+  async getSceneEvents(campaignId: string, userId: string) {
+    const gm = await this.isGm(campaignId, userId);
+    const conditions = gm
+      ? [eq(schema.campaignSceneEvents.campaignId, campaignId)]
+      : [
+          eq(schema.campaignSceneEvents.campaignId, campaignId),
+          eq(schema.campaignSceneEvents.visibility, 'public'),
+        ];
+    return this.db
+      .select()
+      .from(schema.campaignSceneEvents)
+      .where(and(...conditions))
+      .orderBy(schema.campaignSceneEvents.createdAt);
+  }
+
+  async addSceneEvent(
+    campaignId: string,
+    event: {
+      sceneId: string;
+      type: string;
+      actorId?: string | null;
+      visibility?: string;
+      payloadJson: object;
+    },
+  ) {
+    const [row] = await this.db
+      .insert(schema.campaignSceneEvents)
+      .values({
+        campaignId,
+        sceneId: event.sceneId,
+        type: event.type,
+        actorId: event.actorId ?? null,
+        visibility: event.visibility ?? 'public',
+        payloadJson: event.payloadJson,
+      })
+      .returning();
+    return row;
   }
 }

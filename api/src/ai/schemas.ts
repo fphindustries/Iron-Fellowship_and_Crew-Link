@@ -129,3 +129,68 @@ export const BOOKKEEPER_JSON_SCHEMA: { [key: string]: unknown } = {
   ],
   additionalProperties: false,
 };
+
+// JSON Schema for actionSuggestions structured output (AI Guide mode).
+export const ACTION_SUGGESTIONS_JSON_SCHEMA: { [key: string]: unknown } = {
+  type: 'object',
+  properties: {
+    suggestions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          label: { type: 'string' },
+          intentCategory: {
+            type: 'string',
+            enum: ['investigative', 'risky', 'social', 'meta'],
+          },
+          moveName: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+          stat: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+          confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+          reason: { type: 'string' },
+        },
+        required: [
+          'id',
+          'label',
+          'intentCategory',
+          'moveName',
+          'stat',
+          'confidence',
+          'reason',
+        ],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['suggestions'],
+  additionalProperties: false,
+};
+
+// JSON Schema for intentToMove structured output (AI Guide mode).
+export const INTENT_TO_MOVE_JSON_SCHEMA: { [key: string]: unknown } = {
+  type: 'object',
+  properties: {
+    moveName: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+    stat: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+    confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+    reason: { type: 'string' },
+    assetSuggestions: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+  },
+  required: ['moveName', 'stat', 'confidence', 'reason', 'assetSuggestions'],
+  additionalProperties: false,
+};
+
+// JSON Schema for spotlightNudge structured output (AI Guide mode).
+export const SPOTLIGHT_NUDGE_JSON_SCHEMA: { [key: string]: unknown } = {
+  type: 'object',
+  properties: {
+    characterName: { type: 'string' },
+    suggestion: { type: 'string' },
+  },
+  required: ['characterName', 'suggestion'],
+  additionalProperties: false,
+};

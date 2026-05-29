@@ -1,10 +1,9 @@
 import { CreateSliceType } from "stores/store.type";
 import { AIGuideSlice } from "./aiGuide.slice.type";
 import { defaultAIGuideSlice } from "./aiGuide.slice.default";
-import { defaultAIGuideState } from "types/AIGuideState.type";
+import { defaultAIGuideState, AIGuideState, CanonFact, FocusMode, SpotlightState } from "types/AIGuideState.type";
 import { getAIGuideState } from "api/ai/getAIGuideState";
 import { updateAIGuideState } from "api/ai/updateAIGuideState";
-import { AIGuideState } from "types/AIGuideState.type";
 
 export const createAIGuideSlice: CreateSliceType<AIGuideSlice> = (set, getState) => ({
   ...defaultAIGuideSlice,
@@ -58,6 +57,32 @@ export const createAIGuideSlice: CreateSliceType<AIGuideSlice> = (set, getState)
       canonFacts: [...current.canonFacts, fact],
     };
     await getState().aiGuide.saveGuideState(campaignId, updated);
+  },
+
+  addCanonToLedger: async (campaignId, entry) => {
+    const current = getState().aiGuide.state ?? defaultAIGuideState;
+    const fact: CanonFact = {
+      ...entry,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      createdAt: new Date().toISOString(),
+    };
+    const canonLedger = [...(current.canonLedger ?? []), fact];
+    await getState().aiGuide.saveGuideState(campaignId, { ...current, canonLedger });
+    return fact;
+  },
+
+  updateCanonFact: async (campaignId, factId, patch) => {
+    const current = getState().aiGuide.state ?? defaultAIGuideState;
+    const canonLedger = (current.canonLedger ?? []).map((f) =>
+      f.id === factId ? { ...f, ...patch } : f
+    );
+    await getState().aiGuide.saveGuideState(campaignId, { ...current, canonLedger });
+  },
+
+  removeCanonFact: async (campaignId, factId) => {
+    const current = getState().aiGuide.state ?? defaultAIGuideState;
+    const canonLedger = (current.canonLedger ?? []).filter((f) => f.id !== factId);
+    await getState().aiGuide.saveGuideState(campaignId, { ...current, canonLedger });
   },
 
   addProposal: async (campaignId, proposal) => {
@@ -123,6 +148,16 @@ export const createAIGuideSlice: CreateSliceType<AIGuideSlice> = (set, getState)
 
     const updated: AIGuideState = { ...current, tensionClocks };
     await getState().aiGuide.saveGuideState(campaignId, updated);
+  },
+
+  setFocusMode: async (campaignId, mode) => {
+    const current = getState().aiGuide.state ?? defaultAIGuideState;
+    await getState().aiGuide.saveGuideState(campaignId, { ...current, focusMode: mode as FocusMode });
+  },
+
+  setSpotlight: async (campaignId, spotlight) => {
+    const current = getState().aiGuide.state ?? defaultAIGuideState;
+    await getState().aiGuide.saveGuideState(campaignId, { ...current, spotlight: spotlight as SpotlightState });
   },
 
   resetStore: () => {

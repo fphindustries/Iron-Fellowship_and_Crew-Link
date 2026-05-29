@@ -18,7 +18,7 @@ import * as Y from "yjs";
 import { useState } from "react";
 import { useStore } from "stores/store";
 import { useRoller } from "stores/appState/useRoller";
-import { LocationMap, MapEntryType } from "types/Locations.type";
+import { GMLocation, LocationMap, MapEntryType } from "types/Locations.type";
 import { Difficulty } from "types/Track.type";
 import { CUSTOM_TRUTH_INDEX } from "components/features/worlds/WorldTruths/customTruthIndex";
 
@@ -443,11 +443,14 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
         createdDate: now,
         updatedDate: now,
       });
-      // Store trouble in GM properties (it's a gmField in sector config)
-      if (trouble) {
-        await updateLocationGMProperties(sectorLocationId, {
-          fields: { sectorTrouble: trouble },
-        });
+      // Store trouble + GM narrative notes in sector GM properties
+      const sectorGMProps: Partial<GMLocation> = {};
+      if (trouble) sectorGMProps.fields = { sectorTrouble: trouble };
+      if (aiResult?.sectorGMNotes) {
+        sectorGMProps.gmNotes = textToYjsBytes(aiResult.sectorGMNotes);
+      }
+      if (Object.keys(sectorGMProps).length > 0) {
+        await updateLocationGMProperties(sectorLocationId, sectorGMProps);
       }
 
       // 8. Plan random hex positions, then create settlements and planets
@@ -487,24 +490,30 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
           locationIds: [settlementLocationId],
         };
 
-        // Write AI description to player notes
-        const descText = aiResult?.settlementDescriptions?.[i];
-        if (descText) {
-          const bytes = textToYjsBytes(descText);
+        // Write AI public description to player-facing notes
+        const settlementOutput = aiResult?.settlementOutputs?.[i];
+        if (settlementOutput?.publicDescription) {
+          const bytes = textToYjsBytes(settlementOutput.publicDescription);
           await updateLocationNotes(settlementLocationId, bytes, false);
+        }
+        // Write AI GM notes to GM-only properties
+        if (settlementOutput?.gmNotes) {
+          await updateLocationGMProperties(settlementLocationId, {
+            gmNotes: textToYjsBytes(settlementOutput.gmNotes),
+          });
         }
 
         // Create planet for Orbital/Planetside settlements
         if (s.planet) {
           const convertedClass = s.planet.className.split(" ")[0].toLowerCase();
           const collectionId = `starforged/collections/oracles/planets/${convertedClass}`;
-          const planetDescription =
+          const oracleSummary =
             oracleCollectionMap[collectionId]?.summary ?? undefined;
 
           const planetFields: Record<string, string> = {
             planetClass: s.planet.className,
           };
-          if (planetDescription) planetFields.planetDescription = planetDescription;
+          if (oracleSummary) planetFields.planetDescription = oracleSummary;
 
           const planetLocationId = await createSpecificLocation({
             name: s.planet.name,
@@ -520,6 +529,11 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
             await updateLocationGMProperties(planetLocationId, {
               fields: { planetAtmosphere: s.planet.atmosphere },
             });
+          }
+          // Write AI planet description to player-facing notes
+          if (settlementOutput?.planetDescription) {
+            const bytes = textToYjsBytes(settlementOutput.planetDescription);
+            await updateLocationNotes(planetLocationId, bytes, false);
           }
 
           // Place planet on map adjacent to its settlement (if a free hex was found)
@@ -562,11 +576,17 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
         sharedWithPlayers: true,
         rank: Difficulty.Dangerous,
       });
-      await updateNPCGMProperties(npcId, { role: npcRole });
+      await updateNPCGMProperties(npcId, {
+        role: npcRole,
+        ...(aiResult?.npcFirstLook ? { firstLook: aiResult.npcFirstLook } : {}),
+        ...(aiResult?.npcGoal ? { goal: aiResult.npcGoal } : {}),
+        ...(aiResult?.npcRevealedAspect
+          ? { revealedAspect: aiResult.npcRevealedAspect }
+          : {}),
+      });
 
-      const npcDescText = aiResult?.npcDescription;
-      if (npcDescText) {
-        const bytes = textToYjsBytes(npcDescText);
+      if (aiResult?.npcPublicDescription) {
+        const bytes = textToYjsBytes(aiResult.npcPublicDescription);
         await updateNPCNotes(npcId, bytes);
       }
 
