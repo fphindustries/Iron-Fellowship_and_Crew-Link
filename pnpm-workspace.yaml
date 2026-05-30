@@ -5,6 +5,6 @@ allowBuilds:
   '@nestjs/core': true
   core-js: true
   esbuild: true
-  msw: set this to true or false
+  msw: true
   protobufjs: true
   unrs-resolver: true
