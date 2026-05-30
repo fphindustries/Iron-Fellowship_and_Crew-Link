@@ -11,6 +11,7 @@ export interface AiProvider {
     systemPromptStatic: string;
     systemPromptDynamic: string;
     userPrompt: string;
+    maxTokens?: number;
   }): Promise<AiProviderResult>;
 
   generateTextStream(params: {
@@ -18,6 +19,7 @@ export interface AiProvider {
     systemPromptStatic: string;
     systemPromptDynamic: string;
     userPrompt: string;
+    maxTokens?: number;
   }): AsyncGenerator<string>;
 
   generateStructured(params: {

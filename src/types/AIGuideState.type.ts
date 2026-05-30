@@ -64,6 +64,25 @@ export interface CanonFact {
   createdAt: string;
 }
 
+export interface LaunchSetupState {
+  completedAt: string;
+  firstSessionId: string;
+  incitingIncident: string;
+  sceneMode: "prologue" | "in_medias_res";
+  openingScene: string;
+  connectionNpcId: string;
+  vowTrackId: string;
+  swearingCharacterId: string;
+  swearMoveResult: {
+    action: number;
+    challengeDice: [number, number];
+    score: number;
+    outcome: "hit" | "weak_hit" | "miss";
+    momentumApplied: number;
+  };
+  nextStepPrompt: string;
+}
+
 export interface AIGuideState {
   currentScene: AIGuideCurrentScene;
   canonFacts: string[];
@@ -75,6 +94,7 @@ export interface AIGuideState {
   pendingProposals: AIGuideProposal[];
   focusMode: FocusMode;
   spotlight: SpotlightState;
+  launchSetup?: LaunchSetupState;
 }
 
 export const defaultAIGuideState: AIGuideState = {

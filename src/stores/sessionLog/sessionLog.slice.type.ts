@@ -31,6 +31,11 @@ export interface SessionLogSliceActions {
   logMoveEvent: (
     event: Omit<MoveSessionEvent, keyof BaseSessionEvent | "type">
   ) => Promise<string>;
+  logMoveEventForCharacter: (
+    characterId: string,
+    characterName: string,
+    event: Omit<MoveSessionEvent, keyof BaseSessionEvent | "type">
+  ) => Promise<string>;
   logStatChangeEvent: (
     event: Omit<StatChangeSessionEvent, keyof BaseSessionEvent | "type">
   ) => void;

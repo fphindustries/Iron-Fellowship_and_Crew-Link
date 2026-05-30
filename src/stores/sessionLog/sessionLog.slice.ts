@@ -8,7 +8,14 @@ import {
   SessionLogEvent,
   CombatStartSessionEvent,
   CombatEndSessionEvent,
+  SessionDocument,
 } from "types/SessionLog.type";
+
+type SessionRow = Omit<SessionDocument, "startedAt" | "endedAt"> & {
+  id: string;
+  startedAt: string | Date;
+  endedAt?: string | Date;
+};
 
 function buildBaseEvent(state: ReturnType<typeof import("stores/store").useStore.getState>) {
   const sessionId = state.sessionLog.activeSessionId;
@@ -69,6 +76,25 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
   logMoveEvent: (eventData) => {
     const state = getState();
     const { sessionId, characterId, characterName, uid } = buildBaseEvent(state);
+    if (!sessionId) return Promise.resolve("");
+    const event: SessionLogEvent = {
+      ...eventData,
+      type: SESSION_EVENT_TYPE.MOVE,
+      sessionId,
+      timestamp: new Date(),
+      characterId,
+      characterName,
+      uid,
+    };
+    return postEvent(sessionId, event).then((id) => {
+      set((store) => { store.sessionLog.events[id] = { ...event, sessionId: id }; });
+      return id;
+    }).catch(() => "");
+  },
+
+  logMoveEventForCharacter: (characterId, characterName, eventData) => {
+    const state = getState();
+    const { sessionId, uid } = buildBaseEvent(state);
     if (!sessionId) return Promise.resolve("");
     const event: SessionLogEvent = {
       ...eventData,
@@ -243,7 +269,7 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
       ? `/api/campaigns/${params.campaignId}/sessions`
       : `/api/characters/${params.characterId}/sessions`;
     api
-      .get<any[]>(endpoint)
+      .get<SessionRow[]>(endpoint)
       .then((rows) => {
         const inactive = rows?.filter((r) => !r.isActive) ?? [];
         if (inactive.length > 0) {

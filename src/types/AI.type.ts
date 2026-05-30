@@ -151,6 +151,70 @@ export interface AiGuideRequest {
   worldId?: string;
 }
 
+export type LaunchIncidentSourceKey =
+  | "truthsSelected"
+  | "truthsQuestStarters"
+  | "characterPaths"
+  | "characterBackstory"
+  | "starship"
+  | "team"
+  | "settlements"
+  | "connection"
+  | "sectorTrouble"
+  | "actionTheme"
+  | "characterGoal"
+  | "starterTable";
+
+export interface LaunchIncidentSource {
+  key: LaunchIncidentSourceKey;
+  label: string;
+  rulebookPrompt: string;
+}
+
+export interface LaunchIncidentRequest {
+  campaignId: string;
+  worldId?: string;
+  source: LaunchIncidentSource;
+  oracleResults?: string[];
+  previousIncidents?: string[];
+  context: AiCampaignContext & {
+    launchSetup?: {
+      worldTruths: string[];
+      characters: Array<{
+        name: string;
+        callsign?: string;
+        role?: string;
+        pronouns?: string;
+        characteristics?: string;
+        backstory?: string;
+      }>;
+      starship?: {
+        name?: string | null;
+        history?: string | null;
+        quirks?: string[];
+      } | null;
+      sectors: Array<{
+        name: string;
+        region?: string;
+        trouble?: string;
+      }>;
+      locations: Array<{
+        name: string;
+        type?: string;
+        fields?: Record<string, string>;
+      }>;
+      npcs: Array<{
+        name: string;
+        role?: string;
+        disposition?: string;
+        goal?: string;
+        rank?: string;
+        callsign?: string;
+      }>;
+    };
+  };
+}
+
 export interface BookkeeperVowUpdate {
   label: string;
   suggestedProgress: number;

@@ -71,6 +71,84 @@ interface SectorGenerationBody {
   };
 }
 
+interface LaunchIncidentBody {
+  worldId?: string;
+  context?: {
+    campaignName?: string;
+    campaignType?: string;
+    launchSetup?: {
+      worldTruths?: string[];
+      characters?: unknown[];
+      starship?: unknown;
+      sectors?: unknown[];
+      locations?: unknown[];
+      npcs?: unknown[];
+    };
+  };
+  source?: {
+    key?: string;
+    label?: string;
+    rulebookPrompt?: string;
+  };
+  oracleResults?: string[];
+  previousIncidents?: string[];
+}
+
+interface WorldAiSettingsConfig {
+  worldTonePrompt?: string;
+  assumptions?: string;
+}
+
+interface WorldAiSettingsLike {
+  configJson?: unknown;
+}
+
+function truncateText(value: unknown, maxLength = 240): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > maxLength
+    ? `${trimmed.slice(0, maxLength).trim()}...`
+    : trimmed;
+}
+
+function compactList(items: string[] | undefined, limit: number): string {
+  const compact = (items ?? [])
+    .map((item) => truncateText(item, 260))
+    .filter((item): item is string => !!item)
+    .slice(0, limit);
+  return compact.length ? compact.map((item) => `- ${item}`).join('\n') : 'None';
+}
+
+function getRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function compactRecords(
+  items: unknown[] | undefined,
+  limit: number,
+  fields: string[],
+): string {
+  const compact = (items ?? [])
+    .slice(0, limit)
+    .map((item) => {
+      const record = getRecord(item);
+      if (!record) return truncateText(item, 180);
+      const name = truncateText(record.name, 80);
+      const details = fields
+        .map((field) => {
+          const value = truncateText(record[field], 120);
+          return value ? `${field}: ${value}` : undefined;
+        })
+        .filter(Boolean);
+      return [name, ...details].filter(Boolean).join(' | ');
+    })
+    .filter((item): item is string => !!item);
+  return compact.length ? compact.map((item) => `- ${item}`).join('\n') : 'None';
+}
+
 function resolveStructuredOutputSchema(
   mode: string,
 ): { schema: Record<string, unknown>; schemaName: string } | null {
@@ -940,6 +1018,151 @@ export class AiService {
       schemaName: 'SectorGenerationOutput',
     });
     return { ...JSON.parse(raw.text), _debug: raw._debug };
+  }
+
+  private buildLaunchIncidentPrompts(
+    body: LaunchIncidentBody,
+    worldSettings: WorldAiSettingsLike | null,
+  ) {
+    const { context, source, oracleResults, previousIncidents } = body;
+    const launch = context?.launchSetup ?? {};
+    const systemLines = [
+      'You are the Guide for an Ironsworn: Starforged campaign.',
+      'Create one inciting incident for the campaign launch procedure from rulebook pages 128-130.',
+      'If you are the guide, you can introduce an inciting incident based on the established setting and character aspects, or moderate creation so every player has a stake in the quest.',
+      '',
+      'Requirements:',
+      '- Make it personal: connect it to a protagonist, connection, starship, settlement, truth, or sector trouble.',
+      '- Make it a problem that will not go away on its own.',
+      '- Give it a ticking clock: if the protagonists delay, the situation gets worse or falls out of reach.',
+      '- Up the stakes with one concrete complication, demand, danger, or revelation.',
+      '- Limit the scope: this is a lower-ranked starting quest, manageable in a session or two.',
+      '- Leave the player free to decide what their character does.',
+      '',
+      'Write only the inciting incident text. No title, no bullets, no markdown, no explanation of the rules.',
+      'Use 2 short paragraphs. The first paragraph presents the immediate problem. The second paragraph explains the personal stake, urgency, and why it is worthy of a starting vow.',
+    ];
+
+    const config =
+      worldSettings?.configJson &&
+      typeof worldSettings.configJson === 'object'
+        ? (worldSettings.configJson as WorldAiSettingsConfig)
+        : undefined;
+    if (config?.worldTonePrompt) {
+      systemLines.push('', `Additional world tone: ${config.worldTonePrompt}`);
+    }
+    if (config?.assumptions) {
+      systemLines.push(
+        '',
+        `World assumptions: ${truncateText(config.assumptions, 700)}`,
+      );
+    }
+
+    const sourceKey = source?.key;
+    const shouldInclude = (...keys: string[]) =>
+      !sourceKey || keys.includes(sourceKey) || keys.includes('always');
+    const contextLines = [
+      shouldInclude('truthsSelected', 'truthsQuestStarters', 'actionTheme', 'always')
+        ? ['World truths:', compactList(launch.worldTruths, 5)].join('\n')
+        : '',
+      shouldInclude('characterPaths', 'characterBackstory', 'team', 'always')
+        ? [
+            'Characters:',
+            compactRecords(launch.characters, 4, [
+              'callsign',
+              'role',
+              'characteristics',
+              'backstory',
+            ]),
+          ].join('\n')
+        : '',
+      shouldInclude('starship', 'team', 'always')
+        ? [
+            'Starship:',
+            compactRecords(launch.starship ? [launch.starship] : undefined, 1, [
+              'history',
+              'quirks',
+            ]),
+          ].join('\n')
+        : '',
+      shouldInclude('sectorTrouble', 'settlements', 'always')
+        ? [
+            'Sectors:',
+            compactRecords(launch.sectors, 3, ['region', 'trouble']),
+          ].join('\n')
+        : '',
+      shouldInclude('settlements', 'sectorTrouble', 'starterTable', 'always')
+        ? [
+            'Locations and settlements:',
+            compactRecords(launch.locations, 6, ['type']),
+          ].join('\n')
+        : '',
+      shouldInclude('connection', 'characterGoal', 'team', 'always')
+        ? [
+            'NPCs and connections:',
+            compactRecords(launch.npcs, 6, [
+              'role',
+              'disposition',
+              'goal',
+              'rank',
+              'callsign',
+            ]),
+          ].join('\n')
+        : '',
+    ].filter(Boolean);
+
+    const userPrompt = [
+      `Campaign: ${context?.campaignName ?? 'Unknown Campaign'} (${context?.campaignType ?? 'ai-guided'})`,
+      '',
+      'Use this randomly selected rulebook inspiration source:',
+      `${source?.label ?? 'Unknown source'} — ${source?.rulebookPrompt ?? ''}`,
+      '',
+      oracleResults?.length
+        ? `Oracle or starter results for this attempt:\n${compactList(oracleResults, 3)}`
+        : '',
+      previousIncidents?.length
+        ? `Previous rejected or replaced incident. Do not repeat it:\n${compactList(previousIncidents, 1)}`
+        : '',
+      '',
+      ...contextLines,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    return {
+      systemPromptStatic: systemLines.join('\n'),
+      systemPromptDynamic: '',
+      userPrompt,
+    };
+  }
+
+  async *generateLaunchIncidentStream(
+    body: LaunchIncidentBody,
+  ): AsyncGenerator<{ text: string } | { _debug: object }> {
+    const worldSettings = body.worldId
+      ? await this.getWorldAiSettings(body.worldId)
+      : null;
+    const { systemPromptStatic, systemPromptDynamic, userPrompt } =
+      this.buildLaunchIncidentPrompts(body, worldSettings);
+    const model = this.resolveModel(this.guideProviderName, 'launchIncident');
+    yield {
+      _debug: {
+        provider: this.guideProviderName,
+        model,
+        systemPromptStatic,
+        systemPromptDynamic,
+        userPrompt,
+      },
+    };
+    for await (const chunk of this.guideProvider.generateTextStream({
+      model,
+      systemPromptStatic,
+      systemPromptDynamic,
+      userPrompt,
+      maxTokens: 700,
+    })) {
+      yield { text: chunk };
+    }
   }
 
   // ─── AI Guide Narrative ────────────────────────────────────────────────────

@@ -179,6 +179,22 @@ export { CockpitPage as Component } from "./CockpitPage";
 
 AIGuided campaigns unlock the **Session Cockpit** at `/campaigns/:id/play` — a full-screen play surface replacing the tab-based campaign view.
 
+### Campaign Launch Gate
+
+Before the first AIGuided session starts, `SessionPreflightDialog` runs the **Begin Your Adventure** setup from `docs/rules.md` pages 128-135. Preserve this gate when changing session startup logic.
+
+The launch gate must:
+- Verify the campaign has a character, starship, linked world, sector/location, and starting connection NPC
+- Help define an inciting incident using manual input, relevant oracles, and the streamed AI incident generator
+- Frame the opening scene as either a prologue or in medias res
+- Create the shared starting vow as a campaign vow, defaulting to **Dangerous** with **Troublesome** also allowed
+- Roll **Swear an Iron Vow** with the selected character, including the +1 when the vow is sworn to the starting connection
+- Apply the move's momentum reward, log the move as the first session event, mark the starting connection on the NPC, and persist `AIGuideState.launchSetup`
+
+The AI incident generator uses `POST /api/ai/launch/inciting-incident/stream`. It should randomly vary among the rulebook inspiration sources from `docs/rules.md` pages 128-130 (truths, character, starship/team, settlements, connection, sector trouble, Action/Theme, Character Goal, and the page 130 starter table), stream directly into the inciting incident field, and let the user request a different incident.
+
+Once `launchSetup.completedAt` is present, normal session starts may bypass the launch wizard. Any future edits to campaign startup, session preflight, or AI-guided first-session flow should verify behavior against `docs/rules.md` pages 128-135.
+
 ### State
 
 All AI guide state lives in `src/stores/aiGuide/`. Key shape (from `src/types/AIGuideState.type.ts`):
@@ -195,6 +211,7 @@ interface AIGuideState {
   sceneChallengeState: AIGuideSceneChallengeState | null
   focusMode: "standard" | "combat" | "expedition" | "social"
   spotlight: { current?, recent, quiet }  // character tracking
+  launchSetup?: LaunchSetupState          // first-session setup from pages 128-135
 }
 ```
 

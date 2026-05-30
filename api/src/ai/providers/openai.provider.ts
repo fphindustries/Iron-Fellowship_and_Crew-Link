@@ -13,6 +13,7 @@ export class OpenAiProvider implements AiProvider {
     systemPromptStatic: string;
     systemPromptDynamic: string;
     userPrompt: string;
+    maxTokens?: number;
   }): Promise<AiProviderResult> {
     const instructions = [params.systemPromptStatic, params.systemPromptDynamic]
       .filter(Boolean)
@@ -22,6 +23,7 @@ export class OpenAiProvider implements AiProvider {
       model: params.model,
       instructions,
       input: params.userPrompt,
+      max_output_tokens: params.maxTokens,
     });
 
     return {
@@ -40,6 +42,7 @@ export class OpenAiProvider implements AiProvider {
     systemPromptStatic: string;
     systemPromptDynamic: string;
     userPrompt: string;
+    maxTokens?: number;
   }): AsyncGenerator<string> {
     const instructions = [params.systemPromptStatic, params.systemPromptDynamic]
       .filter(Boolean)
@@ -49,6 +52,7 @@ export class OpenAiProvider implements AiProvider {
       model: params.model,
       instructions,
       input: params.userPrompt,
+      max_output_tokens: params.maxTokens,
       stream: true,
     });
 

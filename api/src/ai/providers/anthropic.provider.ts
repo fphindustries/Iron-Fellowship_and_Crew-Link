@@ -31,6 +31,7 @@ export class AnthropicProvider implements AiProvider {
     systemPromptStatic: string;
     systemPromptDynamic: string;
     userPrompt: string;
+    maxTokens?: number;
   }): Promise<AiProviderResult> {
     const systemBlocks = this.buildSystemBlocks(
       params.systemPromptStatic,
@@ -38,7 +39,7 @@ export class AnthropicProvider implements AiProvider {
     );
     const response = await this.client.messages.create({
       model: params.model,
-      max_tokens: 4096,
+      max_tokens: params.maxTokens ?? 4096,
       system: systemBlocks,
       messages: [{ role: 'user', content: params.userPrompt }],
     });
@@ -60,6 +61,7 @@ export class AnthropicProvider implements AiProvider {
     systemPromptStatic: string;
     systemPromptDynamic: string;
     userPrompt: string;
+    maxTokens?: number;
   }): AsyncGenerator<string> {
     const systemBlocks = this.buildSystemBlocks(
       params.systemPromptStatic,
@@ -67,7 +69,7 @@ export class AnthropicProvider implements AiProvider {
     );
     const stream = this.client.messages.stream({
       model: params.model,
-      max_tokens: 4096,
+      max_tokens: params.maxTokens ?? 4096,
       system: systemBlocks,
       messages: [{ role: 'user', content: params.userPrompt }],
     });

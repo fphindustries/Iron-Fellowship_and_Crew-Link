@@ -14,6 +14,10 @@ import type { Response } from 'express';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AiService } from './ai.service';
 
+function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : 'Generation failed';
+}
+
 @Controller('api/ai')
 @UseGuards(JwtAuthGuard)
 export class AiController {
@@ -55,8 +59,10 @@ export class AiController {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       }
       res.write('data: [DONE]\n\n');
-    } catch {
-      res.write(`data: ${JSON.stringify({ error: 'Generation failed' })}\n\n`);
+    } catch (err) {
+      const message = getErrorMessage(err);
+      console.error('Backstory generation failed:', err);
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
     } finally {
       res.end();
     }
@@ -78,8 +84,10 @@ export class AiController {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       }
       res.write('data: [DONE]\n\n');
-    } catch {
-      res.write(`data: ${JSON.stringify({ error: 'Generation failed' })}\n\n`);
+    } catch (err) {
+      const message = getErrorMessage(err);
+      console.error('Vow generation failed:', err);
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
     } finally {
       res.end();
     }
@@ -124,8 +132,10 @@ export class AiController {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       }
       res.write('data: [DONE]\n\n');
-    } catch {
-      res.write(`data: ${JSON.stringify({ error: 'Generation failed' })}\n\n`);
+    } catch (err) {
+      const message = getErrorMessage(err);
+      console.error('Character summary generation failed:', err);
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
     } finally {
       res.end();
     }
@@ -144,6 +154,26 @@ export class AiController {
   @Post('sector/content')
   generateSectorContent(@Body() body: any) {
     return this.svc.generateSectorContent(body);
+  }
+
+  @Post('launch/inciting-incident/stream')
+  async generateLaunchIncidentStream(@Body() body: any, @Res() res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+    try {
+      for await (const event of this.svc.generateLaunchIncidentStream(body)) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+      res.write('data: [DONE]\n\n');
+    } catch (err) {
+      const message = getErrorMessage(err);
+      console.error('Launch incident generation failed:', err);
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+    } finally {
+      res.end();
+    }
   }
 
   @Post('narrative/stream')
