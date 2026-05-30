@@ -32,6 +32,45 @@ const HEAVY_MODES = new Set([
   'sectorGeneration',
 ]);
 
+interface SectorGenerationBody {
+  sectorName: string;
+  region: string;
+  trouble: string;
+  passageCount?: number;
+  focusSettlementIndex?: number;
+  settlements: Array<{
+    name: string;
+    locationType: string;
+    population: string;
+    authority: string;
+    projects: string;
+    trouble?: string;
+    firstLook?: string;
+    isFocus?: boolean;
+    planet?: {
+      name: string;
+      className: string;
+      atmosphere?: string;
+      observedFromSpace?: string;
+      feature?: string;
+      life?: string;
+      diversity?: string;
+      biomes?: string;
+    };
+  }>;
+  npc: {
+    name: string;
+    role: string;
+    rank?: string;
+    homeSettlementName?: string;
+  };
+  stars?: Array<{ settlementName: string; stellarObject: string }>;
+  worldContext?: {
+    assumptions?: string;
+    truths?: Array<{ name: string; description: string }>;
+  };
+}
+
 function resolveStructuredOutputSchema(
   mode: string,
 ): { schema: Record<string, unknown>; schemaName: string } | null {
@@ -118,12 +157,16 @@ export class AiService {
   private resolveModel(provider: AiProviderName, mode: string): string {
     if (provider === 'anthropic') {
       return HEAVY_MODES.has(mode)
-        ? (this.config.get<string>('ANTHROPIC_HEAVY_MODEL') ?? DEFAULT_ANTHROPIC_HEAVY_MODEL)
-        : (this.config.get<string>('ANTHROPIC_DEFAULT_MODEL') ?? DEFAULT_ANTHROPIC_MODEL);
+        ? (this.config.get<string>('ANTHROPIC_HEAVY_MODEL') ??
+            DEFAULT_ANTHROPIC_HEAVY_MODEL)
+        : (this.config.get<string>('ANTHROPIC_DEFAULT_MODEL') ??
+            DEFAULT_ANTHROPIC_MODEL);
     }
     return HEAVY_MODES.has(mode)
-      ? (this.config.get<string>('OPENAI_HEAVY_MODEL') ?? DEFAULT_OPENAI_HEAVY_MODEL)
-      : (this.config.get<string>('OPENAI_DEFAULT_MODEL') ?? DEFAULT_OPENAI_MODEL);
+      ? (this.config.get<string>('OPENAI_HEAVY_MODEL') ??
+          DEFAULT_OPENAI_HEAVY_MODEL)
+      : (this.config.get<string>('OPENAI_DEFAULT_MODEL') ??
+          DEFAULT_OPENAI_MODEL);
   }
 
   private async getWorldAiSettings(worldId: string) {
@@ -711,9 +754,18 @@ export class AiService {
     return { description: result.text, _debug: result._debug };
   }
 
-  async generateSectorContent(body: any) {
-    const { sectorName, region, trouble, settlements, npc, worldContext } =
-      body;
+  async generateSectorContent(body: SectorGenerationBody) {
+    const {
+      sectorName,
+      region,
+      trouble,
+      passageCount,
+      focusSettlementIndex,
+      settlements,
+      npc,
+      stars,
+      worldContext,
+    } = body;
 
     const OUTPUT_SCHEMA = {
       type: 'object',
@@ -737,7 +789,41 @@ export class AiService {
         npcFirstLook: { type: 'string' },
         npcGoal: { type: 'string' },
         npcRevealedAspect: { type: 'string' },
+        sectorPublicSummary: { type: 'string' },
         sectorGMNotes: { type: 'string' },
+        launchPacket: {
+          type: 'object',
+          properties: {
+            openingScene: { type: 'string' },
+            visibleTrouble: { type: 'string' },
+            rumors: {
+              type: 'array',
+              items: { type: 'string' },
+              minItems: 3,
+              maxItems: 3,
+            },
+            questStarters: {
+              type: 'array',
+              items: { type: 'string' },
+              minItems: 3,
+              maxItems: 3,
+            },
+            firstSessionQuestions: {
+              type: 'array',
+              items: { type: 'string' },
+              minItems: 3,
+              maxItems: 3,
+            },
+          },
+          required: [
+            'openingScene',
+            'visibleTrouble',
+            'rumors',
+            'questStarters',
+            'firstSessionQuestions',
+          ],
+          additionalProperties: false,
+        },
       },
       required: [
         'settlementOutputs',
@@ -745,28 +831,34 @@ export class AiService {
         'npcFirstLook',
         'npcGoal',
         'npcRevealedAspect',
+        'sectorPublicSummary',
         'sectorGMNotes',
+        'launchPacket',
       ],
       additionalProperties: false,
     };
 
     const systemLines = [
       'You are a creative writer for Ironsworn: Starforged, a gritty sci-fi tabletop RPG set in a dark, perilous galaxy called the Forge.',
-      'Generate story-ready content for a newly discovered sector. Your writing must give a GM enough material to run compelling sessions immediately.',
+      'Generate story-ready content for a starting sector created with the Starforged campaign launch procedure on rulebook pages 114-127.',
+      'Respect that procedure: most settlements get only launch-sheet detail, while one focus settlement and its planet get deeper first-session detail.',
       '',
       'SETTLEMENT OUTPUTS (one per settlement):',
-      '  publicDescription — 3–4 player-facing sentences in present tense. Establish a sharp sense of place: sights, sounds, the social atmosphere. Ground it in the settlement\'s specific attributes (population scale, authority type, active projects). End with one visible tension or intriguing detail that makes players want to dig deeper.',
-      '  gmNotes — 2–3 GM-only sentences revealing the hidden side. Who actually holds power beneath the official authority? What is really driving the settlement\'s trouble — the true cause, not just the symptom? Include one specific secret (a person, a place, a deal) that could seed a future story arc.',
-      '  planetDescription — If the settlement has an associated planet: 2–3 sentences. Describe what the planet looks like from orbit (color, cloud cover, scars). Describe one feature on the surface (ruins, a resource, a hazard). State one reason a player might want to land here or desperately avoid it. Set to null if no planet is listed.',
+      '  publicDescription — For non-focus settlements, write 1-2 player-facing sentences in present tense using only the listed launch-sheet attributes. For the focus settlement, write 3-4 player-facing sentences that include first look and visible signs of trouble.',
+      '  gmNotes — For non-focus settlements, write one restrained GM-only sentence that preserves room for play. For the focus settlement, write 2-3 GM-only sentences with a concrete cause of the settlement trouble and one specific secret or opportunity.',
+      '  planetDescription — Set to null for non-focus planets. For the focus planet only, write 2-3 sentences using its atmosphere, observed-from-space, feature, life, and any Vital World biome results. Set to null if the focus settlement has no planet.',
       '',
       'NPC CONNECTION:',
+      '  This NPC is an automatic strong-hit connection from the campaign launch procedure. Treat them as based in their home settlement and able to offer aid, information, and introductions.',
       '  npcPublicDescription — 2–3 sentences of player-facing impression: physical presence, how they carry themselves, one detail that sticks in the memory.',
       '  npcFirstLook — A single sharp sentence: the one thing players notice the moment they see this person.',
       '  npcGoal — One sentence: what this person is actively trying to make happen right now.',
       '  npcRevealedAspect — One sentence: what players discover about this person as trust deepens — something that reframes who they are.',
       '',
       'SECTOR GM NOTES:',
-      '  sectorGMNotes — 3–4 GM-only sentences. Name who or what is concretely behind the sector trouble (not vague forces — a faction, a person, a thing). State what happens to the sector if players do nothing over the next few sessions. Give two specific escalation paths the trouble could take, each pointing toward a different kind of story.',
+      '  sectorPublicSummary — 1-2 player-facing sentences that can introduce the sector without revealing GM-only truths.',
+      '  sectorGMNotes — 4-6 GM-only sentences. Explain how the sector trouble manifests, name who or what is concretely behind it, identify a likely controlling power or faction if one fits, state what happens if players do nothing, and give two specific escalation paths.',
+      '  launchPacket — Make this immediately usable at the table: an opening scene at or near the focus settlement, the visible trouble in that scene, exactly three rumors, exactly three quest starters suitable for vows, and exactly three first-session questions the GM can ask or answer through play.',
       '',
       'Write in present tense. No headers, bullet points, or markdown in output strings. Prose only.',
     ];
@@ -775,37 +867,66 @@ export class AiService {
       systemLines.push('', 'Setting assumptions:', worldContext.assumptions);
     if (worldContext?.truths?.length) {
       const truthsText = worldContext.truths
-        .map((t: any) => `${t.name}: ${t.description}`)
+        .map((t) => `${t.name}: ${t.description}`)
         .join('\n');
-      systemLines.push('', 'World truths (let these shape the tone and details):', truthsText);
+      systemLines.push(
+        '',
+        'World truths (let these shape the tone and details):',
+        truthsText,
+      );
     }
 
-    const settlementLines = settlements.map((s: any, i: number) => {
+    const settlementLines = settlements.map((s, i) => {
       const lines = [
         `Settlement ${i + 1}: ${s.name}`,
         `  Location type: ${s.locationType}`,
         `  Population: ${s.population}`,
         `  Authority: ${s.authority}`,
         `  Active projects: ${s.projects}`,
-        `  Settlement trouble: ${s.trouble}`,
+        `  Focus settlement: ${s.isFocus ? 'yes' : 'no'}`,
+        s.firstLook ? `  First look: ${s.firstLook}` : undefined,
+        s.trouble ? `  Settlement trouble: ${s.trouble}` : undefined,
         `  Has planet: ${s.planet ? 'yes' : 'no'}`,
-      ];
+      ].filter(Boolean);
       if (s.planet) {
         lines.push(
-          `  Planet: ${s.planet.name} (${s.planet.className})${s.planet.atmosphere ? `, Atmosphere: ${s.planet.atmosphere}` : ''}`,
+          [
+            `  Planet: ${s.planet.name} (${s.planet.className})`,
+            s.planet.atmosphere
+              ? `Atmosphere: ${s.planet.atmosphere}`
+              : undefined,
+            s.planet.observedFromSpace
+              ? `Observed from space: ${s.planet.observedFromSpace}`
+              : undefined,
+            s.planet.feature ? `Feature: ${s.planet.feature}` : undefined,
+            s.planet.life ? `Life: ${s.planet.life}` : undefined,
+            s.planet.diversity ? `Diversity: ${s.planet.diversity}` : undefined,
+            s.planet.biomes ? `Biomes: ${s.planet.biomes}` : undefined,
+          ]
+            .filter(Boolean)
+            .join(', '),
         );
       }
       return lines.join('\n');
     });
 
+    const starLines = stars?.length
+      ? stars.map((s) => `${s.settlementName}: ${s.stellarObject}`)
+      : ['No stellar objects provided.'];
+
     const userPrompt = [
       `Sector: ${sectorName} (${region} region)`,
       `Sector trouble: ${trouble}`,
+      `Passages: ${passageCount ?? 'unknown'} known route(s) on the sector map`,
+      `Focus settlement: Settlement ${(focusSettlementIndex ?? 0) + 1}`,
       '',
       'Settlements:',
       ...settlementLines,
       '',
-      `NPC Connection: ${npc.name}, Role: ${npc.role}`,
+      'Nearby stellar objects:',
+      ...starLines,
+      '',
+      `NPC Connection: ${npc.name}, Role: ${npc.role}, Rank: ${npc.rank ?? 'troublesome or dangerous'}, Home settlement: ${npc.homeSettlementName ?? 'focus settlement'}`,
       '',
       `Generate exactly ${settlements.length} settlementOutput object(s) (in the same order as the settlements above), plus all NPC and sector fields.`,
     ].join('\n');

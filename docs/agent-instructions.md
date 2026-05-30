@@ -16,6 +16,21 @@ Treat edits to this file as part of the same PR as the code change that made the
 
 ---
 
+## Branching Policy
+
+**Never make code changes directly on `prod`, `dev`, or any integration branch.**
+
+Before starting any code change, create a feature branch based on `dev`:
+
+```bash
+git checkout dev && git pull
+git checkout -b <short-descriptive-name>
+```
+
+Branch names should be lowercase and hyphenated (e.g. `fix-sector-preflight`, `feat-session-cockpit-flow`). All commits go on the feature branch; open a PR targeting `dev` when the work is ready for review.
+
+---
+
 ## What This Is
 
 Iron Fellowship & Crew Link is a React web app for playing the Ironsworn and Starforged tabletop RPGs. It provides character sheets, campaign management, world building, homebrew content creation, and an AI-guided play mode.
@@ -229,16 +244,24 @@ src/pages/Campaign/CockpitPage/
 ## AI-Powered Sector Generation
 
 `GenerateSectorDialog` in `src/components/features/worlds/SectorSection/` orchestrates full sector creation:
-1. Rolls oracle tables (sector name, trouble, settlements, NPC)
+1. Rolls oracle tables according to the Starforged campaign launch procedure in `docs/rules.md` pages 114-127:
+   - Region determines settlement count: Terminus 4, Outlands 3, Expanse 2
+   - Region determines known passage count: Terminus 3, Outlands 2, Expanse 1
+   - Every settlement gets only launch-sheet details: name, location, population, authority, and 1-2 projects
+   - One focus settlement gets first look and settlement trouble; only its planet gets atmosphere, observed-from-space, feature, and life rolls, plus diversity/biomes when it is a Vital World
+   - The starting connection is created as a troublesome or dangerous NPC located at the focus settlement
 2. Calls `POST /api/ai/sector/content` with oracle results + world truths
 3. Creates all locations (sector, settlements, planets) and an NPC in Postgres
 4. Writes AI-generated content to the right storage slots:
+   - Sector **public notes** → short player-facing sector summary
+   - Sector **GM notes** → trouble manifestation, culprit/faction, consequences, escalations, and a launch packet for first-session play
    - Settlement **public notes** → `updateLocationNotes` (player-facing)
    - Settlement **GM notes** → `updateLocationGMProperties({ gmNotes })` (GM-only)
-   - Planet **public notes** → `updateLocationNotes` (AI description)
+   - Planet **public notes** → `updateLocationNotes` (AI description for the focus planet only)
    - NPC **public notes** → `updateNPCNotes` (player-facing)
    - NPC **GM properties** → `firstLook`, `goal`, `revealedAspect` in `updateNPCGMProperties`
-   - Sector **GM notes** → `updateLocationGMProperties({ gmNotes })` (trouble narrative)
+
+When changing this feature, verify behavior against `docs/rules.md` pages 114-127 rather than adding extra settlement/planet detail up front. The goal is a sector that is ready for a session while still leaving room for discoveries during play.
 
 ---
 

@@ -377,11 +377,18 @@ export interface SectorGenerationSettlement {
   population: string;
   authority: string;
   projects: string;
-  trouble: string;
+  trouble?: string;
+  firstLook?: string;
+  isFocus?: boolean;
   planet?: {
     name: string;
     className: string;
     atmosphere?: string;
+    observedFromSpace?: string;
+    feature?: string;
+    life?: string;
+    diversity?: string;
+    biomes?: string;
   };
 }
 
@@ -389,8 +396,11 @@ export interface SectorGenerationRequest {
   sectorName: string;
   region: string;
   trouble: string;
+  passageCount?: number;
+  focusSettlementIndex?: number;
   settlements: SectorGenerationSettlement[];
-  npc: { name: string; role: string };
+  npc: { name: string; role: string; rank?: string; homeSettlementName?: string };
+  stars?: { settlementName: string; stellarObject: string }[];
   worldContext?: WorldContext;
 }
 
@@ -406,7 +416,15 @@ export interface SectorGenerationOutput {
   npcFirstLook: string;
   npcGoal: string;
   npcRevealedAspect: string;
+  sectorPublicSummary?: string;
   sectorGMNotes: string;
+  launchPacket?: {
+    openingScene: string;
+    visibleTrouble: string;
+    rumors: string[];
+    questStarters: string[];
+    firstSessionQuestions: string[];
+  };
 }
 
 export type AiEventStatus = "pending" | "accepted" | "rejected" | "edited";

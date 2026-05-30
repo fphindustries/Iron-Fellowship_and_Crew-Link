@@ -98,7 +98,10 @@ export function useLocationDetailQuery(
           `/api/worlds/${worldId}/locations/${locationId}/notes`
         ),
         isOwner
-          ? api.get<{ dataJson?: Record<string, unknown> }>(
+          ? api.get<{
+              content?: { data?: number[] } | number[];
+              dataJson?: Record<string, unknown>;
+            }>(
               `/api/worlds/${worldId}/locations/${locationId}/private-notes`
             )
           : Promise.resolve(null),
@@ -111,8 +114,21 @@ export function useLocationDetailQuery(
                 : (notesRow.value.content as { data?: number[] }).data ?? []
             )
           : null;
+      const privateNotes =
+        gmRow.status === "fulfilled" && gmRow.value?.content
+          ? new Uint8Array(
+              Array.isArray(gmRow.value.content)
+                ? gmRow.value.content
+                : (gmRow.value.content as { data?: number[] }).data ?? []
+            )
+          : undefined;
       const gmProperties =
-        gmRow.status === "fulfilled" ? gmRow.value?.dataJson ?? null : null;
+        gmRow.status === "fulfilled"
+          ? {
+              ...(gmRow.value?.dataJson ?? {}),
+              ...(privateNotes ? { gmNotes: privateNotes } : {}),
+            }
+          : null;
       return { notes, gmProperties };
     },
     enabled: !!worldId && !!locationId,

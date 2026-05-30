@@ -36,6 +36,14 @@ const SETTLEMENT_COUNT: Record<string, number> = {
   Expanse: 2,
 };
 
+const PASSAGE_COUNT: Record<string, number> = {
+  Terminus: 3,
+  Outlands: 2,
+  Expanse: 1,
+};
+
+const CONNECTION_RANKS = [Difficulty.Troublesome, Difficulty.Dangerous];
+
 function textToYjsBytes(text: string): Uint8Array {
   const paragraphs = text
     .split(/\n\n+/)
@@ -106,6 +114,21 @@ function shuffled<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+function oneOrTwoResults(roll: () => string): string {
+  const count = Math.random() < 0.5 ? 1 : 2;
+  const results = Array.from({ length: count }, roll).filter(Boolean);
+  return [...new Set(results)].join(", ");
+}
+
+function biomeCountForDiversity(diversity: string): number {
+  const lower = diversity.toLowerCase();
+  if (lower.includes("simple")) return 2;
+  if (lower.includes("diverse")) return 3;
+  if (lower.includes("complex")) return 4;
+  if (lower.includes("garden")) return 5;
+  return 0;
 }
 
 interface SettlementPlacement {
@@ -226,24 +249,44 @@ function findHexPath(
 
 function planPassages(
   placements: SettlementPlacement[],
-  locationCells: Set<string>
+  locationCells: Set<string>,
+  passageCount: number
 ): HexPos[][] {
   const positions = placements.map((p) => p.pos);
   const passages: HexPos[][] = [];
+  const used = new Set<string>();
 
-  // Connect all settlements in a chain (0→1, 1→2, ...) so every settlement is reachable
-  for (let i = 0; i < positions.length - 1; i++) {
-    const path = findHexPath(positions[i], positions[i + 1], locationCells);
-    if (path.length > 0) passages.push(path);
+  const addPassage = (
+    from: HexPos,
+    to: HexPos | null,
+    key: string
+  ): boolean => {
+    if (used.has(key) || passages.length >= passageCount) return false;
+    const path = findHexPath(from, to, locationCells);
+    if (path.length === 0) return false;
+    passages.push(path);
+    used.add(key);
+    return true;
+  };
+
+  // Include one passage off-map when possible, then add settlement-to-settlement
+  // routes until the region's rulebook count is reached.
+  for (const index of shuffled(positions.map((_, i) => i))) {
+    if (addPassage(positions[index], null, `edge-${index}`)) break;
   }
 
-  // Always add one passage leading out of the sector to the map edge
+  const pairIndexes: Array<[number, number]> = [];
   for (let i = 0; i < positions.length; i++) {
-    const path = findHexPath(positions[i], null, locationCells);
-    if (path.length > 0) {
-      passages.push(path);
-      break;
+    for (let j = i + 1; j < positions.length; j++) {
+      pairIndexes.push([i, j]);
     }
+  }
+  for (const [i, j] of shuffled(pairIndexes)) {
+    addPassage(positions[i], positions[j], `pair-${i}-${j}`);
+  }
+
+  for (const index of shuffled(positions.map((_, i) => i))) {
+    addPassage(positions[index], null, `edge-${index}`);
   }
 
   return passages;
@@ -303,78 +346,47 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
     setError(undefined);
 
     try {
+      const roll = (oracleId: string): string =>
+        rollOracleTable(oracleId, false)?.result ?? "";
+
       // 1. Roll sector name
-      const prefix =
-        rollOracleTable(
-          "starforged/oracles/space/sector_name/prefix",
-          false
-        )?.result ?? "";
-      const suffix =
-        rollOracleTable(
-          "starforged/oracles/space/sector_name/suffix",
-          false
-        )?.result ?? "";
+      const prefix = roll("starforged/oracles/space/sector_name/prefix");
+      const suffix = roll("starforged/oracles/space/sector_name/suffix");
       const sectorName =
         prefix && suffix ? `${prefix} ${suffix}` : "New Sector";
 
       // 2. Roll sector trouble
-      const trouble =
-        rollOracleTable(
-          "starforged/oracles/campaign_launch/sector_trouble",
-          false
-        )?.result ?? "";
+      const trouble = roll("starforged/oracles/campaign_launch/sector_trouble");
 
       // 3. Roll settlements
       const count = SETTLEMENT_COUNT[region] ?? 3;
+      const passageCount = PASSAGE_COUNT[region] ?? 2;
       const regionLower = region.toLowerCase();
       const settlements: SectorGenerationSettlement[] = [];
+      const stars: { settlementName: string; stellarObject: string }[] = [];
 
       for (let i = 0; i < count; i++) {
-        const name =
-          rollOracleTable("starforged/oracles/settlements/name", false)
-            ?.result ?? `Settlement ${i + 1}`;
+        const name = roll("starforged/oracles/settlements/name") || `Settlement ${i + 1}`;
         const locationType =
-          rollOracleTable("starforged/oracles/settlements/location", false)
-            ?.result ?? "Deep Space";
-        const population =
-          rollOracleTable(
-            `starforged/oracles/settlements/population/${regionLower}`,
-            false
-          )?.result ?? "";
-        const authority =
-          rollOracleTable("starforged/oracles/settlements/authority", false)
-            ?.result ?? "";
-        const project1 =
-          rollOracleTable("starforged/oracles/settlements/projects", false)
-            ?.result ?? "";
-        const project2 =
-          rollOracleTable("starforged/oracles/settlements/projects", false)
-            ?.result ?? "";
-        const projects = [project1, project2].filter(Boolean).join(", ");
-        const settlementTrouble =
-          rollOracleTable("starforged/oracles/settlements/trouble", false)
-            ?.result ?? "";
+          roll("starforged/oracles/settlements/location") || "Deep Space";
+        const population = roll(
+          `starforged/oracles/settlements/population/${regionLower}`
+        );
+        const authority = roll("starforged/oracles/settlements/authority");
+        const projects = oneOrTwoResults(() =>
+          roll("starforged/oracles/settlements/projects")
+        );
 
         let planet: SectorGenerationSettlement["planet"];
         if (locationType === "Orbital" || locationType === "Planetside") {
-          const rawClass =
-            rollOracleTable("starforged/oracles/planets/class", false)
-              ?.result ?? "";
+          const rawClass = roll("starforged/oracles/planets/class");
           const convertedClass = rawClass.split(" ")[0].toLowerCase();
           const planetName =
-            rollOracleTable(
-              `starforged/oracles/planets/${convertedClass}/name`,
-              false
-            )?.result ?? "Unknown Planet";
-          const atmosphere =
-            rollOracleTable(
-              `starforged/oracles/planets/${convertedClass}/atmosphere`,
-              false
-            )?.result;
+            roll(`starforged/oracles/planets/${convertedClass}/name`) ||
+            "Unknown Planet";
           planet = {
             name: planetName,
             className: rawClass || "Rocky World",
-            atmosphere,
           };
         }
 
@@ -384,26 +396,64 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
           population,
           authority,
           projects,
-          trouble: settlementTrouble,
           planet,
         });
+
+        const stellarObject = roll("starforged/oracles/space/stellar_object");
+        if (stellarObject) stars.push({ settlementName: name, stellarObject });
+      }
+
+      const focusSettlementIndex = Math.max(
+        0,
+        settlements.findIndex((settlement) => settlement.planet)
+      );
+      const focusSettlement = settlements[focusSettlementIndex];
+      if (focusSettlement) {
+        focusSettlement.isFocus = true;
+        focusSettlement.firstLook = oneOrTwoResults(() =>
+          roll("starforged/oracles/settlements/first_look")
+        );
+        focusSettlement.trouble = roll("starforged/oracles/settlements/trouble");
+
+        if (focusSettlement.planet) {
+          const convertedClass = focusSettlement.planet.className
+            .split(" ")[0]
+            .toLowerCase();
+          focusSettlement.planet.atmosphere = roll(
+            `starforged/oracles/planets/${convertedClass}/atmosphere`
+          );
+          focusSettlement.planet.observedFromSpace = oneOrTwoResults(() =>
+            roll(`starforged/oracles/planets/${convertedClass}/observed_from_space`)
+          );
+          focusSettlement.planet.feature = oneOrTwoResults(() =>
+            roll(`starforged/oracles/planets/${convertedClass}/feature`)
+          );
+          focusSettlement.planet.life = roll(
+            `starforged/oracles/planets/${convertedClass}/life`
+          );
+          if (convertedClass === "vital") {
+            const diversity = roll(
+              "starforged/oracles/planets/vital/diversity"
+            );
+            const biomeCount = biomeCountForDiversity(diversity);
+            const biomes = Array.from({ length: biomeCount }, () =>
+              roll("starforged/oracles/planets/vital/biomes")
+            ).filter(Boolean);
+            focusSettlement.planet.diversity = diversity;
+            focusSettlement.planet.biomes = [...new Set(biomes)].join(", ");
+          }
+        }
       }
 
       // 4. Roll NPC
       const givenName =
-        rollOracleTable(
-          "starforged/oracles/characters/name/given",
-          false
-        )?.result ?? "Asha";
-      const familyName =
-        rollOracleTable(
-          "starforged/oracles/characters/name/family_name",
-          false
-        )?.result ?? "";
+        roll("starforged/oracles/characters/name/given") || "Asha";
+      const familyName = roll("starforged/oracles/characters/name/family_name");
       const npcName = [givenName, familyName].filter(Boolean).join(" ");
       const npcRole =
-        rollOracleTable("starforged/oracles/characters/role", false)?.result ??
-        "Spacer";
+        roll("starforged/oracles/characters/role") || "Spacer";
+      const npcRank =
+        CONNECTION_RANKS[Math.floor(Math.random() * CONNECTION_RANKS.length)];
 
       // 5. Build world context from saved truths
       const truthSelections = world?.newTruths ?? {};
@@ -432,8 +482,16 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
         sectorName,
         region,
         trouble,
+        passageCount,
+        focusSettlementIndex,
         settlements,
-        npc: { name: npcName, role: npcRole },
+        npc: {
+          name: npcName,
+          role: npcRole,
+          rank: npcRank,
+          homeSettlementName: focusSettlement?.name,
+        },
+        stars,
         worldContext: {
           truths: selectedTruths,
           assumptions: worldAiSettings?.assumptions,
@@ -460,16 +518,40 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
           gmProperties: sectorGMProps,
         });
       }
-      if (aiResult?.sectorGMNotes) {
+      if (aiResult?.sectorPublicSummary) {
         await updateLocationNotes.mutateAsync({
           locationId: sectorLocationId,
-          privateNotes: textToYjsBytes(aiResult.sectorGMNotes),
+          notes: textToYjsBytes(aiResult.sectorPublicSummary),
+        });
+      }
+      if (aiResult?.sectorGMNotes) {
+        const launchPacket = aiResult.launchPacket
+          ? [
+              aiResult.sectorGMNotes,
+              "",
+              "Launch packet",
+              "",
+              `Opening scene: ${aiResult.launchPacket.openingScene}`,
+              "",
+              `Visible trouble: ${aiResult.launchPacket.visibleTrouble}`,
+              "",
+              `Rumors: ${aiResult.launchPacket.rumors.join("; ")}`,
+              "",
+              `Quest starters: ${aiResult.launchPacket.questStarters.join("; ")}`,
+              "",
+              `First-session questions: ${aiResult.launchPacket.firstSessionQuestions.join("; ")}`,
+            ].join("\n")
+          : aiResult.sectorGMNotes;
+        await updateLocationNotes.mutateAsync({
+          locationId: sectorLocationId,
+          privateNotes: textToYjsBytes(launchPacket),
         });
       }
 
       // 8. Plan random hex positions, then create settlements and planets
       const placements = planPlacements(settlements);
       const sectorMap: LocationMap = {};
+      let focusSettlementLocationId: string | undefined;
 
       for (let i = 0; i < placements.length; i++) {
         const { settlement: s, pos, planetPos } = placements[i];
@@ -487,6 +569,7 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
         // All settlement oracle fields are gmFields in the config
         const settlementGMFields: Record<string, string> = {};
         if (s.locationType) settlementGMFields.settlementLocation = s.locationType;
+        if (s.firstLook) settlementGMFields.settlementFirstLook = s.firstLook;
         if (s.population) settlementGMFields.settlementPopulation = s.population;
         if (s.authority) settlementGMFields.settlementAuthority = s.authority;
         if (s.projects) settlementGMFields.settlementProjects = s.projects;
@@ -497,6 +580,7 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
             gmProperties: { fields: settlementGMFields },
           });
         }
+        if (s.isFocus) focusSettlementLocationId = settlementLocationId;
 
         // Place on sector hex map at random position
         sectorMap[pos.row] = sectorMap[pos.row] ?? {};
@@ -543,12 +627,30 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
             createdDate: now,
             updatedDate: now,
           });
-          // Atmosphere is a gmField in planet config
+          const planetGMFields: Record<string, string> = {};
           if (s.planet.atmosphere) {
+            planetGMFields.planetAtmosphere = s.planet.atmosphere;
+          }
+          if (s.planet.observedFromSpace) {
+            planetGMFields.planetObservedFromSpace = s.planet.observedFromSpace;
+          }
+          if (s.planet.feature) {
+            planetGMFields.planetFeature = s.planet.feature;
+          }
+          if (s.planet.life) {
+            planetGMFields.planetLife = s.planet.life;
+          }
+          if (s.planet.diversity) {
+            planetGMFields.planetDiversity = s.planet.diversity;
+          }
+          if (s.planet.biomes) {
+            planetGMFields.planetBiomes = s.planet.biomes;
+          }
+          if (Object.keys(planetGMFields).length > 0) {
             await updateLocationNotes.mutateAsync({
               locationId: planetLocationId,
               gmProperties: {
-                fields: { planetAtmosphere: s.planet.atmosphere },
+                fields: planetGMFields,
               },
             });
           }
@@ -579,7 +681,7 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
         if (planetPos) locationCells.add(posKey(planetPos));
       });
 
-      const passages = planPassages(placements, locationCells);
+      const passages = planPassages(placements, locationCells, passageCount);
       for (const passage of passages) {
         for (const cell of passage) {
           if (!locationCells.has(posKey(cell))) {
@@ -608,7 +710,8 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
         name: npcName,
         dataJson: {
           sharedWithPlayers: true,
-          rank: Difficulty.Dangerous,
+          rank: npcRank,
+          lastLocationId: focusSettlementLocationId,
         },
       });
       const npcId = npcRow.id as string;

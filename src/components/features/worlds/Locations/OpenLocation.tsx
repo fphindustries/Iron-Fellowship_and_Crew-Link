@@ -456,14 +456,13 @@ export function OpenLocation(props: OpenLocationProps) {
                     </Grid>
                   </>
                 )}
-                {isGuidedGame && (
-                  <>
-                    {showGMTips && (
+                <>
+                  {showGMTips && (
                       <Grid item xs={12}>
                         <GuideAndPlayerHeader breakContainer />
                       </Grid>
-                    )}
-                    {settingConfig.showBasicBond && (
+                  )}
+                  {isGuidedGame && settingConfig.showBasicBond && (
                       <BondsSection
                         isStarforged={false}
                         hasConnection={false}
@@ -478,32 +477,31 @@ export function OpenLocation(props: OpenLocationProps) {
                         }
                         isBonded={singleplayerBond}
                       />
-                    )}
-                    {!location.sharedWithPlayers && (
+                  )}
+                  {isGuidedGame && !location.sharedWithPlayers && (
                       <Grid item xs={12}>
                         <Alert severity="warning">
                           These notes are not yet visible to players because
                           this location is hidden from them.
                         </Alert>
                       </Grid>
+                  )}
+                  <Grid item xs={12}>
+                    {(location.notes || location.notes === null) && (
+                      <RtcRichTextEditor
+                        id={locationId}
+                        roomPrefix={`iron-fellowship-${worldId}-location-`}
+                        documentPassword={worldId}
+                        onSave={(_documentId, notes) =>
+                          updateLocationNotes
+                            .mutateAsync({ locationId, notes })
+                            .then(() => undefined)
+                        }
+                        initialValue={location.notes || undefined}
+                      />
                     )}
-                    <Grid item xs={12}>
-                      {(location.notes || location.notes === null) && (
-                        <RtcRichTextEditor
-                          id={locationId}
-                          roomPrefix={`iron-fellowship-${worldId}-location-`}
-                          documentPassword={worldId}
-                          onSave={(_documentId, notes) =>
-                            updateLocationNotes
-                              .mutateAsync({ locationId, notes })
-                              .then(() => undefined)
-                          }
-                          initialValue={location.notes || undefined}
-                        />
-                      )}
-                    </Grid>
-                  </>
-                )}
+                  </Grid>
+                </>
               </>
             )}
             {currentTab === LocationTab.NPCs && (
