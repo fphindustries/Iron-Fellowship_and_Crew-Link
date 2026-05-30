@@ -40,7 +40,13 @@ import { ReviewStep } from "./components/ReviewStep";
 import { WorldContext, WorldAiSettings } from "types/AI.type";
 import { CUSTOM_TRUTH_INDEX } from "components/features/worlds/WorldTruths/customTruthIndex";
 import { useAllWorldsQuery } from "hooks/queries/useWorldsQuery";
-import { useCampaignQuery } from "hooks/queries/useCampaignsQuery";
+import {
+  campaignKeys,
+  useCampaignQuery,
+  useUpdateCampaignCharacterMutation,
+} from "hooks/queries/useCampaignsQuery";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCreateFullCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 interface GuidedForm {
   enabledExpansionMap: Record<string, boolean>;
@@ -64,6 +70,7 @@ const STEPS = [
 export function CharacterGuidedCreatePageContent() {
   const campaignId = useSearchParams()[0].get("campaignId");
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const appName = useAppName();
 
   const [activeStep, setActiveStep] = useState(0);
@@ -79,8 +86,10 @@ export function CharacterGuidedCreatePageContent() {
   const { data: allWorlds } = useAllWorldsQuery();
   const worldMap = Object.fromEntries((allWorlds ?? []).map((w) => [w.id, w]));
   const worldTruthDefs = useStore((s) => s.rules.worldTruths);
-  const createCharacter = useStore((store) => store.characters.createCharacter);
-  const addCharacterToCampaign = useStore((store) => store.campaigns.currentCampaign.addCharacter);
+  const createCharacter = useCreateFullCharacterMutation();
+  const addCharacterToCampaign = useUpdateCampaignCharacterMutation(
+    campaignId ?? undefined
+  );
 
   const { control } = useForm<GuidedForm>();
   const { append } = useFieldArray({
@@ -292,27 +301,34 @@ export function CharacterGuidedCreatePageContent() {
 
   const handleAccept = () => {
     setLoading(true);
-    createCharacter(
-      formData.name,
-      formData.stats,
-      formData.assets,
-      formData.portrait,
-      undefined,
-      formData.backstory || undefined,
-      formData.backgroundVow || undefined,
-      formData.pronouns || undefined,
-      formData.callsign || undefined,
-      formData.characteristics || undefined,
-      formData.role || undefined
-    )
+    createCharacter
+      .mutateAsync({
+        name: formData.name,
+        stats: formData.stats,
+        assets: formData.assets,
+        portrait: formData.portrait,
+        backstory: formData.backstory || undefined,
+        backgroundVow: formData.backgroundVow || undefined,
+        pronouns: formData.pronouns || undefined,
+        callsign: formData.callsign || undefined,
+        characteristics: formData.characteristics || undefined,
+        role: formData.role || undefined,
+      })
       .then((characterId) => {
         const afterSummary = () => {
           if (campaignId) {
-            addCharacterToCampaign(characterId).finally(() => {
-              navigate(
-                constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
-              );
-            });
+            addCharacterToCampaign
+              .mutateAsync({ characterId })
+              .then(() =>
+                queryClient.invalidateQueries({
+                  queryKey: campaignKeys.detail(campaignId),
+                })
+              )
+              .finally(() => {
+                navigate(
+                  constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
+                );
+              });
           } else {
             navigate(constructCharacterSheetPath(characterId));
           }

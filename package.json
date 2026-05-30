@@ -13,7 +13,13 @@
     "api:monitored": "pnpm --filter api run monitor",
     "api:build": "pnpm --filter api build",
     "dev:all": "concurrently -n api,web -c cyan,green \"pnpm api:dev\" \"pnpm dev\"",
-    "dev:monitored": "concurrently -n api,web -c cyan,green \"pnpm --filter api run monitor\" \"pnpm dev\""
+    "dev:monitored": "concurrently -n api,web -c cyan,green \"pnpm --filter api run monitor\" \"pnpm dev\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:cov": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@datasworn/core": "^0.0.10",
@@ -71,20 +77,29 @@
     "@types/react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.0.0",
     "@types/react-avatar-editor": "^13.0.2",
     "@types/react-dom": "^19.0.0",
     "@typescript-eslint/eslint-plugin": "^7.9.0",
     "@typescript-eslint/parser": "^7.9.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/ui": "^2.1.9",
     "concurrently": "^9.2.1",
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.7",
+    "jsdom": "^29.1.1",
+    "msw": "^2.14.6",
     "typescript": "^5.4.5",
     "vite": "^5.2.11",
     "vite-plugin-svgr": "^4.2.0",
-    "vite-tsconfig-paths": "^4.3.2"
+    "vite-tsconfig-paths": "^4.3.2",
+    "vitest": "^2.1.9"
   }
 }

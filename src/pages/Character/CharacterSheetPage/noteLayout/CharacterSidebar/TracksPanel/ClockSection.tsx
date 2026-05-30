@@ -1,10 +1,12 @@
 import { Button } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
-import { Clock as IClock } from "types/Track.type";
+import { Clock as IClock, TrackTypes } from "types/Track.type";
 import { SidebarHeading } from "./SidebarHeading";
 import { Clocks } from "components/features/charactersAndCampaigns/Clocks/Clocks";
 import { ClockDialog } from "components/features/charactersAndCampaigns/Clocks/ClockDialog";
+import { useUpdateCampaignTrackMutation } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCharacterTrackMutation } from "hooks/queries/useCharactersQuery";
 
 export interface ClockSectionProps {
   showCompletedClocks?: boolean;
@@ -43,16 +45,19 @@ export function ClockSection(props: ClockSectionProps) {
     shared?: boolean;
   }>({ open: false });
 
-  const addCharacterClock = useStore(
-    (store) => store.characters.currentCharacter.tracks.addTrack
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
   );
-  const addCampaignClock = useStore(
-    (store) => store.campaigns.currentCampaign.tracks.addTrack
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
   );
+  const addCharacterClock = useUpdateCharacterTrackMutation(characterId);
+  const addCampaignClock = useUpdateCampaignTrackMutation(campaignId);
 
   const handleAddClock = (clock: IClock, shared?: boolean) => {
-    const addFn = shared ? addCampaignClock : addCharacterClock;
-    return addFn(clock);
+    const { createdDate: _createdDate, ...dataJson } = clock;
+    const mutation = shared ? addCampaignClock : addCharacterClock;
+    return mutation.mutateAsync({ type: TrackTypes.Clock, dataJson });
   };
 
   return (

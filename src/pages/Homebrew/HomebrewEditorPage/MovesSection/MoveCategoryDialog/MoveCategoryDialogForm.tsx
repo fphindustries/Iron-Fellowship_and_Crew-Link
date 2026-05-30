@@ -13,6 +13,10 @@ import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { useStore } from "stores/store";
 import { HomebrewMoveCategoryDocument } from "types/homebrew/HomebrewMoveCategory.type";
 import { MoveCategoryAutocomplete } from "../MoveCategoryAutocomplete";
+import {
+  useCreateHomebrewContentMutation,
+  useUpdateHomebrewContentMutation,
+} from "hooks/queries/useHomebrewQuery";
 
 export interface MoveCategoryFormDialogProps {
   homebrewId: string;
@@ -58,12 +62,8 @@ export function MoveCategoryDialogForm(props: MoveCategoryFormDialogProps) {
       : {},
   });
 
-  const createMoveCategory = useStore(
-    (store) => store.homebrew.createMoveCategory
-  );
-  const updateMoveCategory = useStore(
-    (store) => store.homebrew.updateMoveCategory
-  );
+  const createMoveCategory = useCreateHomebrewContentMutation(homebrewId);
+  const updateMoveCategory = useUpdateHomebrewContentMutation(homebrewId);
 
   const onSubmit: SubmitHandler<Form> = (values) => {
     setLoading(true);
@@ -81,7 +81,11 @@ export function MoveCategoryDialogForm(props: MoveCategoryFormDialogProps) {
     moveCategory.replacesId = values.replacesId ?? null;
 
     if (existingMoveCategoryId) {
-      updateMoveCategory(existingMoveCategoryId, moveCategory)
+      updateMoveCategory
+        .mutateAsync({
+          contentId: existingMoveCategoryId,
+          dataJson: moveCategory,
+        })
         .then(() => {
           setLoading(false);
           onClose();
@@ -90,7 +94,11 @@ export function MoveCategoryDialogForm(props: MoveCategoryFormDialogProps) {
           setLoading(false);
         });
     } else {
-      createMoveCategory(moveCategory)
+      createMoveCategory
+        .mutateAsync({
+          contentType: "moveCategory",
+          dataJson: moveCategory,
+        })
         .then(() => {
           setLoading(false);
           onClose();

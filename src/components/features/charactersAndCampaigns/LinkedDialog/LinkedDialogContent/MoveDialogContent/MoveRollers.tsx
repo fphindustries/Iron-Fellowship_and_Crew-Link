@@ -4,13 +4,15 @@ import { StatComponent } from "components/features/characters/StatComponent";
 import { useStore } from "stores/store";
 import { MoveAssetControl } from "./MoveAssetControl";
 import { useState } from "react";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export interface MoveRollersProps {
   move: Datasworn.Move;
+  onRollComplete?: () => void;
 }
 
 export function MoveRollers(props: MoveRollersProps) {
-  const { move } = props;
+  const { move, onRollComplete } = props;
 
   const statRules = useStore((store) => store.rules.stats);
   const conditionMeterRules = useStore((store) => store.rules.conditionMeters);
@@ -35,9 +37,10 @@ export function MoveRollers(props: MoveRollersProps) {
   const adds = useStore(
     (store) => store.characters.currentCharacter.currentCharacter?.adds ?? 0
   );
-  const updateAdds = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
   );
+  const updateAdds = useUpdateCharacterMutation(characterId ?? "");
 
   const activeSessionId = useStore(
     (store) => store.sessionLog.activeSessionId
@@ -113,7 +116,7 @@ export function MoveRollers(props: MoveRollersProps) {
                   }}
                   disableRoll={rollDisabled}
                   playerContext={playerContext}
-                  onRollComplete={() => setPlayerContext("")}
+                  onRollComplete={() => { setPlayerContext(""); onRollComplete?.(); }}
                 />
               ) : (
                 <Chip
@@ -137,7 +140,7 @@ export function MoveRollers(props: MoveRollersProps) {
                   }}
                   disableRoll={rollDisabled}
                   playerContext={playerContext}
-                  onRollComplete={() => setPlayerContext("")}
+                  onRollComplete={() => { setPlayerContext(""); onRollComplete?.(); }}
                 />
               ) : (
                 <Chip
@@ -158,7 +161,7 @@ export function MoveRollers(props: MoveRollersProps) {
           {hasCharacter && (
             <StatComponent
               label={"Adds"}
-              updateTrack={(newValue) => updateAdds({ adds: newValue })}
+              updateTrack={(newValue) => updateAdds.mutateAsync({ adds: newValue })}
               value={adds}
             />
           )}

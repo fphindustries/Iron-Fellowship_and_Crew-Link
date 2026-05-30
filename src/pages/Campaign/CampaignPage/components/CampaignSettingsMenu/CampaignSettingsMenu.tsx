@@ -27,6 +27,11 @@ import { ThemeChooserDialog } from "components/shared/Layout/ThemeChooserDialog"
 import LayoutIcon from "@mui/icons-material/ViewComfy";
 import { LayoutChooserDialog } from "components/shared/Layout/LayoutChooserDialog";
 import { ignoreApiError } from "config/api.config";
+import {
+  useDeleteCampaignMutation,
+  useLeaveCampaignMutation,
+  useUpdateCampaignGMMutation,
+} from "hooks/queries/useCampaignsQuery";
 
 export function CampaignSettingsMenu() {
   const confirm = useConfirm();
@@ -46,9 +51,13 @@ export function CampaignSettingsMenu() {
   const [isEditCampaignOpen, setIsEditCampaignOpen] = useState(false);
   const handleClose = () => setAnchorElement(null);
 
-  const leaveCampaign = useStore(
-    (store) => store.campaigns.currentCampaign.leaveCampaign
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
   );
+  const campaign = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaign
+  );
+  const leaveCampaign = useLeaveCampaignMutation(campaignId);
   const handleLeaveCampaign = () => {
     confirm({
       title: "Leave Campaign",
@@ -60,7 +69,14 @@ export function CampaignSettingsMenu() {
       },
     })
       .then(() => {
-        leaveCampaign()
+        leaveCampaign
+          .mutateAsync({
+            userId: uid,
+            gmIds: campaign?.gmIds,
+            characterIds: campaign?.characters
+              .filter((character) => character.uid === uid)
+              .map((character) => character.characterId),
+          })
           .then(() => {
             navigate(constructCampaignPath(CAMPAIGN_ROUTES.SELECT));
           })
@@ -76,9 +92,7 @@ export function CampaignSettingsMenu() {
       ) ?? false
   );
 
-  const deleteCampaign = useStore(
-    (store) => store.campaigns.currentCampaign.deleteCampaign
-  );
+  const deleteCampaign = useDeleteCampaignMutation();
   const handleDeleteCampaign = () => {
     confirm({
       title: "End Campaign",
@@ -90,7 +104,9 @@ export function CampaignSettingsMenu() {
         color: "error",
       },
     }).then(() => {
-      deleteCampaign()
+      if (!campaignId) return;
+      deleteCampaign
+        .mutateAsync(campaignId)
         .then(() => {
           navigate(constructCampaignPath(CAMPAIGN_ROUTES.SELECT));
         })
@@ -99,12 +115,12 @@ export function CampaignSettingsMenu() {
   };
 
   const uid = useStore((store) => store.auth.uid);
-  const updateCampaignGM = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaignGM
-  );
+  const updateCampaignGM = useUpdateCampaignGMMutation(campaignId);
 
   const removeSelfAsGuide = () => {
-    updateCampaignGM(uid, true).catch(ignoreApiError);
+    updateCampaignGM
+      .mutateAsync({ userId: uid, remove: true })
+      .catch(ignoreApiError);
   };
   return (
     <>

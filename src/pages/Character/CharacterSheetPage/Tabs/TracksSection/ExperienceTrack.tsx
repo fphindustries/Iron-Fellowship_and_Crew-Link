@@ -5,6 +5,7 @@ import EmptyIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { ExperienceButtons } from "./ExperienceButtons";
 import { useStore } from "stores/store";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 const defaultTotalExp = 30;
 
@@ -18,12 +19,20 @@ export function ExperienceTrack() {
     (store) =>
       store.characters.currentCharacter.currentCharacter?.experience?.spent ?? 0
   );
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
   );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
 
   const updateExperience = (type: "earned" | "spent", value: number) => {
-    updateCharacter({ [`experience.${type}`]: value }).catch(ignoreApiError);
+    updateCharacter
+      .mutateAsync({
+        experienceJson: {
+          earned: type === "earned" ? value : earnedExp,
+          spent: type === "spent" ? value : spentExp,
+        },
+      })
+      .catch(ignoreApiError);
   };
 
   const handleEarnedExperienceChange = (proposedValue: number) => {

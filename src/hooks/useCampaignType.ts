@@ -62,6 +62,11 @@ export function useCampaignType(): {
         showGuidedPlayerView = true;
         hasMultipleCharacters = true;
       }
+    } else if (campaignType === CampaignType.AIGuided) {
+      type = CampaignType.AIGuided;
+      showGuideTips = false;
+      showGuidedPlayerView = false;
+      hasMultipleCharacters = true;
     } else if (campaignType === CampaignType.Coop) {
       type = CampaignType.Coop;
       showGuideTips = false;

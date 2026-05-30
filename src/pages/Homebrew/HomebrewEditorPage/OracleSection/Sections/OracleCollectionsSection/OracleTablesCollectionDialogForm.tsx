@@ -11,8 +11,11 @@ import { convertIdPart } from "functions/dataswornIdEncoder";
 import { useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { OracleCollectionAutocomplete } from "../../OracleCollectionAutocomplete";
-import { useStore } from "stores/store";
 import { HomebrewOracleCollectionDocument } from "types/homebrew/HomebrewOracleCollection.type";
+import {
+  useCreateHomebrewContentMutation,
+  useUpdateHomebrewContentMutation,
+} from "hooks/queries/useHomebrewQuery";
 
 export interface OracleTablesCollectionDialogFormProps {
   homebrewId: string;
@@ -65,12 +68,8 @@ export function OracleTablesCollectionDialogForm(
       : {},
   });
 
-  const createOracleCollection = useStore(
-    (store) => store.homebrew.createOracleCollection
-  );
-  const updateOracleCollection = useStore(
-    (store) => store.homebrew.updateOracleCollection
-  );
+  const createContent = useCreateHomebrewContentMutation(homebrewId);
+  const updateContent = useUpdateHomebrewContentMutation(homebrewId);
 
   const onSubmit: SubmitHandler<OracleTablesCollectionFormContents> = (
     values
@@ -98,7 +97,11 @@ export function OracleTablesCollectionDialogForm(
     oracleCollection.replacesId = values.replacesId ?? null;
 
     if (existingCollectionId) {
-      updateOracleCollection(existingCollectionId, oracleCollection)
+      updateContent
+        .mutateAsync({
+          contentId: existingCollectionId,
+          dataJson: oracleCollection,
+        })
         .then(() => {
           setLoading(false);
           onClose();
@@ -107,7 +110,11 @@ export function OracleTablesCollectionDialogForm(
           setLoading(false);
         });
     } else {
-      createOracleCollection(oracleCollection)
+      createContent
+        .mutateAsync({
+          contentType: "oracleCollection",
+          dataJson: oracleCollection,
+        })
         .then(() => {
           setLoading(false);
           onClose();

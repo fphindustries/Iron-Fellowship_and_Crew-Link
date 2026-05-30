@@ -17,6 +17,7 @@ import { LoreCard } from "./LoreCard";
 import { useStore } from "stores/store";
 import { useState } from "react";
 import { ignoreApiError } from "config/api.config";
+import { useCreateLoreMutation } from "hooks/queries/useWorldEntitiesQuery";
 
 export interface LoreSectionProps {
   isSinglePlayer?: boolean;
@@ -52,14 +53,13 @@ export function LoreSection(props: LoreSectionProps) {
   );
 
   const [createLoreLoading, setCreateLoreLoading] = useState(false);
-  const createLore = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLore.createLore
-  );
+  const createLore = useCreateLoreMutation(worldId);
 
   const handleCreateLore = () => {
     setCreateLoreLoading(true);
-    createLore()
-      .then((loreId) => setOpenLoreId(loreId))
+    createLore
+      .mutateAsync({})
+      .then((row) => setOpenLoreId(row.id as string))
       .catch(ignoreApiError)
       .finally(() => {
         setCreateLoreLoading(false);

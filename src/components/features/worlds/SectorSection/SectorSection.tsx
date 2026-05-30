@@ -15,6 +15,7 @@ import AddIcon from "@mui/icons-material/Add";
 import { OpenSector } from "./OpenSector";
 import HiddenIcon from "@mui/icons-material/VisibilityOff";
 import { ignoreApiError } from "config/api.config";
+import { useCreateSectorMutation } from "hooks/queries/useWorldEntitiesQuery";
 
 export interface SectorSectionProps {
   showHiddenTag?: boolean;
@@ -39,9 +40,7 @@ export function SectorSection(props: SectorSectionProps) {
 
   const { filteredSectorIds } = useFilterSectors(sectors, search);
 
-  const createSector = useStore(
-    (store) => store.worlds.currentWorld.currentWorldSectors.createSector
-  );
+  const createSector = useCreateSectorMutation(worldId);
   const openSectorId = useStore(
     (store) => store.worlds.currentWorld.currentWorldSectors.openSectorId
   );
@@ -52,7 +51,9 @@ export function SectorSection(props: SectorSectionProps) {
   const [createSectorLoading, setCreateSectorLoading] = useState(false);
   const handleCreateSector = () => {
     setCreateSectorLoading(true);
-    createSector()
+    createSector
+      .mutateAsync({ sharedWithPlayers: true })
+      .then((row) => setOpenSectorId(row.id as string))
       .catch(ignoreApiError)
       .finally(() => {
         setCreateSectorLoading(false);

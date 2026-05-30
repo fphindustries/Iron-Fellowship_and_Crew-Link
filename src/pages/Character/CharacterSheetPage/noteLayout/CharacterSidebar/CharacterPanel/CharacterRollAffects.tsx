@@ -1,9 +1,13 @@
 import { Box, Typography } from "@mui/material";
 import { momentumTrack } from "data/defaultTracks";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 import { MobileStatTrack } from "pages/Character/CharacterSheetPage/components/MobileStatTrack";
 import { useStore } from "stores/store";
 
 export function CharacterRollAffects() {
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
   const numberOfActiveDebilities = useStore((store) => {
     return Object.values(
       store.characters.currentCharacter.currentCharacter?.debilities ?? {}
@@ -15,11 +19,9 @@ export function CharacterRollAffects() {
 
   const maxMomentum = momentumTrack.max - numberOfActiveDebilities;
 
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
   const updateMomentum = (newValue: number) => {
-    return updateCharacter({
+    return updateCharacter.mutateAsync({
       momentum: newValue,
     });
   };
@@ -28,7 +30,7 @@ export function CharacterRollAffects() {
     (store) => store.characters.currentCharacter.currentCharacter?.adds ?? 0
   );
   const updateAdds = (newValue: number) => {
-    return updateCharacter({
+    return updateCharacter.mutateAsync({
       adds: newValue,
     });
   };

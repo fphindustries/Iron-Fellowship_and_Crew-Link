@@ -17,11 +17,13 @@ import { CampaignType } from "types/Campaign.type";
 import { CampaignSettingsMenu } from "./components/CampaignSettingsMenu";
 import { CampaignMoveOracleButtons } from "./components/CampaignMoveOracleButtons";
 import { InviteUsersDialog } from "./components/InviteUsersDialog";
+import { useUpdateCampaignGMMutation } from "hooks/queries/useCampaignsQuery";
+import { ignoreApiError } from "config/api.config";
 
 export function CampaignPage() {
   useSyncStore();
   const { campaignId } = useParams();
-  const { isPending: campaignLoading } = useCampaignQuery(campaignId);
+  const { isPending: campaignLoading, data: campaignQueryData } = useCampaignQuery(campaignId);
 
   const campaignName = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaign?.name
@@ -39,11 +41,12 @@ export function CampaignPage() {
     useState<boolean>(false);
 
   const uid = useStore((store) => store.auth.uid);
-  const updateCampaignGuide = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaignGM
+  const worldId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaign?.worldId
   );
+  const updateCampaignGuide = useUpdateCampaignGMMutation(campaignId);
 
-  if (campaignLoading) {
+  if (campaignLoading || (!!campaignQueryData && !isCampaignLoaded)) {
     return <LinearProgress />;
   }
 
@@ -98,7 +101,11 @@ export function CampaignPage() {
               <Button
                 variant={"outlined"}
                 color={"inherit"}
-                onClick={() => updateCampaignGuide(uid)}
+                onClick={() =>
+                  updateCampaignGuide
+                    .mutateAsync({ userId: uid, worldId })
+                    .catch(ignoreApiError)
+                }
               >
                 Mark self as Guide
               </Button>

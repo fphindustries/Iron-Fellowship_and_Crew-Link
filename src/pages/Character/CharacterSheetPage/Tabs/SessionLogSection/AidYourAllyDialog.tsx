@@ -24,6 +24,7 @@ import { useMoveRoll } from "hooks/useMoveRoll";
 import { MomentumBurnAlerts } from "./MomentumBurnAlerts";
 import { RollSummaryBox } from "./RollSummaryBox";
 import { PayThePriceSection } from "./PayThePriceSection";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 // ── Move IDs ─────────────────────────────────────────────────────────────────
 const AID_YOUR_ALLY_MOVE_IDS = [
@@ -95,9 +96,7 @@ export function AidYourAllyDialog({ open, onClose }: AidYourAllyDialogProps) {
   const characterMap = useStore(
     (s) => s.campaigns.currentCampaign.characters.characterMap
   );
-  const updateAllyCharacter = useStore(
-    (s) => s.campaigns.currentCampaign.characters.updateCharacter
-  );
+  const updateAllyCharacter = useUpdateCharacterMutation(selectedAllyId);
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
@@ -182,7 +181,7 @@ export function AidYourAllyDialog({ open, onClose }: AidYourAllyDialogProps) {
         const updates: { momentum?: number; adds?: number } = {};
         if (newMomentum !== allyMomentum) updates.momentum = newMomentum;
         updates.adds = allyAdds + 1;
-        await updateAllyCharacter(selectedAllyId, updates);
+        await updateAllyCharacter.mutateAsync(updates);
         if (updates.momentum !== undefined) {
           logStatChangeEvent({
             stat: "Momentum",
@@ -205,7 +204,7 @@ export function AidYourAllyDialog({ open, onClose }: AidYourAllyDialogProps) {
           if (allyAdvantageChoice === "momentum") {
             const newMomentum = Math.min(allyMaxMomentum, allyMomentum + 2);
             if (newMomentum !== allyMomentum) {
-              await updateAllyCharacter(selectedAllyId, {
+              await updateAllyCharacter.mutateAsync({
                 momentum: newMomentum,
               });
               logStatChangeEvent({
@@ -216,7 +215,7 @@ export function AidYourAllyDialog({ open, onClose }: AidYourAllyDialogProps) {
               });
             }
           } else {
-            await updateAllyCharacter(selectedAllyId, {
+            await updateAllyCharacter.mutateAsync({
               adds: allyAdds + 1,
             });
             logStatChangeEvent({

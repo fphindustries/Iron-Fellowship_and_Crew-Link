@@ -14,6 +14,10 @@ import { useStore } from "stores/store";
 import { HomebrewAssetCollectionDocument } from "types/homebrew/HomebrewAssetCollection.type";
 
 import { AssetCollectionAutocomplete } from "./AssetCollectionAutocomplete";
+import {
+  useCreateHomebrewContentMutation,
+  useUpdateHomebrewContentMutation,
+} from "hooks/queries/useHomebrewQuery";
 
 export interface AssetCollectionFormDialogProps {
   homebrewId: string;
@@ -61,12 +65,8 @@ export function AssetCollectionDialogForm(
       : {},
   });
 
-  const createAssetCollection = useStore(
-    (store) => store.homebrew.createAssetCollection
-  );
-  const updateAssetCollection = useStore(
-    (store) => store.homebrew.updateAssetCollection
-  );
+  const createContent = useCreateHomebrewContentMutation(homebrewId);
+  const updateContent = useUpdateHomebrewContentMutation(homebrewId);
 
   const onSubmit: SubmitHandler<Form> = (values) => {
     setLoading(true);
@@ -83,7 +83,11 @@ export function AssetCollectionDialogForm(
     assetCollection.replacesId = values.replacesId ?? null;
 
     if (existingAssetCollectionId) {
-      updateAssetCollection(existingAssetCollectionId, assetCollection)
+      updateContent
+        .mutateAsync({
+          contentId: existingAssetCollectionId,
+          dataJson: assetCollection,
+        })
         .then(() => {
           setLoading(false);
           onClose();
@@ -92,7 +96,11 @@ export function AssetCollectionDialogForm(
           setLoading(false);
         });
     } else {
-      createAssetCollection(assetCollection)
+      createContent
+        .mutateAsync({
+          contentType: "assetCollection",
+          dataJson: assetCollection,
+        })
         .then(() => {
           setLoading(false);
           onClose();

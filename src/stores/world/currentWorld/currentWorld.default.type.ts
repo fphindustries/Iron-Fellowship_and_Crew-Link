@@ -7,6 +7,4 @@ export const defaultCurrentWorldSlice: Omit<
   doAnyDocsHaveImages: false,
   currentWorld: undefined,
   currentWorldId: undefined,
-  worldAiSettings: undefined,
-  worldAiSettingsLoading: false,
 };

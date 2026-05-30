@@ -1,8 +1,8 @@
 import { Grid } from "@mui/material";
 import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
-import { useStore } from "stores/store";
 import { StarforgedLocationStar } from "types/SectorLocations.type";
 import { ignoreApiError } from "config/api.config";
+import { useSectorLocationMutations } from "./useSectorLocationMutations";
 
 export interface StarContentProps {
   locationId: string;
@@ -12,10 +12,7 @@ export interface StarContentProps {
 export function StarContent(props: StarContentProps) {
   const { locationId, location } = props;
 
-  const updateLocation = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldSectors.locations.updateLocation
-  );
+  const { updateLocation } = useSectorLocationMutations();
 
   return (
     <>

@@ -34,10 +34,6 @@ export interface AiSliceActions {
 
   openWithMode: (mode: AiMode, input?: string) => void;
 
-  applyBookkeeperSuggestion: (
-    payload: BookkeeperApplyPayload
-  ) => Promise<void>;
-
   clearPending: () => void;
 
   resetStore: () => void;

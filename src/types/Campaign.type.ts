@@ -5,6 +5,7 @@ export enum CampaignType {
   Solo = "solo",
   Coop = "co-op",
   Guided = "guided",
+  AIGuided = "ai-guided",
 }
 
 export interface CampaignDocument {

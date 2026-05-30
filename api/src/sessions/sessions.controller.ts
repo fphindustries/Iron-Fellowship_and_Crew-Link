@@ -27,7 +27,9 @@ export class SessionsController {
   }
 
   @Post()
-  create(@Body() body: { characterId?: string; campaignId?: string; title?: string }) {
+  create(
+    @Body() body: { characterId?: string; campaignId?: string; title?: string },
+  ) {
     return this.svc.create(body);
   }
 
@@ -45,11 +47,7 @@ export class SessionsController {
   }
 
   @Post(':id/events')
-  addEvent(
-    @Param('id') id: string,
-    @Body() body: any,
-    @Req() req: any,
-  ) {
+  addEvent(@Param('id') id: string, @Body() body: any, @Req() req: any) {
     return this.svc.addEvent(id, { ...body, createdBy: req.user?.id });
   }
 

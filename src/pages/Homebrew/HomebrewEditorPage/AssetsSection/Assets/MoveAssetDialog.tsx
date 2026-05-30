@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
 import { HomebrewAssetCollectionDocument } from "types/homebrew/HomebrewAssetCollection.type";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateHomebrewContentMutation } from "hooks/queries/useHomebrewQuery";
 
 export interface MoveAssetDialogProps {
   onClose: () => void;
@@ -34,11 +35,20 @@ export function MoveAssetDialog(props: MoveAssetDialogProps) {
     setSelectedAssetCollection(assetCollectionId);
   }, [assetCollectionId]);
 
-  const updateAsset = useStore((store) => store.homebrew.updateAsset);
+  const asset = useStore((store) =>
+    Object.values(store.homebrew.collections).find(
+      (collection) => !!collection.assets?.data?.[assetId ?? ""]
+    )?.assets?.data?.[assetId ?? ""]
+  );
+  const updateContent = useUpdateHomebrewContentMutation(asset?.collectionId);
 
   const handleSave = () => {
-    if (assetId && selectedAssetCollection) {
-      updateAsset(assetId, { categoryKey: selectedAssetCollection })
+    if (assetId && asset && selectedAssetCollection) {
+      updateContent
+        .mutateAsync({
+          contentId: assetId,
+          dataJson: { ...asset, categoryKey: selectedAssetCollection },
+        })
         .then(() => {
           onClose();
         })

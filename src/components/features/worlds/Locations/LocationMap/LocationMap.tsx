@@ -28,6 +28,10 @@ import { useRoller } from "stores/appState/useRoller";
 import { useImageDimensions } from "./useImageDimensions";
 import { MapOverflowOptionsMenu } from "./MapOverflowOptionsMenu";
 import { ignoreApiError } from "config/api.config";
+import {
+  useCreateLocationMutation,
+  useUpdateLocationMutation,
+} from "hooks/queries/useWorldEntitiesQuery";
 
 export interface LocationMapProps {
   locationId: string;
@@ -84,19 +88,62 @@ export function LocationMap(props: LocationMapProps) {
   });
   const settingConfig = locationConfigs[settingId];
 
-  const createLocation = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldLocations.createSpecificLocation
-  );
-  const updateLocation = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLocations.updateLocation
-  );
+  const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
+  const createLocation = useCreateLocationMutation(worldId);
+  const updateLocation = useUpdateLocationMutation(worldId);
   const setOpenLocationId = useStore(
     (store) => store.worlds.currentWorld.currentWorldLocations.setOpenLocationId
   );
-  const moveLocation = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLocations.moveLocation
-  );
+  const buildLocationPatch = (
+    targetLocation: LocationWithGMProperties,
+    partialLocation: Partial<LocationWithGMProperties>
+  ) => {
+    const {
+      name: _existingName,
+      imageFilenames: _existingImageFilenames,
+      gmProperties: _existingGMProperties,
+      notes: _existingNotes,
+      imageUrl: _existingImageUrl,
+      mapBackgroundImageUrl: _existingMapBackgroundImageUrl,
+      updatedDate: _existingUpdatedDate,
+      createdDate: _existingCreatedDate,
+      ...existingData
+    } = targetLocation as Partial<LocationWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+    const {
+      name,
+      imageFilenames,
+      gmProperties: _gmProperties,
+      notes: _notes,
+      imageUrl: _imageUrl,
+      mapBackgroundImageUrl: _mapBackgroundImageUrl,
+      updatedDate: _updatedDate,
+      createdDate: _createdDate,
+      ...nextData
+    } = partialLocation as Partial<LocationWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+
+    const patch: Record<string, unknown> = {
+      dataJson: { ...existingData, ...nextData },
+    };
+    if (name !== undefined) patch.name = name;
+    if (imageFilenames !== undefined) patch.imageFilenames = imageFilenames;
+    return patch;
+  };
+
+  const updateLocationDocument = (
+    targetLocationId: string,
+    partialLocation: Partial<LocationWithGMProperties>
+  ) => {
+    const targetLocation = locationMap[targetLocationId];
+    if (!targetLocation) return Promise.reject("Location not found");
+    return updateLocation.mutateAsync({
+      locationId: targetLocationId,
+      patch: buildLocationPatch(targetLocation, partialLocation),
+    });
+  };
 
   const [mapTool, setMapTool] = useState<MapTool>();
 
@@ -130,23 +177,28 @@ export function LocationMap(props: LocationMapProps) {
           ...map,
           [row]: { ...(map[row] ?? {}), [col]: { ...(currentCell ?? {}), type: newType } as any },
         };
-        updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
+        updateLocationDocument(locationId, { map: newMap } as any).catch(
+          ignoreApiError
+        );
       }
     } else if (mapTool?.type === MapTools.AddLocation) {
       const type = mapTool.locationType;
       const locationConfig = settingConfig?.locationTypeOverrides?.[type];
       const configCreateLocation =
         settingConfig?.locationTypeOverrides?.[type]?.config.createLocation;
-      createLocation({
-        name: `${locationConfig ? locationConfig.label : "New Location"}`,
+      const newLocation = {
         parentLocationId: locationId,
         sharedWithPlayers: true,
-        type: type,
-        updatedDate: new Date(),
-        createdDate: new Date(),
+        type,
         ...(configCreateLocation ? configCreateLocation(rollOracleTable) : {}),
-      })
-        .then((id) => {
+      };
+      createLocation
+        .mutateAsync({
+          name: `${locationConfig ? locationConfig.label : "New Location"}`,
+          dataJson: newLocation,
+        })
+        .then((createdLocation) => {
+          const id = createdLocation.id as string;
           const currentCell = map[row]?.[col];
           const existingIds = currentCell?.type === MapEntryType.Location ? currentCell.locationIds : [];
           const newMap: ILocationMap = {
@@ -156,20 +208,62 @@ export function LocationMap(props: LocationMapProps) {
               [col]: { type: MapEntryType.Location, locationIds: [...existingIds, id] },
             },
           };
-          updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
+          updateLocationDocument(locationId, { map: newMap } as any).catch(
+            ignoreApiError
+          );
         })
         .catch(ignoreApiError);
       setMapTool(undefined);
     } else if (mapTool?.type === MapTools.MoveLocation) {
       const locationToMove = locationMap[mapTool.locationId];
       if (locationToMove) {
-        moveLocation(
-          mapTool.locationId,
-          locationToMove,
-          locationId,
-          row,
-          col
-        ).catch(ignoreApiError);
+        const updates: Promise<unknown>[] = [];
+        if (locationToMove.parentLocationId) {
+          const oldParent = locationMap[locationToMove.parentLocationId];
+          if (oldParent?.map) {
+            const oldParentMap = JSON.parse(JSON.stringify(oldParent.map));
+            for (const oldRow of Object.keys(oldParentMap)) {
+              for (const oldCol of Object.keys(oldParentMap[oldRow])) {
+                const entry = oldParentMap[oldRow][oldCol];
+                if (
+                  entry?.type === MapEntryType.Location &&
+                  entry.locationIds?.includes(mapTool.locationId)
+                ) {
+                  entry.locationIds = entry.locationIds.filter(
+                    (id: string) => id !== mapTool.locationId
+                  );
+                }
+              }
+            }
+            updates.push(
+              updateLocationDocument(locationToMove.parentLocationId, {
+                map: oldParentMap,
+              } as any)
+            );
+          }
+        }
+        const currentCell = map[row]?.[col];
+        const existingIds =
+          currentCell?.type === MapEntryType.Location
+            ? currentCell.locationIds
+            : [];
+        const newMap: ILocationMap = {
+          ...map,
+          [row]: {
+            ...(map[row] ?? {}),
+            [col]: {
+              type: MapEntryType.Location,
+              locationIds: [...new Set([...existingIds, mapTool.locationId])],
+            },
+          },
+        };
+        updates.push(
+          updateLocationDocument(mapTool.locationId, {
+            parentLocationId: locationId,
+          })
+        );
+        updates.push(updateLocationDocument(locationId, { map: newMap } as any));
+        Promise.all(updates).catch(ignoreApiError);
         setMapTool(undefined);
       }
     } else if (mapTool?.type === MapTools.BackgroundPaint) {
@@ -179,7 +273,9 @@ export function LocationMap(props: LocationMapProps) {
         ...map,
         [row]: { ...(map[row] ?? {}), [col]: { ...(currentCell ?? {}), background: { color } } as any },
       };
-      updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
+      updateLocationDocument(locationId, { map: newMap } as any).catch(
+        ignoreApiError
+      );
     } else if (!mapTool && locationIds) {
       const filteredLocationIds = getValidLocations(
         locationId,
@@ -202,7 +298,9 @@ export function LocationMap(props: LocationMapProps) {
         ...map,
         [row]: { ...(map[row] ?? {}), [col]: restCell as any },
       };
-      updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
+      updateLocationDocument(locationId, { map: newMap } as any).catch(
+        ignoreApiError
+      );
     }
   };
 
@@ -217,7 +315,9 @@ export function LocationMap(props: LocationMapProps) {
           newMap[row][col] = { ...(cell ?? {}), background: { color } } as any;
         }
       }
-      updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
+      updateLocationDocument(locationId, { map: newMap } as any).catch(
+        ignoreApiError
+      );
       setMapTool(undefined);
     } else if (mapTool?.type === MapTools.BackgroundEraser) {
       const newMap: ILocationMap = { ...map };
@@ -229,7 +329,9 @@ export function LocationMap(props: LocationMapProps) {
           newMap[row][col] = restCell as any;
         }
       }
-      updateLocation(locationId, { map: newMap } as any).catch(ignoreApiError);
+      updateLocationDocument(locationId, { map: newMap } as any).catch(
+        ignoreApiError
+      );
       setMapTool(undefined);
     }
   };

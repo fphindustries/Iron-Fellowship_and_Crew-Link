@@ -12,9 +12,9 @@ import { useState } from "react";
 import SaveIcon from "@mui/icons-material/Save";
 import { useNavigate } from "react-router-dom";
 import { CAMPAIGN_ROUTES, constructCampaignSheetPath } from "../../routes";
-import { useStore } from "stores/store";
 import { CampaignType } from "types/Campaign.type";
 import { CampaignTypeChooser } from "components/features/campaigns/CampaignTypeChooser";
+import { useCreateCampaignMutation } from "hooks/queries/useCampaignsQuery";
 
 export interface CreateCampaignDialogProps {
   open: boolean;
@@ -25,16 +25,21 @@ export function CreateCampaignDialog(props: CreateCampaignDialogProps) {
   const { open, handleClose } = props;
   const navigate = useNavigate();
 
-  const createCampaign = useStore((store) => store.campaigns.createCampaign);
+  const createCampaign = useCreateCampaignMutation();
   const [loading, setLoading] = useState(false);
   const [label, setLabel] = useState<string>("");
   const [type, setType] = useState<CampaignType>(CampaignType.Guided);
 
   const handleCreate = () => {
     setLoading(true);
-    createCampaign(label, type)
-      .then((campaignId) => {
-        navigate(constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET));
+    createCampaign
+      .mutateAsync({
+        name: label,
+        system: "starforged",
+        type,
+      })
+      .then((campaign) => {
+        navigate(constructCampaignSheetPath(campaign.id, CAMPAIGN_ROUTES.SHEET));
       })
       .catch(() => {
         handleClose();

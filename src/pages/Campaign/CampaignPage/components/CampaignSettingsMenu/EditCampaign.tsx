@@ -12,6 +12,7 @@ import { useCampaignType } from "hooks/useCampaignType";
 import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCampaignMutation } from "hooks/queries/useCampaignsQuery";
 
 export interface EditCampaignProps {
   open: boolean;
@@ -40,16 +41,19 @@ export function EditCampaign(props: EditCampaignProps) {
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const updateCampaign = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaign
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
   );
+  const updateCampaign = useUpdateCampaignMutation(campaignId ?? "");
 
   const handleSave = () => {
-    setIsLoading(false);
-    updateCampaign({
-      name: newName,
-      type: newType,
-    })
+    if (!campaignId) return;
+    setIsLoading(true);
+    updateCampaign
+      .mutateAsync({
+        name: newName,
+        type: newType,
+      })
       .catch(ignoreApiError)
       .finally(() => {
         setIsLoading(false);

@@ -1,14 +1,16 @@
 import { Box, Typography } from "@mui/material";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 import { MobileStatTrack } from "pages/Character/CharacterSheetPage/components/MobileStatTrack";
 import { useStore } from "stores/store";
 
 export function CharacterExperience() {
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
   const experience = useStore(
     (store) => store.characters.currentCharacter.currentCharacter?.experience
   );
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
 
   const earned = experience?.earned ?? 0;
   const spent = experience?.spent ?? 0;
@@ -33,12 +35,12 @@ export function CharacterExperience() {
           disableRoll
           onChange={(newValue) => {
             if (newValue > availableXP) {
-              return updateCharacter({
-                experience: { earned: earned + 1, spent },
+              return updateCharacter.mutateAsync({
+                experienceJson: { earned: earned + 1, spent },
               });
             } else {
-              return updateCharacter({
-                experience: { earned, spent: spent + 1 },
+              return updateCharacter.mutateAsync({
+                experienceJson: { earned, spent: spent + 1 },
               });
             }
           }}

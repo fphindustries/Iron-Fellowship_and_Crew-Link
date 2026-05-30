@@ -24,6 +24,8 @@ import { TrackTypes } from "types/Track.type";
 import { useRoller } from "stores/appState/useRoller";
 import { useJourneyTracks, JourneyTrackEntry } from "./useJourneyTracks";
 import { PayThePriceSection } from "./PayThePriceSection";
+import { useUpdateCharacterTrackMutation } from "hooks/queries/useCharactersQuery";
+import { useUpdateCampaignTrackMutation } from "hooks/queries/useCampaignsQuery";
 
 const FINISH_AN_EXPEDITION_MOVE_ID =
   "starforged/moves/exploration/finish_an_expedition";
@@ -53,12 +55,14 @@ export function FinishAnExpeditionDialog({
   const logMoveEvent = useStore((s) => s.sessionLog.logMoveEvent);
   const logProgressEvent = useStore((s) => s.sessionLog.logProgressEvent);
 
-  const updateCharacterTrack = useStore(
-    (s) => s.characters.currentCharacter.tracks.updateTrack
+  const characterId = useStore(
+    (s) => s.characters.currentCharacter.currentCharacterId
   );
-  const updateCampaignTrack = useStore(
-    (s) => s.campaigns.currentCampaign.tracks.updateTrack
+  const campaignId = useStore(
+    (s) => s.campaigns.currentCampaign.currentCampaignId
   );
+  const updateCharacterTrack = useUpdateCharacterTrackMutation(characterId);
+  const updateCampaignTrack = useUpdateCampaignTrackMutation(campaignId);
 
   const { tracks, getBoxes } = useJourneyTracks();
 
@@ -110,9 +114,15 @@ export function FinishAnExpeditionDialog({
         const newValue = newBoxes * 4;
         const prevValue = selectedEntry.track.value;
         if (selectedEntry.source === "campaign") {
-          await updateCampaignTrack(selectedEntry.id, { value: newValue });
+          await updateCampaignTrack.mutateAsync({
+            trackId: selectedEntry.id,
+            dataJson: { value: newValue },
+          });
         } else {
-          await updateCharacterTrack(selectedEntry.id, { value: newValue });
+          await updateCharacterTrack.mutateAsync({
+            trackId: selectedEntry.id,
+            dataJson: { value: newValue },
+          });
         }
         logProgressEvent({
           trackName: selectedEntry.track.label,

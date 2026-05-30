@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useStore } from "stores/store";
 import { Difficulty, ProgressTrack, TrackStatus, TrackTypes } from "types/Track.type";
 import { getDifficultyStep } from "functions/moveUtils";
+import { useUpdateCharacterTrackMutation } from "hooks/queries/useCharactersQuery";
+import { useUpdateCampaignTrackMutation } from "hooks/queries/useCampaignsQuery";
 
 export interface JourneyTrackEntry {
   id: string;
@@ -17,6 +19,12 @@ export function useJourneyTracks() {
   const isInCampaign = useStore(
     (s) => !!s.characters.currentCharacter.currentCharacter?.campaignId
   );
+  const characterId = useStore(
+    (s) => s.characters.currentCharacter.currentCharacterId
+  );
+  const campaignId = useStore(
+    (s) => s.campaigns.currentCampaign.currentCampaignId
+  );
   const characterTrackMap = useStore(
     (s) =>
       s.characters.currentCharacter.tracks.trackMap[TrackStatus.Active][
@@ -30,12 +38,8 @@ export function useJourneyTracks() {
       ]
   );
 
-  const updateCharacterTrack = useStore(
-    (s) => s.characters.currentCharacter.tracks.updateTrack
-  );
-  const updateCampaignTrack = useStore(
-    (s) => s.campaigns.currentCampaign.tracks.updateTrack
-  );
+  const updateCharacterTrack = useUpdateCharacterTrackMutation(characterId);
+  const updateCampaignTrack = useUpdateCampaignTrackMutation(campaignId);
 
   const logProgressEvent = useStore((s) => s.sessionLog.logProgressEvent);
 
@@ -57,9 +61,15 @@ export function useJourneyTracks() {
     const step = getDifficultyStep(entry.track.difficulty ?? Difficulty.Dangerous);
     const newValue = Math.min(40, entry.track.value + step);
     if (entry.source === "campaign") {
-      await updateCampaignTrack(entry.id, { value: newValue });
+      await updateCampaignTrack.mutateAsync({
+        trackId: entry.id,
+        dataJson: { value: newValue },
+      });
     } else {
-      await updateCharacterTrack(entry.id, { value: newValue });
+      await updateCharacterTrack.mutateAsync({
+        trackId: entry.id,
+        dataJson: { value: newValue },
+      });
     }
     logProgressEvent({
       trackName: entry.track.label,

@@ -2,7 +2,7 @@ import { Box } from "@mui/material";
 import { MarkdownRenderer } from "components/shared/MarkdownRenderer";
 import { MarkdownEditor } from "components/shared/RichTextEditor/MarkdownEditor";
 import { useState } from "react";
-import { useStore } from "stores/store";
+import { useUpdateHomebrewMutation } from "hooks/queries/useHomebrewQuery";
 
 export interface DescriptionProps {
   expansionId: string;
@@ -12,12 +12,12 @@ export interface DescriptionProps {
 
 export function Description(props: DescriptionProps) {
   const { expansionId, description, isEditor } = props;
-  const updateDetails = useStore((store) => store.homebrew.updateExpansion);
+  const updateDetails = useUpdateHomebrewMutation(expansionId);
 
   const [localDescription, setLocalDescription] = useState(description ?? "");
 
   const handleSave = () => {
-    updateDetails(expansionId, { description: localDescription });
+    updateDetails.mutateAsync({ description: localDescription });
   };
 
   return (

@@ -1,9 +1,9 @@
 import { Box, Grid, Typography } from "@mui/material";
 import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
-import { useStore } from "stores/store";
 import { StarforgedLocationVault } from "types/SectorLocations.type";
 import { GuideOnlyHeader } from "../../common";
 import { ignoreApiError } from "config/api.config";
+import { useSectorLocationMutations } from "./useSectorLocationMutations";
 
 export interface VaultContentProps {
   locationId: string;
@@ -15,10 +15,7 @@ export interface VaultContentProps {
 export function VaultContent(props: VaultContentProps) {
   const { locationId, location, showGMFields, showGMTips } = props;
 
-  const updateLocation = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldSectors.locations.updateLocation
-  );
+  const { updateLocation } = useSectorLocationMutations();
 
   return (
     <>

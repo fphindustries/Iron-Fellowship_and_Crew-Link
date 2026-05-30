@@ -23,6 +23,12 @@ import { IconColors } from "types/Icon.type";
 import { PageWithImage } from "../common/PageWithImage";
 import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
 import { ignoreApiError } from "config/api.config";
+import {
+  useDeleteLoreMutation,
+  useUpdateLoreMutation,
+  useUpdateLoreNotesMutation,
+} from "hooks/queries/useWorldEntitiesQuery";
+import { fileToBase64 } from "lib/storage.lib";
 
 export interface OpenLoreProps {
   worldId: string;
@@ -43,24 +49,26 @@ export function OpenLore(props: OpenLoreProps) {
   const { error } = useSnackbar();
   const confirm = useConfirm();
 
-  const updateLore = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLore.updateLore
-  );
-  const updateLoreGMNotes = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLore.updateLoreGMNotes
-  );
-  const deleteLore = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLore.deleteLore
-  );
-  const updateLoreNotes = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLore.updateLoreNotes
-  );
-  const uploadLoreImage = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLore.uploadLoreImage
-  );
-  const removeLoreImage = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLore.removeLoreImage
-  );
+  const updateLore = useUpdateLoreMutation(worldId);
+  const updateLoreNotes = useUpdateLoreNotesMutation(worldId);
+  const deleteLore = useDeleteLoreMutation(worldId);
+
+  const updateLoreDocument = (partialLore: Partial<LoreDocumentWithGMProperties>) => {
+    const {
+      name,
+      imageFilenames,
+      updatedDate: _updatedDate,
+      createdDate: _createdDate,
+      ...dataJson
+    } = partialLore as Partial<LoreDocumentWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+    const patch: Record<string, unknown> = {};
+    if (name !== undefined) patch.name = name;
+    if (imageFilenames !== undefined) patch.imageFilenames = imageFilenames;
+    if (Object.keys(dataJson).length > 0) patch.dataJson = dataJson;
+    return updateLore.mutateAsync({ loreId, patch });
+  };
 
   const handleLoreDelete = () => {
     confirm({
@@ -74,7 +82,8 @@ export function OpenLore(props: OpenLoreProps) {
       },
     })
       .then(() => {
-        deleteLore(loreId)
+        deleteLore
+          .mutateAsync(loreId)
           .catch(ignoreApiError)
           .then(() => {
             closeLore();
@@ -91,7 +100,13 @@ export function OpenLore(props: OpenLoreProps) {
         );
         return;
       }
-      uploadLoreImage(loreId, file).catch(ignoreApiError);
+      fileToBase64(file)
+        .then((imageUrl) =>
+          updateLoreDocument({ imageFilenames: [imageUrl] }).catch(
+            ignoreApiError
+          )
+        )
+        .catch(ignoreApiError);
     }
   };
 
@@ -128,7 +143,9 @@ export function OpenLore(props: OpenLoreProps) {
           color={"primary"}
           initialValue={lore.name}
           updateValue={(newName) =>
-            updateLore(loreId, { name: newName }).catch(ignoreApiError)
+            updateLoreDocument({ name: newName })
+              .then(() => undefined)
+              .catch(ignoreApiError)
           }
           fullWidth={true}
           sx={{
@@ -139,11 +156,15 @@ export function OpenLore(props: OpenLoreProps) {
       handleImageUpload={onFileUpload}
       handleIconSelection={(icon) => {
         if (lore.imageUrl) {
-          removeLoreImage(loreId).catch(ignoreApiError);
+          updateLoreDocument({ imageFilenames: [] }).catch(ignoreApiError);
         }
-        updateLore(loreId, { icon }).catch(ignoreApiError);
+        updateLoreDocument({ icon }).catch(ignoreApiError);
       }}
-      handleImageRemove={() => removeLoreImage(loreId)}
+      handleImageRemove={() =>
+        updateLoreDocument({ imageFilenames: [] })
+          .then(() => undefined)
+          .catch(ignoreApiError)
+      }
       handlePageClose={closeLore}
       hideBorder={hideBorder}
     >
@@ -155,7 +176,7 @@ export function OpenLore(props: OpenLoreProps) {
                 tagList={tagList}
                 tags={lore.tags}
                 updateTags={(tags) =>
-                  updateLore(loreId, { tags }).catch(ignoreApiError)
+                  updateLoreDocument({ tags }).catch(ignoreApiError)
                 }
               />
             </Grid>
@@ -178,7 +199,7 @@ export function OpenLore(props: OpenLoreProps) {
                         <Checkbox
                           checked={lore.sharedWithPlayers ?? false}
                           onChange={(evt, value) =>
-                            updateLore(loreId, {
+                            updateLoreDocument({
                               sharedWithPlayers: value,
                             }).catch(ignoreApiError)
                           }
@@ -193,7 +214,14 @@ export function OpenLore(props: OpenLoreProps) {
                     id={loreId}
                     roomPrefix={`iron-fellowship-${worldId}-lore-gmnotes-`}
                     documentPassword={worldId}
-                    onSave={updateLoreGMNotes}
+                    onSave={(_documentId, notes) =>
+                      updateLoreNotes
+                        .mutateAsync({
+                        loreId,
+                        gmProperties: { gmNotes: Array.from(notes) },
+                      })
+                        .then(() => undefined)
+                    }
                     initialValue={lore.gmProperties?.gmNotes}
                   />
                 </Grid>
@@ -220,7 +248,11 @@ export function OpenLore(props: OpenLoreProps) {
                       id={loreId}
                       roomPrefix={`iron-fellowship-${worldId}-lore-`}
                       documentPassword={worldId}
-                      onSave={updateLoreNotes}
+                      onSave={(_documentId, notes) =>
+                        updateLoreNotes
+                          .mutateAsync({ loreId, notes })
+                          .then(() => undefined)
+                      }
                       initialValue={lore.notes || undefined}
                     />
                   )}

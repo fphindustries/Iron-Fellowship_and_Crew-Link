@@ -3,6 +3,10 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "stores/store";
 import { ignoreApiError } from "config/api.config";
+import {
+  useUpdateWorldAiSettingsMutation,
+  useWorldAiSettingsQuery,
+} from "hooks/queries/useWorldsQuery";
 
 const DEFAULT_ASSUMPTIONS = `This is a perilous future. Two centuries ago, your people fled a cataclysm and settled a distant galaxy they call the Forge. This is a chaotic place full of dangers and mysteries.
 This is a lonely future. With some possible exceptions (that you'll identify as part of your own truths), humans are the only known intelligent life in this galaxy. Others once lived here, but only mysterious and perilous vaults remain to mark their legacy.
@@ -15,12 +19,9 @@ This is an unjust future. Those in power hoard resources, control technologies, 
 This is a hopeful future. Despite these challenges, hope remains. Fulfilling your sworn vows is a realization of that hope.`;
 
 export function WorldAssumptionsSection() {
-  const settings = useStore(
-    (store) => store.worlds.currentWorld.worldAiSettings
-  );
-  const updateSettings = useStore(
-    (store) => store.worlds.currentWorld.updateWorldAiSettings
-  );
+  const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
+  const { data: settings } = useWorldAiSettingsQuery(worldId);
+  const updateSettings = useUpdateWorldAiSettingsMutation(worldId);
 
   const [assumptions, setAssumptions] = useState(
     settings?.assumptions ?? DEFAULT_ASSUMPTIONS
@@ -44,7 +45,7 @@ export function WorldAssumptionsSection() {
     (value: string) => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
-        updateSettings({ assumptions: value }).catch(ignoreApiError);
+        updateSettings.mutateAsync({ assumptions: value }).catch(ignoreApiError);
       }, 800);
     },
     [updateSettings]

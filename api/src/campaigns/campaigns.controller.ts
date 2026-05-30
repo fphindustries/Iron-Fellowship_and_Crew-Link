@@ -100,6 +100,18 @@ export class CampaignsController {
     this.gateway.emit('updated', cid, {});
   }
 
+  @Get(':campaignId/ai-guide-state')
+  @UseGuards(CampaignMemberGuard)
+  getAiGuideState(@Param('campaignId') cid: string) {
+    return this.svc.getAiGuideState(cid);
+  }
+
+  @Patch(':campaignId/ai-guide-state')
+  @UseGuards(CampaignMemberGuard)
+  upsertAiGuideState(@Param('campaignId') cid: string, @Body() body: any) {
+    return this.svc.upsertAiGuideState(cid, body);
+  }
+
   @Get(':campaignId/ai-events')
   @UseGuards(CampaignMemberGuard)
   getAiEvents(@Param('campaignId') cid: string) {
@@ -239,5 +251,41 @@ export class CampaignsController {
     const result = await this.svc.endCombat(combatId);
     this.gateway.emit('updated', cid, {});
     return result;
+  }
+
+  @Get(':campaignId/scene-events')
+  @UseGuards(CampaignMemberGuard)
+  getSceneEvents(@Param('campaignId') cid: string, @Req() req: any) {
+    const userId = (req.user as { id: string }).id;
+    return this.svc.getSceneEvents(cid, userId);
+  }
+
+  @Post(':campaignId/scene-events')
+  @UseGuards(CampaignMemberGuard)
+  async addSceneEvent(@Param('campaignId') cid: string, @Body() body: any) {
+    const result = await this.svc.addSceneEvent(cid, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
+  }
+
+  @Get(':campaignId/starship')
+  @UseGuards(CampaignMemberGuard)
+  getStarship(@Param('campaignId') cid: string) {
+    return this.svc.getStarship(cid);
+  }
+
+  @Patch(':campaignId/starship')
+  @UseGuards(CampaignMemberGuard)
+  async upsertStarship(@Param('campaignId') cid: string, @Body() body: any) {
+    const result = await this.svc.upsertStarship(cid, body);
+    this.gateway.emit('updated', cid, {});
+    return result;
+  }
+
+  @Delete(':campaignId/starship')
+  @UseGuards(CampaignMemberGuard)
+  async deleteStarship(@Param('campaignId') cid: string) {
+    await this.svc.deleteStarship(cid);
+    this.gateway.emit('updated', cid, {});
   }
 }

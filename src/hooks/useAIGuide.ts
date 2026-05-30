@@ -5,6 +5,11 @@ import { MoveSessionEvent } from "types/SessionLog.type";
 import { useAIGuideContext } from "./useAIGuideContext";
 import { recordAiCall, AiDebugFullPrompt, useAiDebugStore } from "stores/aiDebug";
 import { streamNarrative } from "api/ai/streamNarrative";
+import {
+  useAddSessionEventMutation,
+  useUpdateSessionEventMutation,
+} from "hooks/queries/useSessionLogQuery";
+import { SESSION_EVENT_TYPE, SessionLogEvent } from "types/SessionLog.type";
 
 const AUTO_NARRATE_KEY = "session-log-auto-narrate";
 
@@ -131,13 +136,16 @@ export function useAIGuide() {
 
   const context = useAIGuideContext();
   const activeSessionId = useStore((s) => s.sessionLog.activeSessionId);
-  const updateMoveEventNarrative = useStore(
-    (s) => s.sessionLog.updateMoveEventNarrative
-  );
-  const logJournalEvent = useStore((s) => s.sessionLog.logJournalEvent);
+  const sessionEvents = useStore((s) => s.sessionLog.events);
+  const updateSessionEvent = useUpdateSessionEventMutation();
+  const addSessionEvent = useAddSessionEventMutation();
   const characterId = useStore(
     (s) => s.characters.currentCharacter.currentCharacterId
   );
+  const characterName = useStore(
+    (s) => s.characters.currentCharacter.currentCharacter?.name ?? ""
+  );
+  const uid = useStore((s) => s.auth.uid ?? "");
   const campaignId = useStore(
     (s) => s.campaigns.currentCampaign.currentCampaignId
   );
@@ -178,7 +186,11 @@ export function useAIGuide() {
         });
 
         if (fullText) {
-          updateMoveEventNarrative(eventId, fullText);
+          await updateSessionEvent.mutateAsync({
+            sessionId: activeSessionId,
+            eventId,
+            dataJson: { ...moveEvent, narrative: fullText },
+          });
         }
         setState({ isStreaming: false, narrativeText: "", narratingEventId: undefined });
       } catch (e) {
@@ -190,7 +202,7 @@ export function useAIGuide() {
         });
       }
     },
-    [activeSessionId, state.isStreaming, context, characterId, campaignId, updateMoveEventNarrative]
+    [activeSessionId, state.isStreaming, context, characterId, campaignId, updateSessionEvent]
   );
 
   const requestFreeformNarrative = useCallback(
@@ -219,14 +231,33 @@ export function useAIGuide() {
         });
 
         if (fullText) {
-          logJournalEvent(fullText, true);
+          const event: SessionLogEvent = {
+            type: SESSION_EVENT_TYPE.JOURNAL,
+            text: fullText,
+            isAiGenerated: true,
+            sessionId: activeSessionId,
+            timestamp: new Date(),
+            characterId: characterId ?? null,
+            characterName,
+            uid,
+          };
+          await addSessionEvent.mutateAsync({ sessionId: activeSessionId, event });
         }
         setState({ isStreaming: false, narrativeText: "" });
       } catch (e) {
         setState({ isStreaming: false, narrativeText: "", error: String(e) });
       }
     },
-    [activeSessionId, state.isStreaming, context, characterId, campaignId, logJournalEvent]
+    [
+      activeSessionId,
+      state.isStreaming,
+      context,
+      characterId,
+      campaignId,
+      characterName,
+      uid,
+      addSessionEvent,
+    ]
   );
 
   const requestNarrativeWithPrompt = useCallback(
@@ -255,7 +286,14 @@ export function useAIGuide() {
         });
 
         if (fullText) {
-          updateMoveEventNarrative(eventId, fullText);
+          const existingEvent = sessionEvents[eventId];
+          if (existingEvent) {
+            await updateSessionEvent.mutateAsync({
+              sessionId: activeSessionId,
+              eventId,
+              dataJson: { ...existingEvent, narrative: fullText },
+            });
+          }
         }
         setState({ isStreaming: false, narrativeText: "", narratingEventId: undefined });
       } catch (e) {
@@ -267,7 +305,15 @@ export function useAIGuide() {
         });
       }
     },
-    [activeSessionId, state.isStreaming, context, characterId, campaignId, updateMoveEventNarrative]
+    [
+      activeSessionId,
+      state.isStreaming,
+      context,
+      characterId,
+      campaignId,
+      sessionEvents,
+      updateSessionEvent,
+    ]
   );
 
   const generateSummary = useCallback(

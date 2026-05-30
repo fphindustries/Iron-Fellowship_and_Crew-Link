@@ -5,10 +5,11 @@ import { useStore } from "stores/store";
 import { shallow } from "zustand/shallow";
 import { getSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
+import { WorldAiSettings } from "types/AI.type";
 
 export type WorldWithId = World & { id: string };
 
-interface WorldApiRow {
+export interface WorldApiRow {
   id: string;
   name: string;
   ownerIds?: string[];
@@ -16,12 +17,14 @@ interface WorldApiRow {
   newTruthsJson?: Record<string, Truth>;
   newTruths?: Record<string, Truth>;
   worldDescriptionBytes?: number[] | null;
+  system?: string;
 }
 
 export const worldKeys = {
   all: ["worlds"] as const,
   list: (uid: string) => ["worlds", "list", uid] as const,
   detail: (id: string) => ["worlds", "detail", id] as const,
+  aiSettings: (id: string) => ["worlds", "detail", id, "ai-settings"] as const,
 };
 
 function toWorldDocument(row: WorldApiRow): WorldWithId {
@@ -59,6 +62,14 @@ export function useWorldQuery(id: string | undefined) {
       const row = await api.get<WorldApiRow>(`/api/worlds/${id}`);
       return toWorldDocument(row);
     },
+    enabled: !!id,
+  });
+}
+
+export function useWorldAiSettingsQuery(id: string | undefined) {
+  return useQuery({
+    queryKey: worldKeys.aiSettings(id ?? ""),
+    queryFn: () => api.get<WorldAiSettings>(`/api/worlds/${id}/ai-settings`),
     enabled: !!id,
   });
 }
@@ -112,11 +123,32 @@ export function useCreateWorldMutation() {
   });
 }
 
-export function useUpdateWorldMutation(id: string) {
+export function useUpdateWorldMutation(id: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: Partial<WorldApiRow>) => api.patch<WorldApiRow>(`/api/worlds/${id}`, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: worldKeys.detail(id) }),
+    onSuccess: () => {
+      if (!id) return;
+      qc.invalidateQueries({ queryKey: worldKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: worldKeys.all });
+    },
+  });
+}
+
+export function useUpdateWorldAiSettingsMutation(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (settings: Partial<WorldAiSettings>) =>
+      api.patch<WorldAiSettings>(`/api/worlds/${id}/ai-settings`, settings),
+    onSuccess: (settings, variables) => {
+      if (!id) return;
+      qc.setQueryData<WorldAiSettings>(worldKeys.aiSettings(id), (current) => ({
+        ...(current ?? {}),
+        ...variables,
+        ...(settings ?? {}),
+      }));
+      qc.invalidateQueries({ queryKey: worldKeys.aiSettings(id) });
+    },
   });
 }
 

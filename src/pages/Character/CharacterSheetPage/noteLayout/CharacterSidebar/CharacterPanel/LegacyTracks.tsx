@@ -2,10 +2,18 @@ import { Box, Typography } from "@mui/material";
 import { LegacyTrack } from "./LegacyTrack";
 import { useStore } from "stores/store";
 import { LegacyTrack as ILegacyTrack } from "types/LegacyTrack.type";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
+import { useUpdateCampaignMutation } from "hooks/queries/useCampaignsQuery";
 
 export function LegacyTracks() {
   const specialTracksRules = useStore((store) => store.rules.specialTracks);
 
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
   const isInCampaign = useStore(
     (store) => store.characters.currentCharacter.currentCharacter?.campaignId
   );
@@ -31,12 +39,23 @@ export function LegacyTracks() {
     return undefined;
   };
 
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
-  const updateCampaign = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaign
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
+  const updateCampaign = useUpdateCampaignMutation(campaignId ?? "");
+
+  const getUpdatedSpecialTracks = (
+    currentValues: Record<string, ILegacyTrack> | undefined,
+    specialTrackKey: string,
+    patch: Partial<ILegacyTrack>
+  ) => ({
+    ...(currentValues ?? {}),
+    [specialTrackKey]: {
+      value: 0,
+      isLegacy: false,
+      spentExperience: {},
+      ...(currentValues?.[specialTrackKey] ?? {}),
+      ...patch,
+    },
+  });
 
   const updateSpecialTrackValue = (
     specialTrackKey: string,
@@ -45,12 +64,20 @@ export function LegacyTracks() {
     const specialTrack = specialTracksRules[specialTrackKey];
 
     if (specialTrack.shared && isInCampaign) {
-      return updateCampaign({
-        [`specialTracks.${specialTrackKey}.value`]: newValue,
+      return updateCampaign.mutateAsync({
+        specialTracksJson: getUpdatedSpecialTracks(
+          specialTracksCampaignValues,
+          specialTrackKey,
+          { value: newValue }
+        ),
       });
     } else {
-      return updateCharacter({
-        [`specialTracks.${specialTrackKey}.value`]: newValue,
+      return updateCharacter.mutateAsync({
+        specialTracksJson: getUpdatedSpecialTracks(
+          specialTracksCharacterValues,
+          specialTrackKey,
+          { value: newValue }
+        ),
       });
     }
   };
@@ -68,12 +95,18 @@ export function LegacyTracks() {
     };
 
     if (specialTrack.shared && isInCampaign) {
-      return updateCampaign({
-        [`specialTracks.${specialTrackKey}`]: newTrack,
+      return updateCampaign.mutateAsync({
+        specialTracksJson: {
+          ...(specialTracksCampaignValues ?? {}),
+          [specialTrackKey]: newTrack,
+        },
       });
     } else {
-      return updateCharacter({
-        [`specialTracks.${specialTrackKey}`]: newTrack,
+      return updateCharacter.mutateAsync({
+        specialTracksJson: {
+          ...(specialTracksCharacterValues ?? {}),
+          [specialTrackKey]: newTrack,
+        },
       });
     }
   };

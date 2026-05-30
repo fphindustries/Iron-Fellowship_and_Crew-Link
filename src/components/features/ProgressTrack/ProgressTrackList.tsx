@@ -5,6 +5,8 @@ import { SectionHeading } from "components/shared/SectionHeading";
 import { useState } from "react";
 import { useStore } from "stores/store";
 import { ProgressTracks } from "./ProgressTracks";
+import { useUpdateCampaignTrackMutation } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCharacterTrackMutation } from "hooks/queries/useCharactersQuery";
 
 export interface ProgressTrackListProps {
   trackType: TrackSectionProgressTracks | TrackTypes.SceneChallenge;
@@ -31,12 +33,14 @@ export function ProgressTrackList(props: ProgressTrackListProps) {
     setShowCompletedTracks(value);
   };
 
-  const addCampaignProgressTrack = useStore(
-    (store) => store.campaigns.currentCampaign.tracks.addTrack
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
   );
-  const addCharacterProgressTrack = useStore(
-    (store) => store.characters.currentCharacter.tracks.addTrack
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
   );
+  const addCampaignProgressTrack = useUpdateCampaignTrackMutation(campaignId);
+  const addCharacterProgressTrack = useUpdateCharacterTrackMutation(characterId);
 
   const [addTrackDialogOpen, setAddTrackDialogOpen] = useState(false);
   return (
@@ -48,10 +52,17 @@ export function ProgressTrackList(props: ProgressTrackListProps) {
           trackType={trackType}
           trackTypeName={`${typeLabel}`}
           handleTrack={(track) => {
+            const { createdDate: _createdDate, ...dataJson } = track;
             if (isCampaign) {
-              return addCampaignProgressTrack(track);
+              return addCampaignProgressTrack.mutateAsync({
+                type: track.type,
+                dataJson,
+              });
             } else {
-              return addCharacterProgressTrack(track);
+              return addCharacterProgressTrack.mutateAsync({
+                type: track.type,
+                dataJson,
+              });
             }
           }}
         />

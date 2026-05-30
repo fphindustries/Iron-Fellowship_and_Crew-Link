@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    // Test runners
+    "vitest.explorer",
+    "orta.vscode-jest",
+    "ms-playwright.playwright"
+  ]
+}

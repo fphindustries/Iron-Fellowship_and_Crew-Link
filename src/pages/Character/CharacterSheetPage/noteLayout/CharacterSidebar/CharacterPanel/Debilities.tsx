@@ -19,22 +19,28 @@ import EditIcon from "@mui/icons-material/Edit";
 import { useState } from "react";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export function Debilities() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const impacts = useStore((store) => store.rules.impacts);
 
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
   const debilityChecks = useStore(
     (store) =>
       store.characters.currentCharacter.currentCharacter?.debilities ?? {}
   );
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
 
   const updateDebility = (debilityKey: string, active: boolean) => {
-    updateCharacter({ [`debilities.${debilityKey}`]: active }).catch(ignoreApiError);
+    updateCharacter
+      .mutateAsync({
+        debilitiesJson: { ...debilityChecks, [debilityKey]: active },
+      })
+      .catch(ignoreApiError);
   };
 
   const impactsLabel = useGameSystemValue({

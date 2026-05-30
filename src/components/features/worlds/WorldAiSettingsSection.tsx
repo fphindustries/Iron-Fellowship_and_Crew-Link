@@ -12,6 +12,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ignoreApiError } from "config/api.config";
 import { useStore } from "stores/store";
 import { AiMode, WorldAiModeConfig } from "types/AI.type";
+import {
+  useUpdateWorldAiSettingsMutation,
+  useWorldAiSettingsQuery,
+} from "hooks/queries/useWorldsQuery";
 
 const AI_MODES: { value: AiMode; label: string }[] = [
   { value: "storyGenerator", label: "Story Generator" },
@@ -22,12 +26,9 @@ const AI_MODES: { value: AiMode; label: string }[] = [
 ];
 
 export function WorldAiSettingsSection() {
-  const settings = useStore(
-    (store) => store.worlds.currentWorld.worldAiSettings
-  );
-  const updateSettings = useStore(
-    (store) => store.worlds.currentWorld.updateWorldAiSettings
-  );
+  const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
+  const { data: settings } = useWorldAiSettingsQuery(worldId);
+  const updateSettings = useUpdateWorldAiSettingsMutation(worldId);
 
   const [worldTone, setWorldTone] = useState(settings?.worldTonePrompt ?? "");
   const [portraitStyleAnchor, setPortraitStyleAnchor] = useState(
@@ -55,7 +56,9 @@ export function WorldAiSettingsSection() {
     (value: string) => {
       if (worldToneTimeoutRef.current) clearTimeout(worldToneTimeoutRef.current);
       worldToneTimeoutRef.current = setTimeout(() => {
-        updateSettings({ worldTonePrompt: value }).catch(ignoreApiError);
+        updateSettings
+          .mutateAsync({ worldTonePrompt: value })
+          .catch(ignoreApiError);
       }, 800);
     },
     [updateSettings]
@@ -65,7 +68,9 @@ export function WorldAiSettingsSection() {
     (value: string) => {
       if (portraitStyleTimeoutRef.current) clearTimeout(portraitStyleTimeoutRef.current);
       portraitStyleTimeoutRef.current = setTimeout(() => {
-        updateSettings({ portraitStyleAnchor: value }).catch(ignoreApiError);
+        updateSettings
+          .mutateAsync({ portraitStyleAnchor: value })
+          .catch(ignoreApiError);
       }, 800);
     },
     [updateSettings]
@@ -75,7 +80,7 @@ export function WorldAiSettingsSection() {
     (configs: Partial<Record<AiMode, WorldAiModeConfig>>) => {
       if (modeConfigTimeoutRef.current) clearTimeout(modeConfigTimeoutRef.current);
       modeConfigTimeoutRef.current = setTimeout(() => {
-        updateSettings({ modeConfigs: configs }).catch(ignoreApiError);
+        updateSettings.mutateAsync({ modeConfigs: configs }).catch(ignoreApiError);
       }, 800);
     },
     [updateSettings]

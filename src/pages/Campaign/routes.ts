@@ -6,6 +6,7 @@ export enum CAMPAIGN_ROUTES {
   SHEET,
   JOIN,
   GM_SCREEN,
+  PLAY,
 }
 
 export const campaignPaths: { [key in CAMPAIGN_ROUTES]: string } = {
@@ -13,6 +14,7 @@ export const campaignPaths: { [key in CAMPAIGN_ROUTES]: string } = {
   [CAMPAIGN_ROUTES.SHEET]: ":campaignId",
   [CAMPAIGN_ROUTES.JOIN]: ":campaignId/join",
   [CAMPAIGN_ROUTES.GM_SCREEN]: ":campaignId/gm-screen",
+  [CAMPAIGN_ROUTES.PLAY]: ":campaignId/play",
 };
 
 export function constructCampaignPath(key: CAMPAIGN_ROUTES) {

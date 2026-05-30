@@ -131,6 +131,11 @@ export class AiController {
     }
   }
 
+  @Post('campaign/starship/images')
+  generateStarshipImages(@Body() body: any) {
+    return this.svc.generateStarshipImages(body);
+  }
+
   @Post('world/description')
   generateWorldDescription(@Body() body: any) {
     return this.svc.generateWorldDescription(body);

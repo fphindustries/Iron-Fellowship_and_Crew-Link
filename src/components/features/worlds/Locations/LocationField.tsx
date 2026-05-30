@@ -7,6 +7,10 @@ import {
 import { useStore } from "stores/store";
 import { LocationWithGMProperties } from "stores/world/currentWorld/locations/locations.slice.type";
 import { ignoreApiError } from "config/api.config";
+import {
+  useUpdateLocationMutation,
+  useUpdateLocationNotesMutation,
+} from "hooks/queries/useWorldEntitiesQuery";
 
 export interface LocationFieldProps {
   locationId: string;
@@ -25,13 +29,65 @@ export function LocationField(props: LocationFieldProps) {
     fieldConfig = field;
   }
 
-  const updateLocation = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLocations.updateLocation
-  );
-  const updateLocationGMProperties = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldLocations.updateLocationGMProperties
-  );
+  const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
+  const updateLocation = useUpdateLocationMutation(worldId);
+  const updateLocationNotes = useUpdateLocationNotesMutation(worldId);
+
+  const buildLocationPatch = (
+    partialLocation: Partial<LocationWithGMProperties>
+  ) => {
+    const {
+      name,
+      imageFilenames,
+      gmProperties: _gmProperties,
+      notes: _notes,
+      imageUrl: _imageUrl,
+      mapBackgroundImageUrl: _mapBackgroundImageUrl,
+      updatedDate: _updatedDate,
+      createdDate: _createdDate,
+      ...existingData
+    } = location as Partial<LocationWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+    const {
+      name: nextName,
+      imageFilenames: nextImageFilenames,
+      gmProperties: _nextGMProperties,
+      notes: _nextNotes,
+      imageUrl: _nextImageUrl,
+      mapBackgroundImageUrl: _nextMapBackgroundImageUrl,
+      updatedDate: _nextUpdatedDate,
+      createdDate: _nextCreatedDate,
+      ...nextData
+    } = partialLocation as Partial<LocationWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+
+    const patch: Record<string, unknown> = {
+      dataJson: { ...existingData, ...nextData },
+    };
+    if (nextName !== undefined) patch.name = nextName;
+    if (nextImageFilenames !== undefined) {
+      patch.imageFilenames = nextImageFilenames;
+    }
+    return patch;
+  };
+
+  const updateLocationDocument = (
+    partialLocation: Partial<LocationWithGMProperties>
+  ) =>
+    updateLocation.mutateAsync({
+      locationId,
+      patch: buildLocationPatch(partialLocation),
+    });
+
+  const updateLocationGMProperties = (
+    gmProperties: Partial<NonNullable<LocationWithGMProperties["gmProperties"]>>
+  ) =>
+    updateLocationNotes.mutateAsync({
+      locationId,
+      gmProperties: { ...(location.gmProperties ?? {}), ...gmProperties },
+    });
 
   const value = isGMField
     ? location.gmProperties?.fields?.[fieldConfig.key]
@@ -39,14 +95,18 @@ export function LocationField(props: LocationFieldProps) {
 
   const handleUpdate = (newValue: string) => {
     if (isGMField) {
-      updateLocationGMProperties(locationId, {
+      updateLocationGMProperties({
         fields: {
+          ...(location.gmProperties?.fields ?? {}),
           [fieldConfig.key]: newValue,
         },
       }).catch(ignoreApiError);
     } else {
-      updateLocation(locationId, {
-        [`fields.${fieldConfig.key}`]: newValue,
+      updateLocationDocument({
+        fields: {
+          ...(location.fields ?? {}),
+          [fieldConfig.key]: newValue,
+        },
       }).catch(ignoreApiError);
     }
   };

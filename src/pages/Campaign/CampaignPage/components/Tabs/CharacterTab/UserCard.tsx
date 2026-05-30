@@ -4,6 +4,11 @@ import { UserAvatar } from "components/shared/UserAvatar";
 import { useCampaignType } from "hooks/useCampaignType";
 import { useStore } from "stores/store";
 import { useUserQuery } from "hooks/queries/useUsersQuery";
+import {
+  useLeaveCampaignMutation,
+  useUpdateCampaignGMMutation,
+} from "hooks/queries/useCampaignsQuery";
+import { ignoreApiError } from "config/api.config";
 
 export interface UserCardProps {
   uid: string;
@@ -15,18 +20,26 @@ export function UserCard(props: UserCardProps) {
   const currentUid = useStore((store) => store.auth.uid);
 
   const { data: user } = useUserQuery(uid);
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
+  const worldId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaign?.worldId
+  );
   const gmIds = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaign?.gmIds ?? []
+  );
+  const characterIds = useStore(
+    (store) =>
+      store.campaigns.currentCampaign.currentCampaign?.characters
+        .filter((character) => character.uid === uid)
+        .map((character) => character.characterId) ?? []
   );
 
   const { campaignType, showGuidedPlayerView } = useCampaignType();
 
-  const updateGuide = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaignGM
-  );
-  const removeUser = useStore(
-    (store) => store.campaigns.currentCampaign.removePlayerFromCampaign
-  );
+  const updateGuide = useUpdateCampaignGMMutation(campaignId);
+  const removeUser = useLeaveCampaignMutation(campaignId);
 
   return (
     <Card variant={"outlined"} sx={{ height: "100%" }}>
@@ -46,10 +59,24 @@ export function UserCard(props: UserCardProps) {
         !gmIds.includes(uid) &&
         !showGuidedPlayerView && (
           <Stack direction={"row"} spacing={1} justifyContent={"flex-end"}>
-            <Button color={"error"} onClick={() => removeUser(uid)}>
+            <Button
+              color={"error"}
+              onClick={() =>
+                removeUser
+                  .mutateAsync({ userId: uid, gmIds, characterIds })
+                  .catch(ignoreApiError)
+              }
+            >
               Remove
             </Button>
-            <Button color={"inherit"} onClick={() => updateGuide(uid)}>
+            <Button
+              color={"inherit"}
+              onClick={() =>
+                updateGuide
+                  .mutateAsync({ userId: uid, worldId })
+                  .catch(ignoreApiError)
+              }
+            >
               Make Guide
             </Button>
           </Stack>

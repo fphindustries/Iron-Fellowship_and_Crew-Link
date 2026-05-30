@@ -4,6 +4,7 @@ import { useStore } from "stores/store";
 import { StarforgedLocationSettlement } from "types/SectorLocations.type";
 import { GuideOnlyHeader } from "../../common";
 import { ignoreApiError } from "config/api.config";
+import { useSectorLocationMutations } from "./useSectorLocationMutations";
 
 export interface SettlementContentProps {
   locationId: string;
@@ -24,10 +25,7 @@ export function SettlementContent(props: SettlementContentProps) {
       : undefined;
   });
 
-  const updateLocation = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldSectors.locations.updateLocation
-  );
+  const { updateLocation } = useSectorLocationMutations();
 
   return (
     <>

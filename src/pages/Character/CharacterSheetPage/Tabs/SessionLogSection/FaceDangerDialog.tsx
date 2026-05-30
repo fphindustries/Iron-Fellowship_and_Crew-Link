@@ -22,6 +22,7 @@ import { useMoveRoll } from "hooks/useMoveRoll";
 import { MomentumBurnAlerts } from "./MomentumBurnAlerts";
 import { RollSummaryBox } from "./RollSummaryBox";
 import { PayThePriceSection } from "./PayThePriceSection";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 // ── Move IDs ─────────────────────────────────────────────────────────────────
 const FACE_DANGER_MOVE_IDS = [
@@ -78,15 +79,16 @@ export function FaceDangerDialog({ open, onClose }: FaceDangerDialogProps) {
   const characterConditionMeters = useStore(
     (s) => s.characters.currentCharacter.currentCharacter?.conditionMeters
   );
+  const characterId = useStore(
+    (s) => s.characters.currentCharacter.currentCharacterId
+  );
   const isInCampaign = useStore(
     (s) => !!s.characters.currentCharacter.currentCharacter?.campaignId
   );
   const campaignConditionMeters = useStore(
     (s) => s.campaigns.currentCampaign.currentCampaign?.conditionMeters
   );
-  const updateCharacterConditionMeter = useStore(
-    (s) => s.characters.currentCharacter.updateCharacterConditionMeter
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
 
   // ── Derived ──────────────────────────────────────────────────────────────
   const move = useMemo(
@@ -150,7 +152,12 @@ export function FaceDangerDialog({ open, onClose }: FaceDangerDialogProps) {
         if (sufferChoice === "endure_harm" && hasHealth) {
           const current = getConditionMeterValue("health");
           const newVal = Math.max(0, current - 1);
-          await updateCharacterConditionMeter("health", newVal);
+          await updateCharacter.mutateAsync({
+            conditionMeters: {
+              ...(characterConditionMeters ?? {}),
+              health: newVal,
+            },
+          });
           logStatChangeEvent({
             stat: "Health",
             previousValue: current,
@@ -160,7 +167,12 @@ export function FaceDangerDialog({ open, onClose }: FaceDangerDialogProps) {
         } else if (sufferChoice === "endure_stress" && hasSpirit) {
           const current = getConditionMeterValue("spirit");
           const newVal = Math.max(0, current - 1);
-          await updateCharacterConditionMeter("spirit", newVal);
+          await updateCharacter.mutateAsync({
+            conditionMeters: {
+              ...(characterConditionMeters ?? {}),
+              spirit: newVal,
+            },
+          });
           logStatChangeEvent({
             stat: "Spirit",
             previousValue: current,

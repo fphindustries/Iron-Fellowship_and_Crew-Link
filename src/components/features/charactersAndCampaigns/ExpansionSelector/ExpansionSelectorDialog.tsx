@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { ExpansionSelector } from "./ExpansionSelector";
 import { useStore } from "stores/store";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCampaignMutation } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export interface ExpansionSelectorDialogProps {
   open: boolean;
@@ -52,12 +54,8 @@ export function ExpansionSelectorDialog(props: ExpansionSelectorDialogProps) {
     setEnabledExpansions((prev) => ({ ...prev, [expansionId]: enabled }));
   };
 
-  const updateCurrentCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
-  const updateCurrentCampaign = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaign
-  );
+  const updateCurrentCharacter = useUpdateCharacterMutation(characterId ?? "");
+  const updateCurrentCampaign = useUpdateCampaignMutation(campaignId ?? "");
 
   const handleSave = () => {
     setLoading(true);
@@ -66,7 +64,8 @@ export function ExpansionSelectorDialog(props: ExpansionSelectorDialogProps) {
     );
 
     if (campaignId) {
-      updateCurrentCampaign({ expansionIds })
+      updateCurrentCampaign
+        .mutateAsync({ expansionIds })
         .then(() => {
           onClose();
         })
@@ -75,7 +74,8 @@ export function ExpansionSelectorDialog(props: ExpansionSelectorDialogProps) {
           setLoading(false);
         });
     } else if (characterId) {
-      updateCurrentCharacter({ expansionIds })
+      updateCurrentCharacter
+        .mutateAsync({ expansionIds })
         .then(() => {
           onClose();
         })

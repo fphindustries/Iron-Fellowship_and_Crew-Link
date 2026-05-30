@@ -24,6 +24,10 @@ import { useNavigate } from "react-router-dom";
 import { BASE_ROUTES, basePaths } from "routes";
 import { Description } from "./Description";
 import { ignoreApiError } from "config/api.config";
+import {
+  useDeleteHomebrewMutation,
+  useUpdateHomebrewMutation,
+} from "hooks/queries/useHomebrewQuery";
 
 export interface AboutSectionProps {
   id: string;
@@ -38,7 +42,7 @@ export function AboutSection(props: AboutSectionProps) {
   const { success } = useSnackbar();
 
   const details = useStore((store) => store.homebrew.collections[id].base);
-  const updateDetails = useStore((store) => store.homebrew.updateExpansion);
+  const updateDetails = useUpdateHomebrewMutation(id);
 
   const originalTitle = details.title;
   const [title, setTitle] = useState(details.title ?? "");
@@ -60,8 +64,8 @@ export function AboutSection(props: AboutSectionProps) {
       });
   };
 
-  const deleteCollection = useStore((store) => store.homebrew.deleteExpansion);
-  const updateExpansion = useStore((store) => store.homebrew.updateExpansion);
+  const deleteCollection = useDeleteHomebrewMutation();
+  const updateExpansion = useUpdateHomebrewMutation(id);
 
   const uid = useStore((store) => store.auth.user?.id);
   const homebrewCollections = useStore((store) => store.homebrew.collections);
@@ -74,7 +78,11 @@ export function AboutSection(props: AboutSectionProps) {
     const promises: Promise<unknown>[] = [];
     if (isViewer) {
       const currentViewers = homebrewCollections[id]?.base?.viewers ?? [];
-      promises.push(updateExpansion(id, { viewers: currentViewers.filter((v) => v !== uid) }));
+      promises.push(
+        updateExpansion.mutateAsync({
+          viewers: currentViewers.filter((v) => v !== uid),
+        })
+      );
     }
     if (isEditor) {
       promises.push(api.del(`/api/homebrew/${id}/editors/${uid}`));
@@ -100,7 +108,8 @@ export function AboutSection(props: AboutSectionProps) {
       },
     })
       .then(() => {
-        deleteCollection(id)
+        deleteCollection
+          .mutateAsync(id)
           .then(() => {
             navigate(basePaths[BASE_ROUTES.HOMEBREW]);
           })
@@ -126,9 +135,9 @@ export function AboutSection(props: AboutSectionProps) {
               value={title}
               onChange={(evt) => setTitle(evt.currentTarget.value)}
               onBlur={(evt) =>
-                updateDetails(id, { title: evt.currentTarget.value }).catch(
-                  () => {}
-                )
+                updateDetails
+                  .mutateAsync({ title: evt.currentTarget.value })
+                  .catch(() => {})
               }
               fullWidth
             />

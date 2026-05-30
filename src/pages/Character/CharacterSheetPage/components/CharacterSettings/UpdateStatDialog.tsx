@@ -10,6 +10,7 @@ import { NumberField } from "components/shared/NumberField";
 import { useState } from "react";
 import { useStore } from "stores/store";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 export interface UpdateStatDialogProps {
   open: boolean;
   onClose: () => void;
@@ -37,10 +38,11 @@ function UpdateStatDialogContents(props: { onClose: () => void }) {
   const characterStats = useStore(
     (store) => store.characters.currentCharacter.currentCharacter?.stats
   );
-
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId ?? ""
   );
+
+  const updateCharacter = useUpdateCharacterMutation(characterId);
 
   const [statValues, setStatValues] = useState<
     Record<string, number | undefined>
@@ -61,9 +63,10 @@ function UpdateStatDialogContents(props: { onClose: () => void }) {
       newStats[statKey] = statValues[statKey] ?? 0;
     });
 
-    updateCharacter({
-      stats: newStats,
-    })
+    updateCharacter
+      .mutateAsync({
+        statsJson: newStats,
+      })
       .then(() => {
         onClose();
       })

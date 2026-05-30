@@ -20,6 +20,12 @@ import { ImpactDialog } from "./ImpactDialog";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { ImpactPreviewDialog } from "./ImpactCategoryPreviewDialog";
 import { ignoreApiError } from "config/api.config";
+import {
+  useCreateHomebrewContentMutation,
+  useDeleteHomebrewContentMutation,
+  useUpdateHomebrewContentMutation,
+} from "hooks/queries/useHomebrewQuery";
+import { HomebrewImpact } from "types/homebrew/HomebrewImpacts.type";
 
 export interface ImpactsProps {
   homebrewId: string;
@@ -51,26 +57,44 @@ export function Impacts(props: ImpactsProps) {
     string | undefined
   >(undefined);
 
-  const createImpactCategory = useStore(
-    (store) => store.homebrew.createImpactCategory
-  );
-  const updateImpactCategory = useStore(
-    (store) => store.homebrew.updateImpactCategory
-  );
-  const deleteImpactCategory = useStore(
-    (store) => store.homebrew.deleteImpactCategory
-  );
-  const updateImpact = useStore((store) => store.homebrew.updateImpact);
-  const deleteImpact = useStore((store) => store.homebrew.deleteImpact);
+  const createImpactCategory = useCreateHomebrewContentMutation(homebrewId);
+  const updateImpactCategory = useUpdateHomebrewContentMutation(homebrewId);
+  const deleteImpactCategory = useDeleteHomebrewContentMutation(homebrewId);
 
   const createOrUpdateImpactCategory = (
     impactCategory: HomebrewImpactCategoryDocument
   ) => {
     if (editingImpactCategoryKey) {
-      return updateImpactCategory(editingImpactCategoryKey, impactCategory);
+      return updateImpactCategory
+        .mutateAsync({
+          contentId: editingImpactCategoryKey,
+          dataJson: impactCategory,
+        })
+        .then(() => undefined);
     } else {
-      return createImpactCategory(impactCategory);
+      return createImpactCategory
+        .mutateAsync({
+          contentType: "impact",
+          dataJson: impactCategory,
+        })
+        .then(() => undefined);
     }
+  };
+
+  const updateImpact = (impactCategoryId: string, impact: HomebrewImpact) => {
+    const category = impactCategories[impactCategoryId];
+    return updateImpactCategory
+      .mutateAsync({
+        contentId: impactCategoryId,
+        dataJson: {
+          ...category,
+          contents: {
+            ...category.contents,
+            [impact.dataswornId]: impact,
+          },
+        },
+      })
+      .then(() => undefined);
   };
 
   if (isLoading) {
@@ -88,7 +112,7 @@ export function Impacts(props: ImpactsProps) {
       },
     })
       .then(() => {
-        deleteImpactCategory(categoryId).catch(ignoreApiError);
+        deleteImpactCategory.mutateAsync(categoryId).catch(ignoreApiError);
       })
       .catch(ignoreApiError);
   };
@@ -103,7 +127,15 @@ export function Impacts(props: ImpactsProps) {
       },
     })
       .then(() => {
-        deleteImpact(categoryId, impactId).catch(ignoreApiError);
+        const category = impactCategories[categoryId];
+        const contents = { ...category.contents };
+        delete contents[impactId];
+        updateImpactCategory
+          .mutateAsync({
+            contentId: categoryId,
+            dataJson: { ...category, contents },
+          })
+          .catch(ignoreApiError);
       })
       .catch(ignoreApiError);
   };

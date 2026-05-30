@@ -15,6 +15,7 @@ import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { GenerateSectorDialog } from "components/features/worlds/SectorSection/GenerateSectorDialog";
+import { useCreateLocationMutation } from "hooks/queries/useWorldEntitiesQuery";
 
 export interface LocationsSectionProps {
   showHiddenTag?: boolean;
@@ -57,15 +58,14 @@ export function LocationsSection(props: LocationsSectionProps) {
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
 
   const [createLocationLoading, setCreateLocationLoading] = useState(false);
-  const createLocation = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLocations.createLocation
-  );
+  const createLocation = useCreateLocationMutation(worldId);
 
   const handleCreateLocation = () => {
     setCreateLocationLoading(true);
-    createLocation()
-      .then((locationId) => {
-        setOpenLocationId(locationId);
+    createLocation
+      .mutateAsync({})
+      .then((row) => {
+        setOpenLocationId(row.id as string);
       })
       .catch(ignoreApiError)
       .finally(() => setCreateLocationLoading(false));

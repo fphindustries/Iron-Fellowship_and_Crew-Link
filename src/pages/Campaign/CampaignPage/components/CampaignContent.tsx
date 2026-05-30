@@ -1,4 +1,4 @@
-import { Card } from "@mui/material";
+import { Box, Card } from "@mui/material";
 import {
   ContainedTabPanel,
   StyledTab,
@@ -19,6 +19,7 @@ import { LocationsSection } from "components/features/worlds/Locations";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { AiGuidePanel } from "components/features/aiCopilot/AiCopilotPanel";
+import { CampaignType } from "types/Campaign.type";
 
 enum CampaignTabs {
   Characters = "characters",
@@ -39,7 +40,8 @@ export interface CampaignContentProps {
 
 export function CampaignContent(props: CampaignContentProps) {
   const { openInviteDialog } = props;
-  const { showGuidedPlayerView, showGuideTips } = useCampaignType();
+  const { showGuidedPlayerView, showGuideTips, campaignType } = useCampaignType();
+  const isAIGuided = campaignType === CampaignType.AIGuided;
 
   const showNewLocations = useNewMaps();
   const shouldShowSectors =
@@ -56,6 +58,9 @@ export function CampaignContent(props: CampaignContentProps) {
 
   const hasWorld = useStore(
     (store) => !!store.campaigns.currentCampaign.currentCampaign?.worldId
+  );
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId ?? ""
   );
   const showAiGuide = useAiGuide();
 
@@ -94,7 +99,7 @@ export function CampaignContent(props: CampaignContentProps) {
         <StyledTab label="NPCs" value={CampaignTabs.NPCs} />
         <StyledTab label="Lore" value={CampaignTabs.Lore} />
         <StyledTab label="Sessions" value={CampaignTabs.Sessions} />
-        {showAiGuide && (
+        {showAiGuide && !isAIGuided && (
           <StyledTab label="AI" value={CampaignTabs.AiGuide} />
         )}
       </StyledTabs>
@@ -145,7 +150,7 @@ export function CampaignContent(props: CampaignContentProps) {
       <ContainedTabPanel isVisible={selectedTab === CampaignTabs.Sessions}>
         <SessionsTab />
       </ContainedTabPanel>
-      {showAiGuide && (
+      {showAiGuide && !isAIGuided && (
         <ContainedTabPanel isVisible={selectedTab === CampaignTabs.AiGuide}>
           <AiGuidePanel />
         </ContainedTabPanel>

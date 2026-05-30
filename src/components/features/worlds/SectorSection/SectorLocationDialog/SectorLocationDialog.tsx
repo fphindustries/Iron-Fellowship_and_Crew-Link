@@ -19,6 +19,7 @@ import { RtcRichTextEditor } from "components/shared/RichTextEditor";
 import { NotesSectionHeader } from "../../NotesSectionHeader";
 import { useCallback } from "react";
 import { ignoreApiError } from "config/api.config";
+import { useSectorLocationMutations } from "./useSectorLocationMutations";
 
 export function SectorLocationDialog() {
   const confirm = useConfirm();
@@ -53,10 +54,7 @@ export function SectorLocationDialog() {
       store.worlds.currentWorld.currentWorldSectors.locations.setOpenLocationId
   );
 
-  const deleteLocation = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldSectors.locations.deleteLocation
-  );
+  const { deleteLocation, updateLocationNotes } = useSectorLocationMutations();
 
   const handleDeleteLocation = () => {
     if (openLocation && openLocationId) {
@@ -87,20 +85,15 @@ export function SectorLocationDialog() {
       store.worlds.currentWorld.currentWorldSectors.locations
         .openLocationGMNotes
   );
-  const updateNotes = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldSectors.locations
-        .updateLocationNotes
-  );
   const updateGMNotesCallback = useCallback(
     (locationId: string, notes: Uint8Array, isBeaconRequest?: boolean) =>
-      updateNotes(locationId, notes, true, isBeaconRequest),
-    [updateNotes]
+      updateLocationNotes(locationId, notes, true).then(() => undefined),
+    [updateLocationNotes]
   );
   const updateNotesCallback = useCallback(
     (locationId: string, notes: Uint8Array, isBeaconRequest?: boolean) =>
-      updateNotes(locationId, notes, false, isBeaconRequest),
-    [updateNotes]
+      updateLocationNotes(locationId, notes, false).then(() => undefined),
+    [updateLocationNotes]
   );
 
   const { showGMFields, showGMTips, isGuidedGame } = useWorldPermissions();
@@ -158,7 +151,7 @@ export function SectorLocationDialog() {
                 roomPrefix={`sector-location-private-${worldId}-${sectorId}-`}
                 documentPassword={openLocationId}
                 onSave={updateGMNotesCallback}
-                initialValue={gmNotes}
+                initialValue={gmNotes ?? new Uint8Array((openLocation as any).gmNotes ?? [])}
               />
             </Grid>
           )}
@@ -173,7 +166,7 @@ export function SectorLocationDialog() {
                   roomPrefix={`sector-location-public-${worldId}-${sectorId}-`}
                   documentPassword={openLocationId}
                   onSave={updateNotesCallback}
-                  initialValue={notes}
+                  initialValue={notes ?? new Uint8Array((openLocation as any).notes ?? [])}
                 />
               </Grid>
             </>

@@ -18,6 +18,10 @@ import {
 } from "pages/Campaign/routes";
 import { constructCharacterSheetPath } from "../routes";
 import { ignoreApiError } from "config/api.config";
+import {
+  useCreateFullCharacterMutation,
+} from "hooks/queries/useCharactersQuery";
+import { useUpdateCampaignCharacterMutation } from "hooks/queries/useCampaignsQuery";
 
 export interface Form {
   name: string;
@@ -49,8 +53,10 @@ export function CharacterCreatePageContent() {
   const [loading, setLoading] = useState(false);
 
   const stats = useStore((store) => store.rules.stats);
-  const createCharacter = useStore((store) => store.characters.createCharacter);
-  const addCharacterToCampaign = useStore((store) => store.campaigns.currentCampaign.addCharacter);
+  const createCharacter = useCreateFullCharacterMutation();
+  const addCharacterToCampaign = useUpdateCampaignCharacterMutation(
+    campaignId ?? undefined
+  );
 
   const { control, watch, handleSubmit } = useForm<Form>({
     disabled: loading,
@@ -69,25 +75,26 @@ export function CharacterCreatePageContent() {
       (expansionId) => values.enabledExpansionMap[expansionId]
     );
 
-    createCharacter(
-      values.name,
-      parsedStats,
-      values.assets,
-      values.portrait,
-      expansionIds,
-      undefined,
-      undefined,
-      values.pronouns,
-      values.callsign,
-      values.characteristics
-    )
+    createCharacter
+      .mutateAsync({
+        name: values.name,
+        stats: parsedStats,
+        assets: values.assets,
+        portrait: values.portrait,
+        expansionIds,
+        pronouns: values.pronouns,
+        callsign: values.callsign,
+        characteristics: values.characteristics,
+      })
       .then((characterId) => {
         if (campaignId) {
-          addCharacterToCampaign(characterId).finally(() => {
-            navigate(
-              constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
-            );
-          });
+          addCharacterToCampaign
+            .mutateAsync({ characterId })
+            .finally(() => {
+              navigate(
+                constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.SHEET)
+              );
+            });
         } else {
           navigate(constructCharacterSheetPath(characterId));
         }

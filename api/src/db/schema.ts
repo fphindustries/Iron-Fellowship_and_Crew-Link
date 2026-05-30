@@ -34,6 +34,7 @@ export const campaignTypeEnum = pgEnum('campaign_type', [
   'solo',
   'coop',
   'guided',
+  'ai-guided',
 ]);
 export const initiativeStatusEnum = pgEnum('initiative_status', [
   'hasInitiative',
@@ -305,6 +306,45 @@ export const campaignAiEvents = pgTable('campaign_ai_events', {
   createdBy: uuid('created_by')
     .notNull()
     .references(() => users.id),
+});
+
+export const campaignAiGuideState = pgTable('campaign_ai_guide_state', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  campaignId: uuid('campaign_id')
+    .notNull()
+    .unique()
+    .references(() => campaigns.id, { onDelete: 'cascade' }),
+  stateJson: jsonb('state_json').notNull().default({}),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const campaignSceneEvents = pgTable('campaign_scene_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  campaignId: uuid('campaign_id')
+    .notNull()
+    .references(() => campaigns.id, { onDelete: 'cascade' }),
+  sceneId: text('scene_id').notNull(),
+  type: text('type').notNull(),
+  actorId: text('actor_id'),
+  visibility: text('visibility').notNull().default('public'),
+  payloadJson: jsonb('payload_json').notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const campaignStarship = pgTable('campaign_starship', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  campaignId: uuid('campaign_id')
+    .notNull()
+    .unique()
+    .references(() => campaigns.id, { onDelete: 'cascade' }),
+  name: text('name'),
+  history: text('history'),
+  quirks: text('quirks').array().notNull().default([]),
+  image: jsonb('image'),
 });
 
 // ─── Worlds ───────────────────────────────────────────────────────────────────

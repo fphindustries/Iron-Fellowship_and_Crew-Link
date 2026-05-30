@@ -14,7 +14,9 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/DeleteOutline";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import { useStore } from "stores/store";
 import { Virtuoso } from "react-virtuoso";
 import { EmptyState } from "components/shared/EmptyState";
@@ -27,10 +29,19 @@ import {
   SessionLogEvent,
 } from "types/SessionLog.type";
 import { useAIGuide } from "hooks/useAIGuide";
-import { useSessionsListQuery, useSessionEventsQuery } from "hooks/queries/useSessionLogQuery";
+import {
+  useSessionsListQuery,
+  useSessionEventsQuery,
+  useEndSessionMutation,
+  sessionLogKeys,
+} from "hooks/queries/useSessionLogQuery";
 import { api } from "config/api.config";
 import { useQueryClient } from "@tanstack/react-query";
-import { sessionLogKeys } from "hooks/queries/useSessionLogQuery";
+import { CampaignType } from "types/Campaign.type";
+import { useCampaignType } from "hooks/useCampaignType";
+import { useNavigate } from "react-router-dom";
+import { constructCampaignSheetPath, CAMPAIGN_ROUTES } from "pages/Campaign/routes";
+import { SessionPreflightDialog } from "pages/Campaign/CampaignPage/components/SessionPreflightDialog";
 
 function rowToSessionDocument(row: any): SessionDocument {
   return {
@@ -63,11 +74,15 @@ export function SessionsTab() {
   );
   const activeSessionId = useStore((s) => s.sessionLog.activeSessionId);
   const activeEvents = useStore((s) => s.sessionLog.events);
-  const endSession = useStore((s) => s.sessionLog.endSession);
 
+  const { campaignType } = useCampaignType();
+  const isAIGuided = campaignType === CampaignType.AIGuided;
+  const navigate = useNavigate();
   const qc = useQueryClient();
+  const endSessionMutation = useEndSessionMutation();
 
-  // All campaign sessions list
+  const [preflightOpen, setPreflightOpen] = useState(false);
+
   const { data: sessionsData, isLoading: sessionsLoading } = useSessionsListQuery(
     "campaign",
     campaignId ?? undefined
@@ -82,17 +97,14 @@ export function SessionsTab() {
     [sessionsData]
   );
 
-  // Selected session id for browsing
-  const [selectedSessionId, setSelectedSessionId] = useState<
-    string | undefined
-  >(undefined);
+  const activeSession = useMemo(
+    () => sessions.find((s) => s.session.isActive),
+    [sessions]
+  );
 
-  // Delete confirmation state
-  const [deleteTarget, setDeleteTarget] = useState<
-    { id: string; session: SessionDocument } | undefined
-  >(undefined);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>(undefined);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; session: SessionDocument } | undefined>(undefined);
 
-  // Default selection: active session, else first session
   useEffect(() => {
     if (sessions.length === 0) return;
     setSelectedSessionId((prev) => {
@@ -102,16 +114,13 @@ export function SessionsTab() {
     });
   }, [sessions]);
 
-  // When an active session appears, switch to it
   useEffect(() => {
-    if (activeSessionId) {
-      setSelectedSessionId(activeSessionId);
-    }
+    if (activeSessionId) setSelectedSessionId(activeSessionId);
   }, [activeSessionId]);
 
-  const isSelectedActive = selectedSessionId === activeSessionId;
+  const selectedSession = sessions.find((s) => s.id === selectedSessionId);
+  const isSelectedActive = selectedSession?.session.isActive ?? false;
 
-  // Events for a selected past session
   const { data: pastEventsData } = useSessionEventsQuery(
     !isSelectedActive ? selectedSessionId : undefined
   );
@@ -131,34 +140,41 @@ export function SessionsTab() {
     () =>
       Object.keys(displayEvents).sort(
         (a, b) =>
-          displayEvents[a].timestamp.getTime() -
-          displayEvents[b].timestamp.getTime()
+          displayEvents[a].timestamp.getTime() - displayEvents[b].timestamp.getTime()
       ),
     [displayEvents]
   );
 
-  const { state: guideState, requestNarrative, requestFreeformNarrative } =
-    useAIGuide();
+  const { state: guideState, requestNarrative, requestFreeformNarrative } = useAIGuide();
 
   const handleRequestNarrative = useCallback(
     (eventId: string, event: SessionLogEvent) => {
       if (event.type === SESSION_EVENT_TYPE.MOVE) {
-        requestNarrative(eventId, event as MoveSessionEvent).catch(
-          console.error
-        );
+        requestNarrative(eventId, event as MoveSessionEvent).catch(console.error);
       }
     },
     [requestNarrative]
   );
+
+  const handleEndSession = (sessionId: string) => {
+    endSessionMutation.mutate({ sessionId }, {
+      onSuccess: () => {
+        useStore.setState((store) => {
+          if (store.sessionLog.activeSessionId === sessionId) {
+            store.sessionLog.activeSessionId = undefined;
+            store.sessionLog.activeSession = undefined;
+          }
+        });
+      },
+    });
+  };
 
   const handleDeleteConfirm = () => {
     if (!deleteTarget || !campaignId) return;
     api
       .del(`/api/sessions/${deleteTarget.id}`)
       .then(() => {
-        qc.invalidateQueries({
-          queryKey: sessionLogKeys.list("campaign", campaignId),
-        });
+        qc.invalidateQueries({ queryKey: sessionLogKeys.list("campaign", campaignId) });
       })
       .catch(console.error);
     if (selectedSessionId === deleteTarget.id) {
@@ -169,11 +185,7 @@ export function SessionsTab() {
   };
 
   const formatDate = (date: Date) =>
-    date.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 
   return (
     <Box display="flex" height="100%" overflow="hidden">
@@ -197,15 +209,27 @@ export function SessionsTab() {
           borderColor="divider"
         >
           <Typography variant="subtitle2">Sessions</Typography>
-          {activeSessionId && (
-            <Button
-              size="small"
-              variant="outlined"
-              color="error"
-              onClick={() => endSession().catch(console.error)}
+          {isAIGuided && (
+            <Tooltip
+              title={
+                activeSession
+                  ? "End the active session before starting a new one"
+                  : "Start a new play session"
+              }
             >
-              End
-            </Button>
+              <span>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+                  onClick={() => setPreflightOpen(true)}
+                  disabled={!!activeSession}
+                  sx={{ fontSize: 11, py: 0.25, px: 1 }}
+                >
+                  New
+                </Button>
+              </span>
+            </Tooltip>
           )}
         </Box>
 
@@ -215,8 +239,10 @@ export function SessionsTab() {
           </Box>
         ) : sessions.length === 0 ? (
           <Box p={2}>
-            <Typography variant="body2" color="textSecondary">
-              No sessions yet. Start one from your character sheet.
+            <Typography variant="body2" color="text.secondary">
+              {isAIGuided
+                ? "No sessions yet. Click New to start playing."
+                : "No sessions yet."}
             </Typography>
           </Box>
         ) : (
@@ -226,19 +252,9 @@ export function SessionsTab() {
                 key={id}
                 selected={id === selectedSessionId}
                 onClick={() => setSelectedSessionId(id)}
-                sx={{
-                  flexDirection: "column",
-                  alignItems: "flex-start",
-                  py: 1,
-                  pr: 0.5,
-                }}
+                sx={{ flexDirection: "column", alignItems: "flex-start", py: 1, pr: 0.5 }}
               >
-                <Box
-                  display="flex"
-                  width="100%"
-                  alignItems="flex-start"
-                  justifyContent="space-between"
-                >
+                <Box display="flex" width="100%" alignItems="flex-start" justifyContent="space-between">
                   <Box flexGrow={1} minWidth={0}>
                     <Typography
                       variant="caption"
@@ -253,24 +269,59 @@ export function SessionsTab() {
                       </Typography>
                     ) : session.endedAt ? (
                       <Typography variant="caption" color="text.disabled">
-                        Ended {formatDate(session.endedAt)}
+                        {formatDate(session.endedAt)}
                       </Typography>
                     ) : null}
                   </Box>
-                  {!session.isActive && (
-                    <Tooltip title="Delete session">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteTarget({ id, session });
-                        }}
-                        sx={{ p: 0.25, flexShrink: 0 }}
-                      >
-                        <DeleteIcon sx={{ fontSize: 16 }} />
-                      </IconButton>
-                    </Tooltip>
-                  )}
+
+                  <Box display="flex" gap={0.25} flexShrink={0} alignItems="center">
+                    {session.isActive && isAIGuided && (
+                      <Tooltip title="Continue in cockpit">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (campaignId) {
+                              navigate(constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.PLAY));
+                            }
+                          }}
+                          sx={{ p: 0.25 }}
+                        >
+                          <PlayArrowIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {session.isActive ? (
+                      <Tooltip title="End session">
+                        <IconButton
+                          size="small"
+                          color="inherit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEndSession(id);
+                          }}
+                          disabled={endSessionMutation.isPending}
+                          sx={{ p: 0.25, opacity: 0.6 }}
+                        >
+                          <DeleteIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title="Delete session">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget({ id, session });
+                          }}
+                          sx={{ p: 0.25 }}
+                        >
+                          <DeleteIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Box>
                 </Box>
               </ListItemButton>
             ))}
@@ -279,12 +330,7 @@ export function SessionsTab() {
       </Box>
 
       {/* Event feed */}
-      <Box
-        display="flex"
-        flexDirection="column"
-        flexGrow={1}
-        overflow="hidden"
-      >
+      <Box display="flex" flexDirection="column" flexGrow={1} overflow="hidden">
         {!selectedSessionId ? (
           <EmptyState message="Select a session to view its events." />
         ) : orderedEventKeys.length === 0 ? (
@@ -304,9 +350,7 @@ export function SessionsTab() {
                   key={eventId}
                   eventId={eventId}
                   event={displayEvents[eventId]}
-                  onRequestNarrative={
-                    isSelectedActive ? handleRequestNarrative : undefined
-                  }
+                  onRequestNarrative={isSelectedActive ? handleRequestNarrative : undefined}
                   narratingEventId={guideState.narratingEventId}
                   streamingNarrativeText={guideState.narrativeText}
                 />
@@ -325,34 +369,31 @@ export function SessionsTab() {
         )}
       </Box>
 
-      {/* Delete session confirmation dialog */}
-      <Dialog
-        open={!!deleteTarget}
-        onClose={() => setDeleteTarget(undefined)}
-        maxWidth="xs"
-        fullWidth
-      >
+      {/* Delete confirmation */}
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(undefined)} maxWidth="xs" fullWidth>
         <DialogTitle>Delete Session?</DialogTitle>
         <DialogContent>
           <DialogContentText>
             Delete the session from{" "}
-            {deleteTarget
-              ? formatDate(deleteTarget.session.startedAt)
-              : ""}
-            ? All events in this session will be permanently lost.
+            {deleteTarget ? formatDate(deleteTarget.session.startedAt) : ""}?
+            All events will be permanently lost.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteTarget(undefined)}>Cancel</Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            color="error"
-            variant="contained"
-          >
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
             Delete
           </Button>
         </DialogActions>
       </Dialog>
+
+      {isAIGuided && campaignId && (
+        <SessionPreflightDialog
+          open={preflightOpen}
+          campaignId={campaignId}
+          onClose={() => setPreflightOpen(false)}
+        />
+      )}
     </Box>
   );
 }

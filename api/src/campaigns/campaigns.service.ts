@@ -297,4 +297,119 @@ export class CampaignsService {
     if (!row) throw new NotFoundException('Combat not found');
     return row;
   }
+
+  // ─── AI Guide State ────────────────────────────────────────────────────────
+
+  async getAiGuideState(campaignId: string) {
+    const [row] = await this.db
+      .select()
+      .from(schema.campaignAiGuideState)
+      .where(eq(schema.campaignAiGuideState.campaignId, campaignId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async upsertAiGuideState(campaignId: string, stateJson: object) {
+    const [row] = await this.db
+      .insert(schema.campaignAiGuideState)
+      .values({ campaignId, stateJson, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: schema.campaignAiGuideState.campaignId,
+        set: { stateJson, updatedAt: new Date() },
+      })
+      .returning();
+    return row;
+  }
+
+  // ─── Starship ──────────────────────────────────────────────────────────────
+
+  async getStarship(campaignId: string) {
+    const [row] = await this.db
+      .select()
+      .from(schema.campaignStarship)
+      .where(eq(schema.campaignStarship.campaignId, campaignId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async upsertStarship(
+    campaignId: string,
+    patch: {
+      name?: string | null;
+      history?: string | null;
+      quirks?: string[];
+      image?: object | null;
+    },
+  ) {
+    const [row] = await this.db
+      .insert(schema.campaignStarship)
+      .values({ campaignId, ...patch })
+      .onConflictDoUpdate({
+        target: schema.campaignStarship.campaignId,
+        set: patch,
+      })
+      .returning();
+    return row;
+  }
+
+  async deleteStarship(campaignId: string) {
+    await this.db
+      .delete(schema.campaignStarship)
+      .where(eq(schema.campaignStarship.campaignId, campaignId));
+  }
+
+  // ─── Scene Events ──────────────────────────────────────────────────────────
+
+  private async isGm(campaignId: string, userId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select()
+      .from(schema.campaignGms)
+      .where(
+        and(
+          eq(schema.campaignGms.campaignId, campaignId),
+          eq(schema.campaignGms.userId, userId),
+        ),
+      )
+      .limit(1);
+    return Boolean(row);
+  }
+
+  async getSceneEvents(campaignId: string, userId: string) {
+    const gm = await this.isGm(campaignId, userId);
+    const conditions = gm
+      ? [eq(schema.campaignSceneEvents.campaignId, campaignId)]
+      : [
+          eq(schema.campaignSceneEvents.campaignId, campaignId),
+          eq(schema.campaignSceneEvents.visibility, 'public'),
+        ];
+    return this.db
+      .select()
+      .from(schema.campaignSceneEvents)
+      .where(and(...conditions))
+      .orderBy(schema.campaignSceneEvents.createdAt);
+  }
+
+  async addSceneEvent(
+    campaignId: string,
+    event: {
+      sceneId: string;
+      type: string;
+      actorId?: string | null;
+      visibility?: string;
+      payloadJson: object;
+    },
+  ) {
+    const [row] = await this.db
+      .insert(schema.campaignSceneEvents)
+      .values({
+        campaignId,
+        sceneId: event.sceneId,
+        type: event.type,
+        actorId: event.actorId ?? null,
+        visibility: event.visibility ?? 'public',
+        payloadJson: event.payloadJson,
+      })
+      .returning();
+    return row;
+  }
 }

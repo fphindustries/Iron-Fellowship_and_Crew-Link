@@ -137,6 +137,11 @@ export const createCharacterSlice: CreateSliceType<CharacterSlice> = (
         });
       }
 
+      const fullChar = await api.get<any>(`/api/characters/${char.id}`);
+      set((store) => {
+        store.characters.characterMap[char.id] = toCharacterDocument(fullChar);
+      });
+
       return char.id;
     },
 

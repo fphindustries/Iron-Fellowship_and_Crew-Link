@@ -11,6 +11,10 @@ import { generateWorldDescription } from "api/ai/generateWorldDescription";
 import { TiptapTransformer } from "@hocuspocus/transformer";
 import * as Y from "yjs";
 import { CUSTOM_TRUTH_INDEX } from "./WorldTruths/customTruthIndex";
+import {
+  useUpdateWorldMutation,
+  useWorldAiSettingsQuery,
+} from "hooks/queries/useWorldsQuery";
 
 export interface WorldSheetProps {
   canEdit: boolean;
@@ -23,20 +27,18 @@ export function WorldSheet(props: WorldSheetProps) {
   const world = useStore((store) => store.worlds.currentWorld.currentWorld);
   const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
   const worldTruths = useStore((store) => store.rules.worldTruths);
-  const worldAiSettings = useStore(
-    (store) => store.worlds.currentWorld.worldAiSettings
-  );
+  const { data: worldAiSettings } = useWorldAiSettingsQuery(worldId);
 
-  const updateWorldDescription = useStore(
-    (store) => store.worlds.currentWorld.updateCurrentWorldDescription
-  );
+  const updateWorld = useUpdateWorldMutation(worldId);
 
   const updateWorldDescriptionCallback = useCallback(
-    (documentId: string, content: Uint8Array, isBeaconRequest?: boolean) =>
+    (_documentId: string, content: Uint8Array, _isBeaconRequest?: boolean) =>
       worldId
-        ? updateWorldDescription(worldId, content, isBeaconRequest)
+        ? updateWorld.mutateAsync({
+            worldDescriptionBytes: Array.from(content),
+          }).then(() => undefined)
         : new Promise<void>((res) => res()),
-    [updateWorldDescription, worldId]
+    [updateWorld, worldId]
   );
 
   const showAi = useAiGuide();
@@ -84,7 +86,9 @@ export function WorldSheet(props: WorldSheetProps) {
         const tiptapJson = { type: "doc", content: paragraphs };
         const ydoc = TiptapTransformer.toYdoc(tiptapJson, "default");
         const bytes = Y.encodeStateAsUpdate(ydoc);
-        await updateWorldDescription(worldId, bytes);
+        await updateWorld.mutateAsync({
+          worldDescriptionBytes: Array.from(bytes),
+        });
         setEditorKey((k) => k + 1);
       }
     } finally {

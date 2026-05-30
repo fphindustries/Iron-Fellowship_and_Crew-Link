@@ -1,3 +1,5 @@
+import { queryClient } from "lib/queryClient";
+
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
@@ -41,6 +43,47 @@ function handleAuthFailure() {
   });
 }
 
+function invalidateQueryCache(path: string) {
+  const queryKeys: unknown[][] = [];
+
+  if (path.startsWith('/api/worlds')) {
+    queryKeys.push(['worlds'], ['world']);
+  }
+  if (path.startsWith('/api/campaigns')) {
+    queryKeys.push(['campaigns'], ['worlds'], ['world']);
+  }
+  if (path.startsWith('/api/characters')) {
+    queryKeys.push(['characters'], ['campaigns'], ['worlds'], ['world']);
+  }
+  if (path.startsWith('/api/notes')) {
+    queryKeys.push(['notes']);
+  }
+  if (path.startsWith('/api/settings')) {
+    queryKeys.push(['settings']);
+  }
+  if (path.startsWith('/api/homebrew')) {
+    queryKeys.push(['homebrew']);
+  }
+  if (path.startsWith('/api/game-log')) {
+    queryKeys.push(['game-log']);
+  }
+  if (path.startsWith('/api/sessions')) {
+    queryKeys.push(['session'], ['sessions']);
+  }
+  if (path.startsWith('/api/ai')) {
+    queryKeys.push(['ai-events']);
+  }
+
+  if (queryKeys.length === 0) {
+    queryClient.invalidateQueries();
+    return;
+  }
+
+  queryKeys.forEach((queryKey) => {
+    queryClient.invalidateQueries({ queryKey });
+  });
+}
+
 async function fetchWithRefresh(
   input: RequestInfo,
   init: RequestInit
@@ -77,6 +120,7 @@ export const api = {
     });
     if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`);
     const text = await res.text();
+    invalidateQueryCache(path);
     return (text ? JSON.parse(text) : undefined) as T;
   },
   async patch<T>(path: string, body: unknown): Promise<T> {
@@ -88,6 +132,7 @@ export const api = {
     });
     if (!res.ok) throw new Error(`PATCH ${path} failed: ${res.status}`);
     const text = await res.text();
+    invalidateQueryCache(path);
     return (text ? JSON.parse(text) : undefined) as T;
   },
   async *postStream(
@@ -132,5 +177,6 @@ export const api = {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`);
+    invalidateQueryCache(path);
   },
 };

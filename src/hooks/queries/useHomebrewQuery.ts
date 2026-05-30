@@ -55,3 +55,45 @@ export function useDeleteHomebrewMutation() {
     onSuccess: () => qc.invalidateQueries({ queryKey: homebrewKeys.all }),
   });
 }
+
+export function useCreateHomebrewContentMutation(collectionId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contentType, dataJson }: { contentType: string; dataJson: object }) =>
+      api.post(`/api/homebrew/${collectionId}/content`, { contentType, dataJson }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: homebrewKeys.all });
+      if (collectionId) {
+        qc.invalidateQueries({ queryKey: homebrewKeys.content(collectionId) });
+      }
+    },
+  });
+}
+
+export function useUpdateHomebrewContentMutation(collectionId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ contentId, dataJson }: { contentId: string; dataJson: object }) =>
+      api.patch(`/api/homebrew/${collectionId}/content/${contentId}`, { dataJson }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: homebrewKeys.all });
+      if (collectionId) {
+        qc.invalidateQueries({ queryKey: homebrewKeys.content(collectionId) });
+      }
+    },
+  });
+}
+
+export function useDeleteHomebrewContentMutation(collectionId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (contentId: string) =>
+      api.del(`/api/homebrew/${collectionId}/content/${contentId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: homebrewKeys.all });
+      if (collectionId) {
+        qc.invalidateQueries({ queryKey: homebrewKeys.content(collectionId) });
+      }
+    },
+  });
+}

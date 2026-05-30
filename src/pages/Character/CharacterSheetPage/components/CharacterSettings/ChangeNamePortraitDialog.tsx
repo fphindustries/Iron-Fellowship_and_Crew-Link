@@ -8,7 +8,11 @@ import {
   TextField,
 } from "@mui/material";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
-import { MAX_FILE_SIZE, MAX_FILE_SIZE_LABEL } from "lib/storage.lib";
+import {
+  fileToBase64,
+  MAX_FILE_SIZE,
+  MAX_FILE_SIZE_LABEL,
+} from "lib/storage.lib";
 import { useSnackbar } from "providers/SnackbarProvider";
 import { ChangeEventHandler, useEffect, useState } from "react";
 import { useStore } from "stores/store";
@@ -16,6 +20,7 @@ import ZoomInIcon from "@mui/icons-material/ZoomIn";
 import ZoomOutIcon from "@mui/icons-material/ZoomOut";
 import AvatarEditor from "react-avatar-editor";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export interface ChangeNamePortraitDialogOpenProps {
   open: boolean;
@@ -48,15 +53,7 @@ export function ChangeNamePortraitDialog(
 
   const [name, setName] = useState(initialName);
 
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
-  const updatePortrait = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacterPortrait
-  );
-  const removePortrait = useStore(
-    (store) => store.characters.currentCharacter.removeCurrentCharacterPortrait
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId);
   const [file, setFile] = useState<File | string | undefined>(initialFileUrl);
   const [scale, setScale] = useState<number>(
     initialPortraitSettings?.scale ?? 1
@@ -100,7 +97,7 @@ export function ChangeNamePortraitDialog(
 
     const promises: Promise<unknown>[] = [];
     if (name !== initialName) {
-      promises.push(updateCharacter({ name }));
+      promises.push(updateCharacter.mutateAsync({ name }));
     }
     if (
       file &&
@@ -108,18 +105,26 @@ export function ChangeNamePortraitDialog(
         position !== initialPortraitSettings?.position)
     ) {
       if (file !== initialFileUrl && typeof file !== "string") {
-        promises.push(updatePortrait(file, scale, position));
+        promises.push(
+          fileToBase64(file).then((url) =>
+            updateCharacter.mutateAsync({
+              profileImage: { url, position, scale },
+            })
+          )
+        );
       } else {
         promises.push(
-          updateCharacter({
-            "profileImage.position": position,
-            "profileImage.scale": scale,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } as any)
+          updateCharacter.mutateAsync({
+            profileImage: {
+              url: initialPortraitSettings?.url,
+              position,
+              scale,
+            },
+          })
         );
       }
     } else if (!file && initialFileUrl) {
-      promises.push(removePortrait());
+      promises.push(updateCharacter.mutateAsync({ profileImage: null }));
     }
 
     Promise.all(promises)

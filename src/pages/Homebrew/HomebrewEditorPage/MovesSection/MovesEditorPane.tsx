@@ -8,10 +8,10 @@ import { MoveCategoryCard } from "./MoveCategoryCard";
 import { MoveCategoryDialog } from "./MoveCategoryDialog";
 import { MarkdownRenderer } from "components/shared/MarkdownRenderer";
 import { MoveDialog } from "./MoveDialog";
-import { useStore } from "stores/store";
 import { useConfirm } from "material-ui-confirm";
 import { MoveCard } from "./MoveCard";
 import { ignoreApiError } from "config/api.config";
+import { useDeleteHomebrewContentMutation } from "hooks/queries/useHomebrewQuery";
 
 export interface MovesEditorPaneProps {
   homebrewId: string;
@@ -48,9 +48,7 @@ export function MovesEditorPane(props: MovesEditorPaneProps) {
 
   const confirm = useConfirm();
 
-  const deleteMoveCategory = useStore(
-    (store) => store.homebrew.deleteMoveCategory
-  );
+  const deleteContent = useDeleteHomebrewContentMutation(homebrewId);
   const handleDeleteMoveCategory = (
     categoryName: string,
     categoryId: string
@@ -67,11 +65,16 @@ export function MovesEditorPane(props: MovesEditorPaneProps) {
     })
       .then(() => {
         setOpenMoveCategoryId(undefined);
-        deleteMoveCategory(homebrewId, categoryId).catch(ignoreApiError);
+        Promise.all(
+          Object.keys(moves)
+            .filter((id) => moves[id].categoryId === categoryId)
+            .map((id) => deleteContent.mutateAsync(id))
+        )
+          .then(() => deleteContent.mutateAsync(categoryId))
+          .catch(ignoreApiError);
       })
       .catch(ignoreApiError);
   };
-  const deleteMove = useStore((store) => store.homebrew.deleteMove);
   const handleDeleteMove = (moveName: string, moveId: string) => {
     confirm({
       title: `Delete ${moveName}`,
@@ -84,7 +87,7 @@ export function MovesEditorPane(props: MovesEditorPaneProps) {
       },
     })
       .then(() => {
-        deleteMove(moveId).catch(ignoreApiError);
+        deleteContent.mutateAsync(moveId).catch(ignoreApiError);
       })
       .catch(ignoreApiError);
   };

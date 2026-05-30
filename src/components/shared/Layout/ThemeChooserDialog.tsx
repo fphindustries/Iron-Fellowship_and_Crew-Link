@@ -15,6 +15,8 @@ import { useToggleTheme } from "providers/ThemeProvider";
 import CheckIcon from "@mui/icons-material/CheckCircle";
 import { useStore } from "stores/store";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCampaignMutation } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export interface ThemeChooserDialogProps {
   open: boolean;
@@ -25,25 +27,21 @@ export function ThemeChooserDialog(props: ThemeChooserDialogProps) {
 
   const { themeType, theme: currentThemeKey } = useToggleTheme();
 
-  const hasCampaign = useStore(
-    (store) => !!store.campaigns.currentCampaign.currentCampaignId
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
   );
-  const updateCampaign = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaign
+  const updateCampaign = useUpdateCampaignMutation(campaignId ?? "");
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
   );
-  const hasCharacter = useStore(
-    (store) => !!store.characters.currentCharacter.currentCharacterId
-  );
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
 
   const setTheme = (key: Themes) => {
-    if (hasCampaign) {
-      updateCampaign({ theme: key }).catch(ignoreApiError);
+    if (campaignId) {
+      updateCampaign.mutateAsync({ theme: key }).catch(ignoreApiError);
     }
-    if (hasCharacter) {
-      updateCharacter({ theme: key }).catch(ignoreApiError);
+    if (characterId) {
+      updateCharacter.mutateAsync({ theme: key }).catch(ignoreApiError);
     }
   };
 

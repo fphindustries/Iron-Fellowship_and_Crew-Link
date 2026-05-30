@@ -1,9 +1,9 @@
 import { Grid } from "@mui/material";
 import { DebouncedOracleInput } from "components/shared/DebouncedOracleInput";
-import { useStore } from "stores/store";
 import { StarforgedLocationDerelict } from "types/SectorLocations.type";
 import { GuideOnlyHeader } from "../../common";
 import { ignoreApiError } from "config/api.config";
+import { useSectorLocationMutations } from "./useSectorLocationMutations";
 
 export interface DerelictContentProps {
   locationId: string;
@@ -15,10 +15,7 @@ export interface DerelictContentProps {
 export function DerelictContent(props: DerelictContentProps) {
   const { locationId, location, showGMFields, showGMTips } = props;
 
-  const updateLocation = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldSectors.locations.updateLocation
-  );
+  const { updateLocation } = useSectorLocationMutations();
 
   const locationOracleId = location.location
     ?.toLocaleLowerCase()

@@ -9,12 +9,23 @@ import { SectionHeading } from "components/shared/SectionHeading";
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { ignoreApiError } from "config/api.config";
+import {
+  useUpdateCharacterAssetMutation,
+  useUpdateCharacterMutation,
+} from "hooks/queries/useCharactersQuery";
+import { useUpdateCampaignAssetMutation } from "hooks/queries/useCampaignsQuery";
 
 export function AssetsSection() {
   const isStarforged = useGameSystem().gameSystem === GAME_SYSTEMS.STARFORGED;
 
   const isInCampaign = useStore(
     (store) => !!store.characters.currentCharacter.currentCharacter?.campaignId
+  );
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
   );
 
   // Identity fields
@@ -30,9 +41,7 @@ export function AssetsSection() {
   const storedCharacteristics = useStore(
     (store) => store.characters.currentCharacter.currentCharacter?.characteristics ?? ""
   );
-  const updateCurrentCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
+  const updateCurrentCharacter = useUpdateCharacterMutation(characterId ?? "");
 
   const [role, setRole] = useState(storedRole);
   const [pronouns, setPronouns] = useState(storedPronouns);
@@ -49,7 +58,13 @@ export function AssetsSection() {
 
   const handleIdentitySave = () => {
     setIdentitySaving(true);
-    updateCurrentCharacter({ role, pronouns, callsign, characteristics })
+    updateCurrentCharacter
+      .mutateAsync({
+        role,
+        pronouns,
+        callsign,
+        characteristicsJson: characteristics,
+      })
       .catch(ignoreApiError)
       .finally(() => setIdentitySaving(false));
   };
@@ -68,15 +83,7 @@ export function AssetsSection() {
   const assetsLoading = useStore(
     (store) => store.characters.currentCharacter.assets.loading
   );
-  const addAsset = useStore(
-    (store) => store.characters.currentCharacter.assets.addAsset
-  );
-  const removeAsset = useStore(
-    (store) => store.characters.currentCharacter.assets.removeAsset
-  );
-  const updateAssetCheckbox = useStore(
-    (store) => store.characters.currentCharacter.assets.updateAssetCheckbox
-  );
+  const updateAsset = useUpdateCharacterAssetMutation(characterId);
 
   const sharedAssets = useStore(
     (store) => store.campaigns.currentCampaign.assets.assets
@@ -93,15 +100,7 @@ export function AssetsSection() {
   const sharedAssetsLoading = useStore(
     (store) => store.characters.currentCharacter.assets.loading
   );
-  const addSharedAsset = useStore(
-    (store) => store.campaigns.currentCampaign.assets.addAsset
-  );
-  const removeSharedAsset = useStore(
-    (store) => store.campaigns.currentCampaign.assets.removeAsset
-  );
-  const updateSharedAssetCheckbox = useStore(
-    (store) => store.campaigns.currentCampaign.assets.updateAssetCheckbox
-  );
+  const updateSharedAsset = useUpdateCampaignAssetMutation(campaignId);
 
   const [addAssetLoading, setAddAssetLoading] = useState(false);
 
@@ -114,8 +113,8 @@ export function AssetsSection() {
     const shouldAddToCampaign = isAssetDialogOpen.addToCampaign;
     setAddAssetLoading(true);
     const promise = shouldAddToCampaign
-      ? addSharedAsset(asset)
-      : addAsset(asset);
+      ? updateSharedAsset.mutateAsync({ dataJson: asset })
+      : updateAsset.mutateAsync({ dataJson: asset });
     promise
       .catch(ignoreApiError)
       .finally(() => {
@@ -138,26 +137,83 @@ export function AssetsSection() {
     })
       .then(() => {
         if (isShared) {
-          removeSharedAsset(assetId).catch(ignoreApiError);
+          updateSharedAsset
+            .mutateAsync({ assetId, remove: true })
+            .catch(ignoreApiError);
         } else {
-          removeAsset(assetId).catch(ignoreApiError);
+          updateAsset
+            .mutateAsync({ assetId, remove: true })
+            .catch(ignoreApiError);
         }
       })
       .catch(ignoreApiError);
   };
 
-  const updateAssetOption = useStore(
-    (store) => store.characters.currentCharacter.assets.updateAssetOption
-  );
-  const updateAssetControl = useStore(
-    (store) => store.characters.currentCharacter.assets.updateAssetControl
-  );
-  const updateSharedAssetOption = useStore(
-    (store) => store.campaigns.currentCampaign.assets.updateAssetOption
-  );
-  const updateSharedAssetControl = useStore(
-    (store) => store.campaigns.currentCampaign.assets.updateAssetControl
-  );
+  const handleAssetAbilityToggle = (
+    assetId: string,
+    isShared: boolean,
+    abilityIndex: number,
+    checked: boolean
+  ) => {
+    const existing = isShared ? sharedAssets[assetId] : assets[assetId];
+    if (!existing) return;
+    const mutation = isShared ? updateSharedAsset : updateAsset;
+    mutation
+      .mutateAsync({
+        assetId,
+        dataJson: {
+          ...existing,
+          enabledAbilities: {
+            ...(existing.enabledAbilities ?? {}),
+            [abilityIndex]: checked,
+          },
+        },
+      })
+      .catch(ignoreApiError);
+  };
+
+  const handleAssetOptionChange = (
+    assetId: string,
+    isShared: boolean,
+    optionKey: string,
+    value: string
+  ) => {
+    const existing = isShared ? sharedAssets[assetId] : assets[assetId];
+    if (!existing) return;
+    const mutation = isShared ? updateSharedAsset : updateAsset;
+    mutation
+      .mutateAsync({
+        assetId,
+        dataJson: {
+          ...existing,
+          optionValues: { ...(existing.optionValues ?? {}), [optionKey]: value },
+        },
+      })
+      .catch(ignoreApiError);
+  };
+
+  const handleAssetControlChange = (
+    assetId: string,
+    isShared: boolean,
+    controlKey: string,
+    value: boolean | string | number
+  ) => {
+    const existing = isShared ? sharedAssets[assetId] : assets[assetId];
+    if (!existing) return;
+    const mutation = isShared ? updateSharedAsset : updateAsset;
+    mutation
+      .mutateAsync({
+        assetId,
+        dataJson: {
+          ...existing,
+          controlValues: {
+            ...(existing.controlValues ?? {}),
+            [controlKey]: value,
+          },
+        },
+      })
+      .catch(ignoreApiError);
+  };
 
   return (
     <>
@@ -249,13 +305,18 @@ export function AssetsSection() {
                     storedAsset={sharedAssets[assetId]}
                     onAssetRemove={() => handleClick(assetId, true)}
                     onAssetAbilityToggle={(abilityIndex, checked) =>
-                      updateSharedAssetCheckbox(assetId, abilityIndex, checked)
+                      handleAssetAbilityToggle(
+                        assetId,
+                        true,
+                        abilityIndex,
+                        checked
+                      )
                     }
                     onAssetOptionChange={(optionKey, value) =>
-                      updateSharedAssetOption(assetId, optionKey, value)
+                      handleAssetOptionChange(assetId, true, optionKey, value)
                     }
                     onAssetControlChange={(controlKey, value) =>
-                      updateSharedAssetControl(assetId, controlKey, value)
+                      handleAssetControlChange(assetId, true, controlKey, value)
                     }
                     sx={{
                       minHeight: 450,
@@ -308,13 +369,18 @@ export function AssetsSection() {
                 storedAsset={assets[assetId]}
                 onAssetRemove={() => handleClick(assetId, false)}
                 onAssetAbilityToggle={(abilityIndex, checked) =>
-                  updateAssetCheckbox(assetId, abilityIndex, checked)
+                  handleAssetAbilityToggle(
+                    assetId,
+                    false,
+                    abilityIndex,
+                    checked
+                  )
                 }
                 onAssetOptionChange={(optionKey, value) =>
-                  updateAssetOption(assetId, optionKey, value)
+                  handleAssetOptionChange(assetId, false, optionKey, value)
                 }
                 onAssetControlChange={(controlKey, value) =>
-                  updateAssetControl(assetId, controlKey, value)
+                  handleAssetControlChange(assetId, false, controlKey, value)
                 }
                 sx={{
                   minHeight: 450,

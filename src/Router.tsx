@@ -28,7 +28,6 @@ import { useListenToHomebrew } from "stores/homebrew/useListenToHomebrew";
 import { HOMEBREW_ROUTES, homebrewPaths } from "pages/Homebrew/routes";
 import { useSyncCampaignWorldPermissions } from "stores/campaign/useSyncCampaignWorldPermissions";
 import { useListenToAiEvents } from "stores/ai/useListenToAiEvents";
-import { useListenToWorldAiSettings } from "stores/world/currentWorld/useListenToWorldAiSettings";
 import { useSocketInvalidation } from "hooks/useSocketInvalidation";
 
 const router = createBrowserRouter(
@@ -93,6 +92,10 @@ const router = createBrowserRouter(
               path={campaignPaths[CAMPAIGN_ROUTES.JOIN]}
               lazy={() => import("pages/Campaign/CampaignJoinPage")}
             />
+            <Route
+              path={campaignPaths[CAMPAIGN_ROUTES.PLAY]}
+              lazy={() => import("pages/Campaign/CockpitPage")}
+            />
           </Route>
           <Route path={basePaths[BASE_ROUTES.WORLD]}>
             <Route index lazy={() => import("pages/World/WorldSelectPage")} />
@@ -153,7 +156,6 @@ export function Router() {
 
   useSyncCampaignWorldPermissions();
   useListenToAiEvents();
-  useListenToWorldAiSettings();
   useSocketInvalidation();
 
   return <RouterProvider router={router} />;

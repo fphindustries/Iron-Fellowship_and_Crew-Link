@@ -19,6 +19,7 @@ import { useStore } from "stores/store";
 import { useCampaignType } from "hooks/useCampaignType";
 import { ignoreApiError } from "config/api.config";
 import { useUpdateRollMutation, useRemoveRollMutation } from "hooks/queries/useGameLogQuery";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export interface NormalRollActionsProps {
   rollId: string;
@@ -69,9 +70,7 @@ export function NormalRollActions(props: NormalRollActionsProps) {
   const entityType = campaignId ? "campaign" : "character";
   const { mutate: removeLog } = useRemoveRollMutation();
   const { mutateAsync: updateRoll } = useUpdateRollMutation();
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
 
   let isMomentumBurnUseful = false;
   if (roll.type === ROLL_TYPE.STAT && roll.momentumBurned === undefined) {
@@ -133,7 +132,7 @@ export function NormalRollActions(props: NormalRollActionsProps) {
           roll: { ...roll, momentumBurned: momentum, result: newRollResult },
         })
       );
-      promises.push(updateCharacter({ momentum: momentumResetValue }));
+      promises.push(updateCharacter.mutateAsync({ momentum: momentumResetValue }));
 
       Promise.all(promises)
         .catch(ignoreApiError)

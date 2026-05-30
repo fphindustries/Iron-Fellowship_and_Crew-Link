@@ -7,6 +7,8 @@ import { useIsMobile } from "hooks/useIsMobile";
 import { MobileStatTrack } from "./MobileStatTrack";
 import { MomentumTrackMobile } from "./MomentumTrackMobile";
 import { NonLinearMeters } from "./NonLinearMeters";
+import { useUpdateCampaignMutation } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export type TRACK_KEYS = "health" | "spirit" | "supply" | "momentum";
 
@@ -21,15 +23,14 @@ export function TracksSection() {
   const isInCampaign = useStore(
     (store) => !!store.characters.currentCharacter.currentCharacter?.campaignId
   );
-  const updateCampaignConditionMeter = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaignConditionMeter
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
   );
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
   );
-  const updateCharacterConditionMeter = useStore(
-    (store) => store.characters.currentCharacter.updateCharacterConditionMeter
-  );
+  const updateCampaign = useUpdateCampaignMutation(campaignId ?? "");
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
 
   const momentum = useStore(
     (store) => store.characters.currentCharacter.currentCharacter?.momentum ?? 0
@@ -79,9 +80,7 @@ export function TracksSection() {
       previousValue: momentum,
       newValue,
     });
-    return updateCharacter({
-      momentum: newValue,
-    });
+    return updateCharacter.mutateAsync({ momentum: newValue });
   };
   const updateConditionMeter = (
     conditionMeterKey: string,
@@ -90,9 +89,19 @@ export function TracksSection() {
     const conditionMeter = conditionMeters[conditionMeterKey];
 
     if (conditionMeter.shared && isInCampaign) {
-      return updateCampaignConditionMeter(conditionMeterKey, newValue);
+      return updateCampaign.mutateAsync({
+        conditionMetersJson: {
+          ...(campaignConditionMeters ?? {}),
+          [conditionMeterKey]: newValue,
+        },
+      });
     } else {
-      return updateCharacterConditionMeter(conditionMeterKey, newValue);
+      return updateCharacter.mutateAsync({
+        conditionMetersJson: {
+          ...(characterConditionMeters ?? {}),
+          [conditionMeterKey]: newValue,
+        },
+      });
     }
   };
 

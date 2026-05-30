@@ -47,7 +47,7 @@ jobs:
       - name: Run database migrations
         run: |
           cd /opt/starforged_test/api
-          pnpm run drizzle:migrate
+          pnpm run drizzle:migrate:debug
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 

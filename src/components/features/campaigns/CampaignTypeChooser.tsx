@@ -12,6 +12,7 @@ import { CampaignType } from "types/Campaign.type";
 import SoloIcon from "@mui/icons-material/Person4";
 import CoopIcon from "@mui/icons-material/Group";
 import GuidedIcon from "@mui/icons-material/Groups2";
+import AIGuidedIcon from "@mui/icons-material/AutoFixHigh";
 
 const campaignTypeConfigs: Record<
   CampaignType,
@@ -34,6 +35,12 @@ const campaignTypeConfigs: Record<
     title: "Guided",
     description:
       "A guide takes the role of storyteller and leads characters through the campaign. The guide has access to notes and information that players do not.",
+  },
+  [CampaignType.AIGuided]: {
+    Icon: AIGuidedIcon,
+    title: "AI Guided",
+    description:
+      "An AI model takes the Guide role — narrating outcomes, proposing consequences, and interpreting oracle results. Players roll all dice; the AI facilitates the story.",
   },
 };
 

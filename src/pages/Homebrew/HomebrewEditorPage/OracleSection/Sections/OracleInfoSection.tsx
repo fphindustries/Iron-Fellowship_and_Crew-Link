@@ -8,6 +8,7 @@ import { useStore } from "stores/store";
 import { HomebrewOracleCollectionDocument } from "types/homebrew/HomebrewOracleCollection.type";
 import { MoveOracleCollectionDialog } from "./OracleCollectionsSection/MoveOracleCollectionDialog";
 import { ignoreApiError } from "config/api.config";
+import { useDeleteHomebrewContentMutation } from "hooks/queries/useHomebrewQuery";
 
 export interface OracleInfoSectionProps {
   homebrewId: string;
@@ -30,9 +31,10 @@ export function OracleInfoSection(props: OracleInfoSectionProps) {
     isEditor,
   } = props;
 
-  const deleteOracleCollection = useStore(
-    (store) => store.homebrew.deleteOracleCollection
+  const oracleTables = useStore(
+    (store) => store.homebrew.collections[homebrewId]?.oracleTables?.data ?? {}
   );
+  const deleteContent = useDeleteHomebrewContentMutation(homebrewId);
 
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
 
@@ -50,7 +52,7 @@ export function OracleInfoSection(props: OracleInfoSectionProps) {
     })
       .then(() => {
         setIsDeleteLoading(true);
-        deleteOracleCollection(homebrewId, oracleCollectionId)
+        deleteOracleCollectionContent(oracleCollectionId)
           .then(() => {
             closeCurrentOracleCollection();
           })
@@ -60,6 +62,25 @@ export function OracleInfoSection(props: OracleInfoSectionProps) {
           });
       })
       .catch(ignoreApiError);
+  };
+
+  const deleteOracleCollectionContent = async (collectionId: string) => {
+    const childTableIds = Object.keys(oracleTables).filter(
+      (tableId) => oracleTables[tableId].oracleCollectionId === collectionId
+    );
+    const childCollectionIds = Object.keys(oracleCollections).filter(
+      (childCollectionId) =>
+        oracleCollections[childCollectionId].parentOracleCollectionId ===
+        collectionId
+    );
+
+    await Promise.all([
+      ...childTableIds.map((tableId) => deleteContent.mutateAsync(tableId)),
+      ...childCollectionIds.map((childCollectionId) =>
+        deleteOracleCollectionContent(childCollectionId)
+      ),
+    ]);
+    await deleteContent.mutateAsync(collectionId);
   };
 
   const [moveCollectionDialogOpen, setMoveCollectionDialogOpen] =

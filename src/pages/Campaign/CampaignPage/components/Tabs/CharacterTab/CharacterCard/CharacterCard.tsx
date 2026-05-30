@@ -15,8 +15,7 @@ import { AssetCard } from "components/features/assets/AssetCard";
 import { InitiativeStatusChip } from "components/features/characters/InitiativeStatusChip";
 import { PortraitAvatar } from "components/features/characters/PortraitAvatar/PortraitAvatar";
 import { useStore } from "stores/store";
-import { useQueryClient } from "@tanstack/react-query";
-import { campaignKeys } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCampaignCharacterMutation } from "hooks/queries/useCampaignsQuery";
 import { useUserQuery } from "hooks/queries/useUsersQuery";
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
@@ -30,6 +29,7 @@ import { LinkComponent } from "components/shared/LinkComponent";
 import { constructCharacterSheetPath } from "pages/Character/routes";
 import { useCampaignType } from "hooks/useCampaignType";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export interface CharacterCardProps {
   uid: string;
@@ -64,26 +64,21 @@ export function CharacterCard(props: CharacterCardProps) {
   );
 
   const { data: user } = useUserQuery(uid);
-  const updateCharacter = useStore(
-    (store) => store.campaigns.currentCampaign.characters.updateCharacter
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId);
 
   const updateCharacterInitiative = (initiativeStatus: InitiativeStatus) => {
-    updateCharacter(characterId, { initiativeStatus }).catch(ignoreApiError);
+    updateCharacter.mutateAsync({ initiativeStatus }).catch(ignoreApiError);
   };
 
   const campaignId = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaignId ?? ""
   );
-  const qc = useQueryClient();
-
-  const removeCharacterFromCampaign = useStore(
-    (store) => store.campaigns.currentCampaign.removeCharacter
-  );
+  const removeCharacterFromCampaign =
+    useUpdateCampaignCharacterMutation(campaignId);
 
   const handleRemove = () => {
-    removeCharacterFromCampaign(uid, characterId)
-      .then(() => qc.invalidateQueries({ queryKey: campaignKeys.detail(campaignId) }))
+    removeCharacterFromCampaign
+      .mutateAsync({ characterId, remove: true })
       .catch(ignoreApiError);
   };
 

@@ -10,6 +10,7 @@ import { CombatStartEventCard } from "./eventCards/CombatStartEventCard";
 import { CombatEndEventCard } from "./eventCards/CombatEndEventCard";
 import { PortraitAvatar } from "components/features/characters/PortraitAvatar/PortraitAvatar";
 import { useStore } from "stores/store";
+import { useDeleteSessionEventMutation } from "hooks/queries/useSessionLogQuery";
 
 export interface SessionLogEventCardProps {
   eventId: string;
@@ -30,8 +31,8 @@ export function SessionLogEventCard(props: SessionLogEventCardProps) {
   const { eventId, event, onRequestNarrative, narratingEventId, streamingNarrativeText } = props;
 
   const currentUid = useStore((s) => s.auth.uid);
-  const deleteEvent = useStore((s) => s.sessionLog.deleteEvent);
   const activeSessionId = useStore((s) => s.sessionLog.activeSessionId);
+  const deleteEvent = useDeleteSessionEventMutation();
 
   // Resolve portrait from whichever character map has this character
   const characterDoc = useStore((s) => {
@@ -78,7 +79,10 @@ export function SessionLogEventCard(props: SessionLogEventCardProps) {
               <Tooltip title="Delete">
                 <IconButton
                   size="small"
-                  onClick={() => deleteEvent(eventId)}
+                  onClick={() =>
+                    activeSessionId &&
+                    deleteEvent.mutate({ sessionId: activeSessionId, eventId })
+                  }
                   sx={{ p: 0.25 }}
                 >
                   <DeleteIcon sx={{ fontSize: 16 }} />

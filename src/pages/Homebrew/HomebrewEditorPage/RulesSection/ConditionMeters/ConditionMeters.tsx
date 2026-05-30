@@ -19,6 +19,11 @@ import { ConditionMeterDialog } from "./ConditionMeterDialog";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { ConditionMeterPreviewDialog } from "./ConditionMeterPreviewDialog";
 import { ignoreApiError } from "config/api.config";
+import {
+  useCreateHomebrewContentMutation,
+  useDeleteHomebrewContentMutation,
+  useUpdateHomebrewContentMutation,
+} from "hooks/queries/useHomebrewQuery";
 
 export interface ConditionMetersProps {
   homebrewId: string;
@@ -45,15 +50,9 @@ export function ConditionMeters(props: ConditionMetersProps) {
   const [previewingConditionMeterKey, setPreviewingConditionMeterKey] =
     useState<string | undefined>(undefined);
 
-  const createConditionMeter = useStore(
-    (store) => store.homebrew.createConditionMeter
-  );
-  const updateConditionMeter = useStore(
-    (store) => store.homebrew.updateConditionMeter
-  );
-  const deleteConditionMeter = useStore(
-    (store) => store.homebrew.deleteConditionMeter
-  );
+  const createConditionMeter = useCreateHomebrewContentMutation(homebrewId);
+  const updateConditionMeter = useUpdateHomebrewContentMutation(homebrewId);
+  const deleteConditionMeter = useDeleteHomebrewContentMutation(homebrewId);
 
   if (conditionMetersLoading) {
     return <></>;
@@ -63,9 +62,15 @@ export function ConditionMeters(props: ConditionMetersProps) {
     conditionMeter: HomebrewConditionMeterDocument
   ) => {
     if (editingConditionMeterKey) {
-      return updateConditionMeter(editingConditionMeterKey, conditionMeter);
+      return updateConditionMeter.mutateAsync({
+        contentId: editingConditionMeterKey,
+        dataJson: conditionMeter,
+      }).then(() => undefined);
     } else {
-      return createConditionMeter(conditionMeter);
+      return createConditionMeter.mutateAsync({
+        contentType: "conditionMeter",
+        dataJson: conditionMeter,
+      }).then(() => undefined);
     }
   };
 
@@ -81,7 +86,7 @@ export function ConditionMeters(props: ConditionMetersProps) {
       },
     })
       .then(() => {
-        deleteConditionMeter(conditionMeterId).catch(ignoreApiError);
+        deleteConditionMeter.mutateAsync(conditionMeterId).catch(ignoreApiError);
       })
       .catch(ignoreApiError);
   };

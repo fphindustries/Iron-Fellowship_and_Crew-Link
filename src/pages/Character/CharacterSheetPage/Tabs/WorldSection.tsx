@@ -11,10 +11,14 @@ import { useStore } from "stores/store";
 import { useState } from "react";
 import { ignoreApiError } from "config/api.config";
 import { useWorldsQuery } from "hooks/queries/useWorldsQuery";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export function WorldSection() {
   const uid = useStore((store) => store.auth.uid);
 
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
   const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
   const world = useStore((store) => store.worlds.currentWorld.currentWorld);
 
@@ -36,15 +40,14 @@ export function WorldSection() {
     .sort((a, b) => b.name.localeCompare(a.name));
   const worldIds = sortedWorlds.map((w) => w.id);
 
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
 
   const [updateCharacterWorldLoading, setUpdateCharacterWorldLoading] =
     useState(false);
   const updateCharacterWorld = (worldId?: string) => {
     setUpdateCharacterWorldLoading(true);
-    updateCharacter({ worldId: worldId ?? null })
+    updateCharacter
+      .mutateAsync({ worldId: worldId ?? null })
       .catch(ignoreApiError)
       .finally(() => {
         setUpdateCharacterWorldLoading(false);
