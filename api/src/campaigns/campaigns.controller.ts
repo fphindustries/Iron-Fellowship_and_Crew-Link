@@ -59,7 +59,6 @@ export class CampaignsController {
   }
 
   @Post(':campaignId/members')
-  @UseGuards(CampaignMemberGuard)
   async addMember(
     @Param('campaignId') cid: string,
     @Body('userId') userId: string,
