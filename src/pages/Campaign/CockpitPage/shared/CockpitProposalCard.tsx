@@ -8,6 +8,7 @@ import {
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { AIGuideProposal } from "types/AIGuideState.type";
+import { MarkdownRenderer } from "components/shared/MarkdownRenderer/MarkdownRenderer";
 
 const MODE_LABELS: Record<string, string> = {
   sceneFrame: "Frame Scene",
@@ -77,9 +78,7 @@ export function CockpitProposalCard(props: CockpitProposalCardProps) {
         )}
       </Box>
 
-      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mb: isPending ? 0.5 : 0 }}>
-        {proposal.content}
-      </Typography>
+      <MarkdownRenderer markdown={proposal.content} typographyVariant="body2" />
 
       {isPending && (
         <Box display="flex" gap={1} mt={1} flexWrap="wrap">

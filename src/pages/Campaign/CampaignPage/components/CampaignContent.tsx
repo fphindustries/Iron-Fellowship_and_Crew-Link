@@ -1,5 +1,4 @@
-import { Box, Button, Card } from "@mui/material";
-import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
+import { Box, Card } from "@mui/material";
 import {
   ContainedTabPanel,
   StyledTab,
@@ -21,7 +20,6 @@ import { useNewMaps } from "hooks/featureFlags/useNewMaps";
 import { useAiGuide } from "hooks/featureFlags/useAiCopilot";
 import { AiGuidePanel } from "components/features/aiCopilot/AiCopilotPanel";
 import { CampaignType } from "types/Campaign.type";
-import { SessionPreflightDialog } from "./SessionPreflightDialog";
 
 enum CampaignTabs {
   Characters = "characters",
@@ -65,7 +63,6 @@ export function CampaignContent(props: CampaignContentProps) {
     (store) => store.campaigns.currentCampaign.currentCampaignId ?? ""
   );
   const showAiGuide = useAiGuide();
-  const [preflightOpen, setPreflightOpen] = useState(false);
 
   return (
     <Card
@@ -104,27 +101,6 @@ export function CampaignContent(props: CampaignContentProps) {
         <StyledTab label="Sessions" value={CampaignTabs.Sessions} />
         {showAiGuide && !isAIGuided && (
           <StyledTab label="AI" value={CampaignTabs.AiGuide} />
-        )}
-        {isAIGuided && (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              ml: "auto",
-              pr: 1,
-              flexShrink: 0,
-            }}
-          >
-            <Button
-              onClick={() => setPreflightOpen(true)}
-              size="small"
-              variant="contained"
-              startIcon={<RocketLaunchIcon sx={{ fontSize: 16 }} />}
-              sx={{ fontSize: 12, py: 0.5 }}
-            >
-              Play
-            </Button>
-          </Box>
         )}
       </StyledTabs>
       <ContainedTabPanel isVisible={selectedTab === CampaignTabs.Characters}>
@@ -179,11 +155,6 @@ export function CampaignContent(props: CampaignContentProps) {
           <AiGuidePanel />
         </ContainedTabPanel>
       )}
-      <SessionPreflightDialog
-        open={preflightOpen}
-        campaignId={campaignId}
-        onClose={() => setPreflightOpen(false)}
-      />
     </Card>
   );
 }

@@ -9,6 +9,7 @@ import {
   ListItemIcon,
   ListItemText,
 } from "@mui/material";
+import { useState } from "react";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +18,7 @@ import { useCampaignStarshipQuery } from "hooks/queries/useCampaignsQuery";
 import { constructCampaignSheetPath, CAMPAIGN_ROUTES } from "pages/Campaign/routes";
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
+import { useNewMaps } from "hooks/featureFlags/useNewMaps";
 
 interface Check {
   label: string;
@@ -34,6 +36,7 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
   const { open, campaignId, onClose } = props;
   const navigate = useNavigate();
   const { gameSystem } = useGameSystem();
+  const showNewLocations = useNewMaps();
 
   const hasCharacter = useStore(
     (store) =>
@@ -54,8 +57,10 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
   const { data: starship } = useCampaignStarshipQuery(campaignId);
   const hasShip = !!starship;
 
-  const locationPassed =
-    gameSystem === GAME_SYSTEMS.STARFORGED ? hasSectors : hasLocations;
+  const isStarforged = gameSystem === GAME_SYSTEMS.STARFORGED;
+  const locationPassed = isStarforged
+    ? showNewLocations ? hasLocations : hasSectors
+    : hasLocations;
 
   const checks: Check[] = [
     {
@@ -74,20 +79,28 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
       hint: "Link a world on the World tab.",
     },
     {
-      label: gameSystem === GAME_SYSTEMS.STARFORGED ? "Sector" : "Location",
+      label: isStarforged && !showNewLocations ? "Sector" : "Location",
       passed: locationPassed,
-      hint:
-        gameSystem === GAME_SYSTEMS.STARFORGED
-          ? "Add a sector on the Sectors tab."
-          : "Add a location on the Locations tab.",
+      hint: isStarforged && !showNewLocations
+        ? "Add a sector on the Sectors tab."
+        : "Add a location on the Locations tab.",
     },
   ];
 
   const allPassed = checks.every((c) => c.passed);
+  const startSession = useStore((store) => store.sessionLog.startSession);
+  const [isStarting, setIsStarting] = useState(false);
 
-  function handleStart() {
-    onClose();
-    navigate(constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.PLAY));
+  async function handleStart() {
+    setIsStarting(true);
+    try {
+      await startSession({ campaignId });
+      onClose();
+      navigate(constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.PLAY));
+    } catch (err) {
+      console.error("Failed to start session:", err);
+      setIsStarting(false);
+    }
   }
 
   return (
@@ -121,9 +134,9 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
         <Button
           onClick={handleStart}
           variant="contained"
-          disabled={!allPassed}
+          disabled={!allPassed || isStarting}
         >
-          Start Session
+          {isStarting ? "Starting…" : "Start Session"}
         </Button>
       </DialogActions>
     </Dialog>

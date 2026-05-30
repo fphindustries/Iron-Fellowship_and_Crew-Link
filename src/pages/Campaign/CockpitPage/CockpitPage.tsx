@@ -155,6 +155,7 @@ export function CockpitPage() {
           <Box
             sx={{
               borderRight: (theme) => `1px solid ${theme.palette.divider}`,
+              bgcolor: "background.paper",
               overflow: "hidden",
             }}
           >

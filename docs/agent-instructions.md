@@ -26,6 +26,14 @@ The repo supports two apps sharing the same codebase — **Iron Fellowship** (Ir
 
 ---
 
+## Game Rules Reference
+
+Use `docs/rules.md` as the primary rulebook reference when implementing, reviewing, or changing application behavior that touches Ironsworn/Starforged rules, moves, assets, tracks, campaign flow, or AI-guided game logic. Reference it as often as practical when making decisions about application and game logic, and verify that behavior follows and supports the documented rules.
+
+`docs/rules.md` is page-anchored by printed rulebook page number. Prefer linking or citing the relevant page anchor in notes, comments, PR descriptions, or implementation rationale when a change depends on a specific rule.
+
+---
+
 ## Repo Structure
 
 This is a **pnpm monorepo**:

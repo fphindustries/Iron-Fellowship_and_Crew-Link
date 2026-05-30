@@ -14,6 +14,7 @@ import { useState } from "react";
 import { useStore } from "stores/store";
 import { CockpitProposalCard } from "../shared/CockpitProposalCard";
 import { useCockpitAiRequest } from "../shared/useCockpitAiRequest";
+import { MarkdownRenderer } from "components/shared/MarkdownRenderer/MarkdownRenderer";
 
 export function CurrentScenePanel() {
   const campaignId = useStore(
@@ -146,9 +147,7 @@ export function CurrentScenePanel() {
 
       {/* Scene description */}
       {scene?.description && (
-        <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-          {scene.description}
-        </Typography>
+        <MarkdownRenderer markdown={scene.description} typographyVariant="body1" />
       )}
 
       {/* Unresolved questions */}
