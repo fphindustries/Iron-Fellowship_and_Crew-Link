@@ -19,6 +19,11 @@ import ViewIcon from "@mui/icons-material/Visibility";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { StatViewerPreviewDialog } from "./StatViewerPreviewDialog";
 import { ignoreApiError } from "config/api.config";
+import {
+  useCreateHomebrewContentMutation,
+  useDeleteHomebrewContentMutation,
+  useUpdateHomebrewContentMutation,
+} from "hooks/queries/useHomebrewQuery";
 
 export interface StatsProps {
   homebrewId: string;
@@ -45,15 +50,20 @@ export function Stats(props: StatsProps) {
     undefined
   );
 
-  const addStat = useStore((store) => store.homebrew.createStat);
-  const updateStat = useStore((store) => store.homebrew.updateStat);
-  const deleteStat = useStore((store) => store.homebrew.deleteStat);
+  const addStat = useCreateHomebrewContentMutation(homebrewId);
+  const updateStat = useUpdateHomebrewContentMutation(homebrewId);
+  const deleteStat = useDeleteHomebrewContentMutation(homebrewId);
 
   const handleStatDialogSave = (stat: HomebrewStatDocument) => {
     if (editingStatKey) {
-      return updateStat(editingStatKey, stat);
+      return updateStat.mutateAsync({
+        contentId: editingStatKey,
+        dataJson: stat,
+      }).then(() => undefined);
     } else {
-      return addStat(stat);
+      return addStat
+        .mutateAsync({ contentType: "stat", dataJson: stat })
+        .then(() => undefined);
     }
   };
 
@@ -70,7 +80,7 @@ export function Stats(props: StatsProps) {
         },
       })
         .then(() => {
-          deleteStat(statId).catch(ignoreApiError);
+          deleteStat.mutateAsync(statId).catch(ignoreApiError);
         })
         .catch(ignoreApiError);
     }

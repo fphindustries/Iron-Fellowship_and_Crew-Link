@@ -14,9 +14,12 @@ import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { OracleTableRollableAutocomplete } from "../../OracleTableRollableAutocomplete";
 import { OracleTable } from "./OracleTable";
 import { HomebrewOracleTableDocument } from "types/homebrew/HomebrewOracleTable.type";
-import { useStore } from "stores/store";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { ignoreApiError } from "config/api.config";
+import {
+  useCreateHomebrewContentMutation,
+  useUpdateHomebrewContentMutation,
+} from "hooks/queries/useHomebrewQuery";
 
 interface OracleTableBaseFormContents {
   name: string;
@@ -75,8 +78,8 @@ export function OracleTableSimpleForm(props: OracleTableSimpleFormProps) {
     values: getDefaultValues(existingTable),
   });
 
-  const createTable = useStore((store) => store.homebrew.createOracleTable);
-  const updateTable = useStore((store) => store.homebrew.updateOracleTable);
+  const createContent = useCreateHomebrewContentMutation(homebrewId);
+  const updateContent = useUpdateHomebrewContentMutation(homebrewId);
 
   const onSubmit: SubmitHandler<Form> = (values) => {
     setLoading(true);
@@ -117,14 +120,22 @@ export function OracleTableSimpleForm(props: OracleTableSimpleFormProps) {
     oracleTable.replaces = values.replacesId ?? null;
 
     if (editingOracleTableId) {
-      updateTable(editingOracleTableId, oracleTable)
+      updateContent
+        .mutateAsync({
+          contentId: editingOracleTableId,
+          dataJson: oracleTable,
+        })
         .catch(ignoreApiError)
         .finally(() => {
           onClose();
           setLoading(false);
         });
     } else {
-      createTable(oracleTable)
+      createContent
+        .mutateAsync({
+          contentType: "oracleTable",
+          dataJson: oracleTable,
+        })
         .catch(ignoreApiError)
         .finally(() => {
           onClose();

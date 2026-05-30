@@ -20,6 +20,7 @@ import { randomizeCharacterAppearance } from "api/ai/randomizeCharacterAppearanc
 import { generateCharacterPortraits } from "api/ai/generateCharacterPortraits";
 import { WorldContext } from "types/AI.type";
 import { useStore } from "stores/store";
+import { useWorldAiSettingsQuery } from "hooks/queries/useWorldsQuery";
 
 const PRONOUN_OPTIONS = ["he/him", "she/her", "they/them", "xe/xem"];
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
@@ -89,9 +90,9 @@ export function EnvisionCharacterStep({
   worldContext,
 }: EnvisionCharacterStepProps) {
   const showAi = useAiGuide();
-  const portraitStyleAnchor = useStore(
-    (s) => s.worlds.currentWorld.worldAiSettings?.portraitStyleAnchor
-  );
+  const worldId = useStore((s) => s.worlds.currentWorld.currentWorldId);
+  const { data: worldAiSettings } = useWorldAiSettingsQuery(worldId);
+  const portraitStyleAnchor = worldAiSettings?.portraitStyleAnchor;
 
   const [look, setLook] = useState(initialLook ?? "");
   const [act, setAct] = useState(initialAct ?? "");

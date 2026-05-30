@@ -26,6 +26,12 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { useConfirm } from "material-ui-confirm";
 import { useCallback } from "react";
 import { ignoreApiError } from "config/api.config";
+import {
+  useCreateSectorLocationMutation,
+  useDeleteSectorMutation,
+  useUpdateSectorMutation,
+  useUpdateSectorNotesMutation,
+} from "hooks/queries/useWorldEntitiesQuery";
 
 interface OpenSectorProps {
   sectorId: string;
@@ -51,10 +57,6 @@ export function OpenSector(props: OpenSectorProps) {
     (store) => store.worlds.currentWorld.currentWorldSectors.setOpenSectorId
   );
 
-  const updateSectorName = useStore(
-    (store) => store.worlds.currentWorld.currentWorldSectors.updateName
-  );
-
   const openTab = useStore(
     (store) => store.worlds.currentWorld.currentWorldSectors.openSectorTab
   );
@@ -62,19 +64,10 @@ export function OpenSector(props: OpenSectorProps) {
     (store) => store.worlds.currentWorld.currentWorldSectors.setOpenSectorTab
   );
 
-  const updateSector = useStore(
-    (store) => store.worlds.currentWorld.currentWorldSectors.updateSector
-  );
-  const deleteSector = useStore(
-    (store) => store.worlds.currentWorld.currentWorldSectors.deleteSector
-  );
-  const addHexToMap = useStore(
-    (store) => store.worlds.currentWorld.currentWorldSectors.updateHex
-  );
-  const createLocation = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldSectors.locations.createLocation
-  );
+  const updateSector = useUpdateSectorMutation(worldId);
+  const deleteSector = useDeleteSectorMutation(worldId);
+  const updateSectorNotes = useUpdateSectorNotesMutation(worldId);
+  const createLocation = useCreateSectorLocationMutation(worldId, sectorId);
 
   const setOpenSectorLocationId = useStore(
     (store) =>
@@ -96,11 +89,12 @@ export function OpenSector(props: OpenSectorProps) {
         "starforged/oracles/space/stellar_object",
         false
       );
-      locationId = await createLocation({
+      const row = await createLocation.mutateAsync({
         name: "New Star",
         type: SectorHexTypes.Star,
         description: description?.result ?? "",
       });
+      locationId = row.id as string;
     } else if (hexType === SectorHexTypes.Planet) {
       const planetClass = rollOracleTable(
         "starforged/oracles/planets/class",
@@ -130,37 +124,42 @@ export function OpenSector(props: OpenSectorProps) {
         ? oracleCollections[planetClassCollectionId]?.summary
         : undefined;
 
-      locationId = await createLocation({
+      const row = await createLocation.mutateAsync({
         name: name?.result ?? "New Planet",
         type: SectorHexTypes.Planet,
         subType: convertedClass,
         planetClassName,
         description,
       });
+      locationId = row.id as string;
     } else if (hexType === SectorHexTypes.Settlement) {
       const name = rollOracleTable(
         "starforged/oracles/settlements/name",
         false
       )?.result;
-      locationId = await createLocation({
+      const row = await createLocation.mutateAsync({
         name: name ?? "New Sector",
         type: SectorHexTypes.Settlement,
       });
+      locationId = row.id as string;
     } else if (hexType === SectorHexTypes.Derelict) {
-      locationId = await createLocation({
+      const row = await createLocation.mutateAsync({
         name: "New Derelict",
         type: SectorHexTypes.Derelict,
       });
+      locationId = row.id as string;
     } else if (hexType === SectorHexTypes.Vault) {
-      locationId = await createLocation({
+      const row = await createLocation.mutateAsync({
         name: "New Vault",
         type: SectorHexTypes.Vault,
       });
+      locationId = row.id as string;
     } else if (hexType === SectorHexTypes.Other) {
-      locationId = await createLocation({
+      const row = await createLocation.mutateAsync({
         name: "Unknown Location",
         type: SectorHexTypes.Other,
       });
+      locationId = row.id as string;
     }
 
     const cell:
@@ -172,7 +171,16 @@ export function OpenSector(props: OpenSectorProps) {
     if (cell && locationId) {
       cell.locationId = locationId;
     }
-    addHexToMap(row, col, cell).catch(ignoreApiError);
+    const newMap = JSON.parse(JSON.stringify(sector.map ?? {}));
+    if (!newMap[row]) newMap[row] = {};
+    if (cell) {
+      newMap[row][col] = cell;
+    } else {
+      delete newMap[row][col];
+    }
+    updateSector
+      .mutateAsync({ sectorId, patch: { mapJson: newMap } })
+      .catch(ignoreApiError);
   };
 
   const handleSectorDelete = () => {
@@ -187,7 +195,8 @@ export function OpenSector(props: OpenSectorProps) {
       },
     })
       .then(() => {
-        deleteSector()
+        deleteSector
+          .mutateAsync(sectorId)
           .catch(ignoreApiError)
           .then(() => {
             setOpenSectorId();
@@ -202,9 +211,6 @@ export function OpenSector(props: OpenSectorProps) {
   );
   const gmNotes = useStore(
     (store) => store.worlds.currentWorld.currentWorldSectors.openSectorGMNotes
-  );
-  const updateNotes = useStore(
-    (store) => store.worlds.currentWorld.currentWorldSectors.updateSectorNotes
   );
 
   const npcs = useStore(
@@ -223,14 +229,18 @@ export function OpenSector(props: OpenSectorProps) {
 
   const noteSaveCallback = useCallback(
     (sectorId: string, notes: Uint8Array, isBeaconRequest?: boolean) =>
-      updateNotes(sectorId, notes, false, isBeaconRequest),
-    [updateNotes]
+      updateSectorNotes
+        .mutateAsync({ sectorId, notes, isPrivate: false })
+        .then(() => undefined),
+    [updateSectorNotes]
   );
 
   const gmNoteSaveCallback = useCallback(
     (sectorId: string, notes: Uint8Array, isBeaconRequest?: boolean) =>
-      updateNotes(sectorId, notes, true, isBeaconRequest),
-    [updateNotes]
+      updateSectorNotes
+        .mutateAsync({ sectorId, notes, isPrivate: true })
+        .then(() => undefined),
+    [updateSectorNotes]
   );
 
   if (!sector) {
@@ -242,7 +252,12 @@ export function OpenSector(props: OpenSectorProps) {
       <SectorLocationDialog />
       <ItemHeader
         itemName={sector.name}
-        updateName={(name) => updateSectorName(name).catch(ignoreApiError)}
+        updateName={(name) =>
+          updateSector
+            .mutateAsync({ sectorId, patch: { name } })
+            .then(() => undefined)
+            .catch(ignoreApiError)
+        }
         nameOracleIds={[
           "starforged/oracles/space/sector_name/prefix",
           "starforged/oracles/space/sector_name/suffix",
@@ -288,7 +303,11 @@ export function OpenSector(props: OpenSectorProps) {
                   "starforged/oracles/campaign_launch/sector_trouble"
                 }
                 initialValue={sector.trouble ?? ""}
-                updateValue={(trouble) => updateSector({ trouble })}
+                updateValue={(trouble) =>
+                  updateSector
+                    .mutateAsync({ sectorId, patch: { trouble } })
+                    .then(() => undefined)
+                }
               />
             </Grid>
           )}
@@ -299,7 +318,12 @@ export function OpenSector(props: OpenSectorProps) {
                   <Checkbox
                     checked={sector.sharedWithPlayers ?? false}
                     onChange={(evt, value) =>
-                      updateSector({ sharedWithPlayers: value })
+                      updateSector
+                        .mutateAsync({
+                          sectorId,
+                          patch: { sharedWithPlayers: value },
+                        })
+                        .catch(ignoreApiError)
                     }
                   />
                 }

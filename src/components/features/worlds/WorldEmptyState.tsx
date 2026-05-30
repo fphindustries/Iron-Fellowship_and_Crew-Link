@@ -15,6 +15,8 @@ import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { useCampaignType } from "hooks/useCampaignType";
 import { ignoreApiError } from "config/api.config";
 import { useCreateWorldMutation } from "hooks/queries/useWorldsQuery";
+import { useUpdateCampaignWorldMutation } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export interface WorldEmptyStateProps {
   worldsToChooseFrom?: World[];
@@ -34,15 +36,14 @@ export function WorldEmptyState(props: WorldEmptyStateProps) {
   const characterId = useStore(
     (store) => store.characters.currentCharacter.currentCharacterId
   );
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
   const campaignId = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaignId
   );
-  const updateCampaign = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaign
+  const gmIds = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaign?.gmIds ?? []
   );
+  const updateCampaignWorld = useUpdateCampaignWorldMutation(campaignId);
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
 
   const { showGuidedPlayerView } = useCampaignType();
 
@@ -53,9 +54,11 @@ export function WorldEmptyState(props: WorldEmptyStateProps) {
       .then((row) => {
         const worldId = row.id;
         if (campaignId) {
-          updateCampaign({ worldId }).catch(ignoreApiError);
+          updateCampaignWorld
+            .mutateAsync({ worldId, ownerIds: gmIds })
+            .catch(ignoreApiError);
         } else if (characterId) {
-          updateCharacter({ worldId }).catch(ignoreApiError);
+          updateCharacter.mutateAsync({ worldId }).catch(ignoreApiError);
         }
       })
       .catch(ignoreApiError);

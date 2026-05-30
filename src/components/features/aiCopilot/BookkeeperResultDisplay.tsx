@@ -10,9 +10,9 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useState } from "react";
-import { useStore } from "stores/store";
 import { BookkeeperOutput } from "types/AI.type";
 import { BookkeeperApplyPayload } from "stores/ai/ai.slice.type";
+import { useApplyBookkeeperSuggestion } from "hooks/useApplyBookkeeperSuggestion";
 
 interface BookkeeperResultDisplayProps {
   output: BookkeeperOutput;
@@ -29,9 +29,7 @@ export function BookkeeperResultDisplay({
 }: BookkeeperResultDisplayProps) {
   const [applied, setApplied] = useState<AppliedSet>(new Set());
   const [applying, setApplying] = useState<string | null>(null);
-  const applyBookkeeperSuggestion = useStore(
-    (store) => store.ai.applyBookkeeperSuggestion
-  );
+  const applyBookkeeperSuggestion = useApplyBookkeeperSuggestion();
 
   const handleApply = async (key: string, payload: BookkeeperApplyPayload) => {
     setApplying(key);

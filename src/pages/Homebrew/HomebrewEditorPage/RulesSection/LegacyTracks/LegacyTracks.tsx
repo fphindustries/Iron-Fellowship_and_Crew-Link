@@ -19,6 +19,11 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { LegacyTrackDialog } from "./LegacyTrackDialog";
 import { LegacyTrackPreviewDialog } from "./LegacyTrackPreviewDialog";
 import { ignoreApiError } from "config/api.config";
+import {
+  useCreateHomebrewContentMutation,
+  useDeleteHomebrewContentMutation,
+  useUpdateHomebrewContentMutation,
+} from "hooks/queries/useHomebrewQuery";
 
 export interface LegacyTracksProps {
   homebrewId: string;
@@ -45,22 +50,26 @@ export function LegacyTracks(props: LegacyTracksProps) {
     string | undefined
   >(undefined);
 
-  const createLegacyTrack = useStore(
-    (store) => store.homebrew.createLegacyTrack
-  );
-  const updateLegacyTrack = useStore(
-    (store) => store.homebrew.updateLegacyTrack
-  );
-  const deleteLegacyTrack = useStore(
-    (store) => store.homebrew.deleteLegacyTrack
-  );
+  const createLegacyTrack = useCreateHomebrewContentMutation(homebrewId);
+  const updateLegacyTrack = useUpdateHomebrewContentMutation(homebrewId);
+  const deleteLegacyTrack = useDeleteHomebrewContentMutation(homebrewId);
   const createOrUpdateLegacyTrack = (
     legacyTrack: HomebrewLegacyTrackDocument
   ) => {
     if (editingLegacyTrackKey) {
-      return updateLegacyTrack(editingLegacyTrackKey, legacyTrack);
+      return updateLegacyTrack
+        .mutateAsync({
+          contentId: editingLegacyTrackKey,
+          dataJson: legacyTrack,
+        })
+        .then(() => undefined);
     } else {
-      return createLegacyTrack(legacyTrack);
+      return createLegacyTrack
+        .mutateAsync({
+          contentType: "legacyTrack",
+          dataJson: legacyTrack,
+        })
+        .then(() => undefined);
     }
   };
 
@@ -75,7 +84,7 @@ export function LegacyTracks(props: LegacyTracksProps) {
       },
     })
       .then(() => {
-        deleteLegacyTrack(legacyTrackId).catch(ignoreApiError);
+        deleteLegacyTrack.mutateAsync(legacyTrackId).catch(ignoreApiError);
       })
       .catch(ignoreApiError);
   };

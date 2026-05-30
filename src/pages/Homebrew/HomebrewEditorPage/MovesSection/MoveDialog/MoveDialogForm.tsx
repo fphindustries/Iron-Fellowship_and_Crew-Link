@@ -23,6 +23,10 @@ import { LegacyTrackAutocomplete } from "../../RulesSection/LegacyTracks/LegacyT
 import { ConditionMeterAutocomplete } from "../../RulesSection/ConditionMeters/ConditionMeterAutocomplete";
 import { StatAutocomplete } from "../../RulesSection/Stats/StatAutocomplete";
 import { ProgressTrackSelect } from "./ProgressTrackSelect";
+import {
+  useCreateHomebrewContentMutation,
+  useUpdateHomebrewContentMutation,
+} from "hooks/queries/useHomebrewQuery";
 
 export interface MoveFormDialogProps {
   homebrewId: string;
@@ -93,8 +97,8 @@ export function MoveDialogForm(props: MoveFormDialogProps) {
       : {},
   });
 
-  const createMove = useStore((store) => store.homebrew.createMove);
-  const updateMove = useStore((store) => store.homebrew.updateMove);
+  const createMove = useCreateHomebrewContentMutation(homebrewId);
+  const updateMove = useUpdateHomebrewContentMutation(homebrewId);
 
   const onSubmit: SubmitHandler<Form> = (values) => {
     setLoading(true);
@@ -146,7 +150,11 @@ export function MoveDialogForm(props: MoveFormDialogProps) {
     }
 
     if (existingMoveId) {
-      updateMove(existingMoveId, move)
+      updateMove
+        .mutateAsync({
+          contentId: existingMoveId,
+          dataJson: move,
+        })
         .then(() => {
           setLoading(false);
           onClose();
@@ -155,7 +163,11 @@ export function MoveDialogForm(props: MoveFormDialogProps) {
           setLoading(false);
         });
     } else {
-      createMove(move)
+      createMove
+        .mutateAsync({
+          contentType: "move",
+          dataJson: move,
+        })
         .then(() => {
           setLoading(false);
           onClose();

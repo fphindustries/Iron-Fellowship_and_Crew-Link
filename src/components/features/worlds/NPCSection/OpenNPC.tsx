@@ -34,6 +34,12 @@ import { PageWithImage } from "../common/PageWithImage";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
 import { ignoreApiError } from "config/api.config";
 import { AiTriggerButton } from "components/shared/AiTriggerButton";
+import {
+  useDeleteNPCMutation,
+  useUpdateNPCMutation,
+  useUpdateNPCNotesMutation,
+} from "hooks/queries/useWorldEntitiesQuery";
+import { fileToBase64 } from "lib/storage.lib";
 
 const defaultNPCSpeciesOptions: {
   enum: DefaultNPCSpecies;
@@ -124,31 +130,57 @@ export function OpenNPC(props: OpenNPCProps) {
   const usingNewLocations = useNewMaps();
   useListenToCurrentNPC(npcId);
 
-  const updateNPC = useStore(
-    (store) => store.worlds.currentWorld.currentWorldNPCs.updateNPC
-  );
-  const deleteNPC = useStore(
-    (store) => store.worlds.currentWorld.currentWorldNPCs.deleteNPC
-  );
-  const uploadNPCImage = useStore(
-    (store) => store.worlds.currentWorld.currentWorldNPCs.uploadNPCImage
-  );
-  const removeNPCImage = useStore(
-    (store) => store.worlds.currentWorld.currentWorldNPCs.removeNPCImage
-  );
-  const updateNPCGMProperties = useStore(
-    (store) => store.worlds.currentWorld.currentWorldNPCs.updateNPCGMProperties
-  );
+  const updateNPC = useUpdateNPCMutation(worldId);
+  const updateNPCNotes = useUpdateNPCNotesMutation(worldId);
+  const deleteNPC = useDeleteNPCMutation(worldId);
 
-  const updateNPCGMNotes = useStore(
-    (store) => store.worlds.currentWorld.currentWorldNPCs.updateNPCGMNotes
-  );
-  const updateNPCNotes = useStore(
-    (store) => store.worlds.currentWorld.currentWorldNPCs.updateNPCNotes
-  );
+  const buildNPCPatch = (partialNPC: Partial<NPCDocumentWithGMProperties>) => {
+    const {
+      name: _existingName,
+      imageFilenames: _existingImageFilenames,
+      gmProperties: _existingGMProperties,
+      notes: _existingNotes,
+      imageUrl: _existingImageUrl,
+      updatedDate: _existingUpdatedDate,
+      createdDate: _existingCreatedDate,
+      ...existingData
+    } = npc as Partial<NPCDocumentWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+    const {
+      name,
+      imageFilenames,
+      gmProperties: _gmProperties,
+      notes: _notes,
+      imageUrl: _imageUrl,
+      updatedDate: _updatedDate,
+      createdDate: _createdDate,
+      ...nextData
+    } = partialNPC as Partial<NPCDocumentWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+
+    const patch: Record<string, unknown> = {
+      dataJson: { ...existingData, ...nextData },
+    };
+    if (name !== undefined) patch.name = name;
+    if (imageFilenames !== undefined) patch.imageFilenames = imageFilenames;
+    return patch;
+  };
+
+  const updateNPCDocument = (doc: Partial<NPCDocumentWithGMProperties>) =>
+    updateNPC.mutateAsync({ npcId, patch: buildNPCPatch(doc) });
+
+  const updateNPCGMProperties = (
+    gmProperties: Partial<NonNullable<NPCDocumentWithGMProperties["gmProperties"]>>
+  ) =>
+    updateNPCNotes.mutateAsync({
+      npcId,
+      gmProperties: { ...(npc.gmProperties ?? {}), ...gmProperties },
+    });
 
   const handleUpdateNPC = (doc: Partial<NPC>) => {
-    updateNPC(npcId, doc).catch(ignoreApiError);
+    updateNPCDocument(doc).catch(ignoreApiError);
   };
 
   const handleNPCDelete = () => {
@@ -163,7 +195,8 @@ export function OpenNPC(props: OpenNPCProps) {
       },
     })
       .then(() => {
-        deleteNPC(npcId)
+        deleteNPC
+          .mutateAsync(npcId)
           .catch(ignoreApiError)
           .then(() => {
             closeNPC();
@@ -187,17 +220,27 @@ export function OpenNPC(props: OpenNPCProps) {
 
   const singleplayerBond = isCharacterBondedToNPC || false;
 
-  const updateNPCCharacterBond = useStore(
-    (store) => store.worlds.currentWorld.currentWorldNPCs.updateNPCCharacterBond
-  );
-  const updateNPCCharacterBondValue = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldNPCs.updateNPCCharacterBondValue
-  );
-  const updateNPCCharacterConnection = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldNPCs.updateNPCCharacterConnection
-  );
+  const updateNPCCharacterBond = (characterId: string, bonded: boolean) =>
+    updateNPCDocument({
+      characterBonds: { ...(npc.characterBonds ?? {}), [characterId]: bonded },
+    });
+  const updateNPCCharacterBondValue = (characterId: string, value: number) =>
+    updateNPCDocument({
+      characterBondProgress: {
+        ...(npc.characterBondProgress ?? {}),
+        [characterId]: value,
+      },
+    });
+  const updateNPCCharacterConnection = (
+    characterId: string,
+    connected: boolean
+  ) =>
+    updateNPCDocument({
+      characterConnections: {
+        ...(npc.characterConnections ?? {}),
+        [characterId]: connected,
+      },
+    });
 
   const isStarforged = useGameSystemValue({
     [GAME_SYSTEMS.IRONSWORN]: false,
@@ -238,7 +281,13 @@ export function OpenNPC(props: OpenNPCProps) {
         );
         return;
       }
-      uploadNPCImage(npcId, file).catch(ignoreApiError);
+      fileToBase64(file)
+        .then((imageUrl) =>
+          updateNPCDocument({ imageFilenames: [imageUrl] }).catch(
+            ignoreApiError
+          )
+        )
+        .catch(ignoreApiError);
     }
   };
 
@@ -282,7 +331,9 @@ export function OpenNPC(props: OpenNPCProps) {
           joinOracleTables={isStarforged}
           initialValue={npc.name}
           updateValue={(newName) =>
-            updateNPC(npcId, { name: newName }).catch(ignoreApiError)
+            updateNPCDocument({ name: newName })
+              .then(() => undefined)
+              .catch(ignoreApiError)
           }
           fullWidth={true}
           sx={{
@@ -293,11 +344,15 @@ export function OpenNPC(props: OpenNPCProps) {
       handleImageUpload={onFileUpload}
       handleIconSelection={(icon) => {
         if (npc.imageUrl) {
-          removeNPCImage(npcId).catch(ignoreApiError);
+          updateNPCDocument({ imageFilenames: [] }).catch(ignoreApiError);
         }
-        updateNPC(npcId, { icon }).catch(ignoreApiError);
+        updateNPCDocument({ icon }).catch(ignoreApiError);
       }}
-      handleImageRemove={() => removeNPCImage(npcId).catch(ignoreApiError)}
+      handleImageRemove={() =>
+        updateNPCDocument({ imageFilenames: [] })
+          .then(() => undefined)
+          .catch(ignoreApiError)
+      }
       handlePageClose={closeNPC}
       hideBorder={hideBorder}
     >
@@ -411,9 +466,7 @@ export function OpenNPC(props: OpenNPCProps) {
                       label={"Descriptor"}
                       initialValue={npc?.gmProperties?.descriptor ?? ""}
                       updateValue={(descriptor) =>
-                        updateNPCGMProperties(npcId, { descriptor }).catch(
-                          () => {}
-                        )
+                        updateNPCGMProperties({ descriptor }).catch(() => {})
                       }
                       oracleTableId="classic/oracles/character/descriptor"
                     />
@@ -425,9 +478,7 @@ export function OpenNPC(props: OpenNPCProps) {
                       label={"First Look"}
                       initialValue={npc?.gmProperties?.firstLook ?? ""}
                       updateValue={(firstLook) =>
-                        updateNPCGMProperties(npcId, { firstLook }).catch(
-                          () => {}
-                        )
+                        updateNPCGMProperties({ firstLook }).catch(() => {})
                       }
                       oracleTableId="starforged/oracles/characters/first_look"
                     />
@@ -438,7 +489,7 @@ export function OpenNPC(props: OpenNPCProps) {
                     label={"Role"}
                     initialValue={npc?.gmProperties?.role ?? ""}
                     updateValue={(role) =>
-                      updateNPCGMProperties(npcId, { role }).catch(ignoreApiError)
+                      updateNPCGMProperties({ role }).catch(ignoreApiError)
                     }
                     oracleTableId={npcRoleOracle}
                   />
@@ -448,9 +499,7 @@ export function OpenNPC(props: OpenNPCProps) {
                     label={"Disposition"}
                     initialValue={npc?.gmProperties?.disposition ?? ""}
                     updateValue={(disposition) =>
-                      updateNPCGMProperties(npcId, { disposition }).catch(
-                        () => {}
-                      )
+                      updateNPCGMProperties({ disposition }).catch(() => {})
                     }
                     oracleTableId={npcDispositionOracle}
                   />
@@ -461,9 +510,7 @@ export function OpenNPC(props: OpenNPCProps) {
                       label={"Activity"}
                       initialValue={npc?.gmProperties?.activity ?? ""}
                       updateValue={(activity) =>
-                        updateNPCGMProperties(npcId, { activity }).catch(
-                          () => {}
-                        )
+                        updateNPCGMProperties({ activity }).catch(() => {})
                       }
                       oracleTableId="delve/oracles/character/activity"
                     />
@@ -474,7 +521,7 @@ export function OpenNPC(props: OpenNPCProps) {
                     label={"Goal"}
                     initialValue={npc?.gmProperties?.goal ?? ""}
                     updateValue={(goal) =>
-                      updateNPCGMProperties(npcId, { goal }).catch(ignoreApiError)
+                      updateNPCGMProperties({ goal }).catch(ignoreApiError)
                     }
                     oracleTableId={npcGoalOracle}
                   />
@@ -485,7 +532,7 @@ export function OpenNPC(props: OpenNPCProps) {
                       label={"Revealed Aspect"}
                       initialValue={npc?.gmProperties?.revealedAspect ?? ""}
                       updateValue={(revealedAspect) =>
-                        updateNPCGMProperties(npcId, {
+                        updateNPCGMProperties({
                           revealedAspect,
                         }).catch(ignoreApiError)
                       }
@@ -507,7 +554,7 @@ export function OpenNPC(props: OpenNPCProps) {
                         <Checkbox
                           checked={npc.sharedWithPlayers ?? false}
                           onChange={(evt, value) =>
-                            updateNPC(npcId, {
+                            updateNPCDocument({
                               sharedWithPlayers: value,
                             }).catch(ignoreApiError)
                           }
@@ -526,7 +573,6 @@ export function OpenNPC(props: OpenNPCProps) {
                       currentCharacterId
                         ? (bonded) =>
                             updateNPCCharacterBond(
-                              npcId,
                               currentCharacterId,
                               bonded
                             ).catch(ignoreApiError)
@@ -541,7 +587,6 @@ export function OpenNPC(props: OpenNPCProps) {
                       currentCharacterId
                         ? (value) =>
                             updateNPCCharacterBondValue(
-                              npcId,
                               currentCharacterId,
                               value
                             )
@@ -555,7 +600,6 @@ export function OpenNPC(props: OpenNPCProps) {
                       currentCharacterId
                         ? (connected) =>
                             updateNPCCharacterConnection(
-                              npcId,
                               currentCharacterId,
                               connected
                             ).catch(ignoreApiError)
@@ -573,7 +617,17 @@ export function OpenNPC(props: OpenNPCProps) {
                     id={npcId}
                     roomPrefix={`iron-fellowship-${worldId}-npc-gmnotes-`}
                     documentPassword={worldId}
-                    onSave={updateNPCGMNotes}
+                    onSave={(_documentId, notes) =>
+                      updateNPCNotes
+                        .mutateAsync({
+                          npcId,
+                          gmProperties: {
+                            ...(npc.gmProperties ?? {}),
+                            gmNotes: Array.from(notes),
+                          },
+                        })
+                        .then(() => undefined)
+                    }
                     initialValue={npc.gmProperties?.gmNotes}
                   />
                 </Grid>
@@ -592,7 +646,6 @@ export function OpenNPC(props: OpenNPCProps) {
                     currentCharacterId
                       ? (bonded) =>
                           updateNPCCharacterBond(
-                            npcId,
                             currentCharacterId,
                             bonded
                           ).catch(ignoreApiError)
@@ -611,7 +664,6 @@ export function OpenNPC(props: OpenNPCProps) {
                     currentCharacterId
                       ? (value) =>
                           updateNPCCharacterBondValue(
-                            npcId,
                             currentCharacterId,
                             value
                           )
@@ -621,7 +673,6 @@ export function OpenNPC(props: OpenNPCProps) {
                     currentCharacterId
                       ? (connected) =>
                           updateNPCCharacterConnection(
-                            npcId,
                             currentCharacterId,
                             connected
                           ).catch(ignoreApiError)
@@ -647,7 +698,11 @@ export function OpenNPC(props: OpenNPCProps) {
                       id={npcId}
                       roomPrefix={`iron-fellowship-${worldId}-npc-`}
                       documentPassword={worldId}
-                      onSave={updateNPCNotes}
+                      onSave={(_documentId, notes) =>
+                        updateNPCNotes
+                          .mutateAsync({ npcId, notes })
+                          .then(() => undefined)
+                      }
                       initialValue={npc.notes || undefined}
                     />
                   )}

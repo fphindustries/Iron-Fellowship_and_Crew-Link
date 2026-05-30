@@ -17,6 +17,7 @@ import { useConfirm } from "material-ui-confirm";
 import { AssetPreviewCard } from "./AssetPreviewCard";
 import { MoveAssetDialog } from "./Assets/MoveAssetDialog";
 import { ignoreApiError } from "config/api.config";
+import { useDeleteHomebrewContentMutation } from "hooks/queries/useHomebrewQuery";
 
 export interface AssetsSectionProps {
   homebrewId: string;
@@ -58,10 +59,8 @@ export function AssetsSection(props: AssetsSectionProps) {
     .sort((a1, a2) => assets[a1].label.localeCompare(assets[a2].label));
 
   const confirm = useConfirm();
+  const deleteContent = useDeleteHomebrewContentMutation(homebrewId);
 
-  const deleteAssetCollection = useStore(
-    (store) => store.homebrew.deleteAssetCollection
-  );
   const handleDeleteAssetCollection = (
     collectionName: string,
     collectionId: string
@@ -78,11 +77,17 @@ export function AssetsSection(props: AssetsSectionProps) {
     })
       .then(() => {
         setOpenCollectionKey(undefined);
-        deleteAssetCollection(homebrewId, collectionId).catch(ignoreApiError);
+        Promise.all(
+          Object.keys(assets)
+            .filter((assetId) => assets[assetId].categoryKey === collectionId)
+            .map((assetId) => deleteContent.mutateAsync(assetId))
+        )
+          .then(() => deleteContent.mutateAsync(collectionId))
+          .catch(ignoreApiError);
       })
       .catch(ignoreApiError);
   };
-  const deleteAsset = useStore((store) => store.homebrew.deleteAsset);
+
   const handleDeleteAsset = (assetName: string, assetId: string) => {
     confirm({
       title: `Delete ${assetName}`,
@@ -95,7 +100,7 @@ export function AssetsSection(props: AssetsSectionProps) {
       },
     })
       .then(() => {
-        deleteAsset(assetId).catch(ignoreApiError);
+        deleteContent.mutateAsync(assetId).catch(ignoreApiError);
       })
       .catch(ignoreApiError);
   };

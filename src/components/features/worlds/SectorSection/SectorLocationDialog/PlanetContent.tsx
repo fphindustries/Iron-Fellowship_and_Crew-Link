@@ -4,6 +4,7 @@ import { useStore } from "stores/store";
 import { StarforgedLocationPlanet } from "types/SectorLocations.type";
 import { GuideOnlyHeader } from "../../common";
 import { ignoreApiError } from "config/api.config";
+import { useSectorLocationMutations } from "./useSectorLocationMutations";
 
 export interface PlanetContentProps {
   locationId: string;
@@ -27,10 +28,7 @@ export function PlanetContent(props: PlanetContentProps) {
   const { subType } = location;
   const baseSubTypeId = `starforged/oracles/planets/${subType}`;
 
-  const updateLocation = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldSectors.locations.updateLocation
-  );
+  const { updateLocation } = useSectorLocationMutations();
 
   const updateClass = (planetClass: string) => {
     const convertedClass = planetClass?.split(" ")[0].toLocaleLowerCase();

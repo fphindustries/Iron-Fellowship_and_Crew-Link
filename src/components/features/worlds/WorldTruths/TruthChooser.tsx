@@ -14,6 +14,7 @@ import CheckIcon from "@mui/icons-material/CheckCircle";
 import { Datasworn } from "@datasworn/core";
 import { TruthCard } from "./TruthCard";
 import { CUSTOM_TRUTH_INDEX } from "./customTruthIndex";
+import { useUpdateWorldMutation } from "hooks/queries/useWorldsQuery";
 
 export interface TruthChooserProps {
   truthKey: string;
@@ -27,6 +28,10 @@ export function TruthChooser(props: TruthChooserProps) {
   const storedTruth: Truth | undefined = useStore(
     (store) =>
       (store.worlds.currentWorld.currentWorld?.newTruths ?? {})[truthKey]
+  );
+  const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
+  const newTruths = useStore(
+    (store) => store.worlds.currentWorld.currentWorld?.newTruths ?? {}
   );
 
   const [selectedOptionIndex, setSelectedOptionIndex] = useState(
@@ -43,9 +48,11 @@ export function TruthChooser(props: TruthChooserProps) {
     storedTruth?.customTruth?.questStarter ?? ""
   );
 
-  const updateWorldTruth = useStore(
-    (store) => store.worlds.currentWorld.updateCurrentWorldTruth
-  );
+  const updateWorld = useUpdateWorldMutation(worldId);
+  const updateWorldTruth = (updatedTruth: Truth) =>
+    updateWorld.mutateAsync({
+      newTruthsJson: { ...newTruths, [truthKey]: updatedTruth },
+    });
   const selectTruthOption = (truthOptionIndex: number) => {
     setSelectedOptionIndex(truthOptionIndex);
     setSelectedSubOptionIndex(null);
@@ -61,7 +68,7 @@ export function TruthChooser(props: TruthChooserProps) {
       };
     }
 
-    updateWorldTruth(truthKey, updatedTruth).catch(() => {
+    updateWorldTruth(updatedTruth).catch(() => {
       setSelectedOptionIndex(storedTruth?.selectedTruthOptionIndex);
       setSelectedSubOptionIndex(storedTruth?.selectedSubItemIndex ?? null);
     });
@@ -73,7 +80,7 @@ export function TruthChooser(props: TruthChooserProps) {
   ) => {
     setSelectedOptionIndex(truthOptionIndex);
     setSelectedSubOptionIndex(truthSubOptionIndex);
-    updateWorldTruth(truthKey, {
+    updateWorldTruth({
       selectedTruthOptionIndex: truthOptionIndex,
       selectedSubItemIndex: truthSubOptionIndex,
     }).catch(() => {

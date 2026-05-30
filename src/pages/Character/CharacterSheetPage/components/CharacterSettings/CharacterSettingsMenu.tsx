@@ -29,6 +29,7 @@ import { ThemeChooserDialog } from "components/shared/Layout/ThemeChooserDialog"
 import LayoutIcon from "@mui/icons-material/ViewComfy";
 import { LayoutChooserDialog } from "components/shared/Layout/LayoutChooserDialog";
 import { ignoreApiError } from "config/api.config";
+import { useDeleteCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export interface CharacterSettingsMenuProps {
   open: boolean;
@@ -62,7 +63,7 @@ export function CharacterSettingsMenu(props: CharacterSettingsMenuProps) {
 
   const { showGuidedPlayerView } = useCampaignType();
 
-  const deleteCharacter = useStore((store) => store.characters.deleteCharacter);
+  const deleteCharacter = useDeleteCharacterMutation();
   const handleDeleteCharacter = (characterId: string) => {
     confirm({
       title: "Delete Character",
@@ -74,7 +75,8 @@ export function CharacterSettingsMenu(props: CharacterSettingsMenuProps) {
       },
     })
       .then(() => {
-        deleteCharacter(characterId)
+        deleteCharacter
+          .mutateAsync(characterId)
           .then(() => {
             navigate(constructCharacterPath(CHARACTER_ROUTES.SELECT));
           })

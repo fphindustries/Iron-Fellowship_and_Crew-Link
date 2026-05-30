@@ -1,6 +1,7 @@
 import { Box } from "@mui/material";
 
 import { StatComponent } from "components/features/characters/StatComponent";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 import { useStore } from "stores/store";
 
 export function StatsSectionMobile() {
@@ -13,9 +14,10 @@ export function StatsSectionMobile() {
   const adds = useStore(
     (store) => store.characters.currentCharacter.currentCharacter?.adds ?? 0
   );
-  const updateAdds = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
   );
+  const updateAdds = useUpdateCharacterMutation(characterId ?? "");
 
   return (
     <Box mt={1} mx={-1}>
@@ -37,7 +39,7 @@ export function StatsSectionMobile() {
         ))}
         <StatComponent
           label={"Adds"}
-          updateTrack={(newValue) => updateAdds({ adds: newValue })}
+          updateTrack={(newValue) => updateAdds.mutateAsync({ adds: newValue })}
           value={adds}
           sx={{ width: 54 }}
         />

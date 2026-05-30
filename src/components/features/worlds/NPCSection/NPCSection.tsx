@@ -19,6 +19,7 @@ import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { DefaultNPCSpecies, NPC } from "types/NPCs.type";
 import { ignoreApiError } from "config/api.config";
+import { useCreateNPCMutation } from "hooks/queries/useWorldEntitiesQuery";
 
 export interface NPCSectionProps {
   isSinglePlayer?: boolean;
@@ -75,13 +76,12 @@ export function NPCSection(props: NPCSectionProps) {
   );
 
   const [createNPCLoading, setCreateNPCLoading] = useState<boolean>(false);
-  const createNPC = useStore(
-    (store) => store.worlds.currentWorld.currentWorldNPCs.createNPC
-  );
+  const createNPC = useCreateNPCMutation(worldId);
   const handleCreateNPC = () => {
     setCreateNPCLoading(true);
-    createNPC(defaultNPC)
-      .then((npcId) => setOpenNPCId(npcId))
+    createNPC
+      .mutateAsync({ name: defaultNPC.name, dataJson: defaultNPC })
+      .then((row) => setOpenNPCId(row.id as string))
       .catch(ignoreApiError)
       .finally(() => setCreateNPCLoading(false));
   };

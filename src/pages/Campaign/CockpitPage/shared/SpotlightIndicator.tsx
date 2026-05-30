@@ -124,14 +124,13 @@ export function SpotlightIndicator({
             >
               <Box
                 component="button"
-                onClick={() =>
-                  isCurrent
-                    ? setSpotlight(campaignId, {
-                        ...spotlight,
-                        current: undefined,
-                      })
-                    : handleSetCurrent(name)
-                }
+                onClick={async () => {
+                  if (isCurrent) {
+                    await setSpotlight(campaignId, { ...spotlight, current: undefined });
+                  } else {
+                    await handleSetCurrent(name);
+                  }
+                }}
                 sx={{
                   display: "flex",
                   alignItems: "center",

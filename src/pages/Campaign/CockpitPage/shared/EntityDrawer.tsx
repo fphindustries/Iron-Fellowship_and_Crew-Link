@@ -7,6 +7,8 @@ import { ProgressTrack } from "components/features/ProgressTrack";
 import { TrackStatus, TrackTypes } from "types/Track.type";
 import { EntityRef } from "./CockpitContext";
 import { KnowledgeBadge } from "./KnowledgeBadge";
+import { useUpdateCampaignTrackMutation } from "hooks/queries/useCampaignsQuery";
+import { ignoreApiError } from "config/api.config";
 
 interface EntityDrawerProps {
   entity: EntityRef | null;
@@ -135,15 +137,16 @@ function MoveDetail({ moveId }: { moveId: string }) {
 }
 
 function VowDetail({ trackId }: { trackId: string }) {
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
   const track = useStore(
     (store) =>
       store.campaigns.currentCampaign.tracks.trackMap[TrackStatus.Active]?.[
         TrackTypes.Vow
       ]?.[trackId] ?? null
   );
-  const updateTrack = useStore(
-    (store) => store.campaigns.currentCampaign.tracks.updateTrack
-  );
+  const updateTrack = useUpdateCampaignTrackMutation(campaignId);
 
   if (!track) {
     return (
@@ -167,8 +170,19 @@ function VowDetail({ trackId }: { trackId: string }) {
         difficulty={track.difficulty}
         value={track.value}
         max={40}
-        onValueChange={(value) => updateTrack(trackId, { value })}
-        onComplete={() => updateTrack(trackId, { status: TrackStatus.Completed })}
+        onValueChange={(value) =>
+          updateTrack
+            .mutateAsync({ trackId, dataJson: { ...track, value } })
+            .catch(ignoreApiError)
+        }
+        onComplete={() =>
+          updateTrack
+            .mutateAsync({
+              trackId,
+              dataJson: { ...track, status: TrackStatus.Completed },
+            })
+            .catch(ignoreApiError)
+        }
       />
     </Box>
   );

@@ -36,8 +36,9 @@ export function GuidedMoveModal({ open, onClose, intent, moveName }: GuidedMoveM
     (store) => store.aiGuide.state?.pendingProposals ?? []
   );
 
-  const move = moveName
-    ? Object.values(moveMap).find((m) => m.name === moveName)
+  const moveNameLower = moveName?.toLowerCase();
+  const move = moveNameLower
+    ? Object.values(moveMap).find((m) => m.name.toLowerCase() === moveNameLower)
     : undefined;
 
   const [step, setStep] = useState<"move" | "outcome">("move");

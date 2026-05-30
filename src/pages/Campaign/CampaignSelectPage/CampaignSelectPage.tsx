@@ -6,7 +6,7 @@ import {
   Alert,
   AlertTitle,
 } from "@mui/material";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { EmptyState } from "components/shared/EmptyState/EmptyState";
 import { CreateCampaignDialog } from "./components/CreateCampaignDialog";
 import CreateCampaignIcon from "@mui/icons-material/GroupAdd";
@@ -16,24 +16,38 @@ import { Head } from "providers/HeadProvider/Head";
 import { useStore } from "stores/store";
 import { useAppName } from "hooks/useAppName";
 import { FooterFab } from "components/shared/Layout/FooterFab";
+import { useCampaignsQuery } from "hooks/queries/useCampaignsQuery";
+import { toCampaignDocument } from "stores/campaign/campaign.slice";
+import { getErrorMessage } from "functions/getErrorMessage";
 
 export function CampaignSelectPage() {
-  const sortedCampaignIds = useStore((store) =>
-    Object.keys(store.campaigns.campaignMap).sort((key1, key2) => {
-      const name1 = store.campaigns.campaignMap[key1].name;
-      const name2 = store.campaigns.campaignMap[key2].name;
-
-      if (name1 < name2) {
-        return -1;
-      } else if (name1 > name2) {
-        return 1;
-      }
-      return 0;
-    })
+  const uid = useStore((store) => store.auth.user?.id);
+  const { data: campaignRows = [], isLoading: loading, error } = useCampaignsQuery(uid);
+  const campaignMap = useMemo(
+    () =>
+      Object.fromEntries(
+        campaignRows.map((row) => [row.id, toCampaignDocument(row)])
+      ),
+    [campaignRows]
   );
-  const campaignMap = useStore((store) => store.campaigns.campaignMap);
-  const loading = useStore((store) => store.campaigns.loading);
-  const error = useStore((store) => store.campaigns.error);
+  const sortedCampaignIds = useMemo(
+    () =>
+      Object.keys(campaignMap).sort((key1, key2) => {
+        const name1 = campaignMap[key1].name;
+        const name2 = campaignMap[key2].name;
+
+        if (name1 < name2) {
+          return -1;
+        } else if (name1 > name2) {
+          return 1;
+        }
+        return 0;
+      }),
+    [campaignMap]
+  );
+  const errorMessage = error
+    ? getErrorMessage(error, "Failed to load your campaigns.")
+    : undefined;
 
   const [createCampaignDialogOpen, setCreateCampaignDialogOpen] =
     useState<boolean>(false);
@@ -66,10 +80,10 @@ export function CampaignSelectPage() {
         }
       />
       <PageContent isPaper={sortedCampaignIds.length === 0}>
-        {error && (
+        {errorMessage && (
           <Alert severity="error">
             <AlertTitle>Error Loading Campaigns</AlertTitle>
-            {error}
+            {errorMessage}
           </Alert>
         )}
         {sortedCampaignIds.length === 0 ? (

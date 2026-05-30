@@ -8,14 +8,12 @@ import {
 } from "@mui/material";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { convertIdPart } from "functions/dataswornIdEncoder";
-import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "stores/store";
-import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { constructHomebrewEditorPath } from "../routes";
-import { PackageTypes } from "types/homebrew/HomebrewCollection.type";
 import { ignoreApiError } from "config/api.config";
+import { useCreateHomebrewMutation } from "hooks/queries/useHomebrewQuery";
 
 export interface CreateExpansionDialogProps {
   open: boolean;
@@ -32,12 +30,7 @@ export function CreateExpansionDialog(props: CreateExpansionDialogProps) {
   const [error, setError] = useState<string>();
 
   const uid = useStore((store) => store.auth.uid);
-  const baseRuleset = useGameSystemValue({
-    [GAME_SYSTEMS.IRONSWORN]: "classic",
-    [GAME_SYSTEMS.STARFORGED]: "starforged",
-  });
-
-  const createExpansion = useStore((store) => store.homebrew.createExpansion);
+  const createHomebrew = useCreateHomebrewMutation();
 
   const handleCreate = () => {
     let idSlug: string = "";
@@ -54,17 +47,14 @@ export function CreateExpansionDialog(props: CreateExpansionDialogProps) {
       setError(`ID ${idSlug} is already taken. Please change the package name`);
       return;
     }
-    createExpansion({
-      id: idSlug,
-      type: PackageTypes.Expansion,
-      title: collectionName,
-      creator: uid,
-      editors: [uid],
-      rulesetId: baseRuleset,
-    })
-      .then((id) => {
+    createHomebrew
+      .mutateAsync({
+        name: collectionName,
+        editors: [uid],
+      })
+      .then((collection) => {
         onClose();
-        navigate(constructHomebrewEditorPath(id));
+        navigate(constructHomebrewEditorPath(collection.id));
       })
       .catch(ignoreApiError);
   };

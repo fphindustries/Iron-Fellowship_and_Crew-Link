@@ -26,6 +26,10 @@ import { SectionHeading } from "components/shared/SectionHeading";
 import { AssetAbilities } from "./AssetAbilities";
 import { AssetOptions } from "./AssetOptions";
 import { AssetControls } from "./AssetControls";
+import {
+  useCreateHomebrewContentMutation,
+  useUpdateHomebrewContentMutation,
+} from "hooks/queries/useHomebrewQuery";
 
 export interface AssetDialogFormProps {
   homebrewId: string;
@@ -70,8 +74,8 @@ export function AssetDialogForm(props: AssetDialogFormProps) {
 
   const { errors, touchedFields, disabled } = formState;
 
-  const createAsset = useStore((store) => store.homebrew.createAsset);
-  const updateAsset = useStore((store) => store.homebrew.updateAsset);
+  const createContent = useCreateHomebrewContentMutation(homebrewId);
+  const updateContent = useUpdateHomebrewContentMutation(homebrewId);
 
   const onSubmit: SubmitHandler<Form> = (values) => {
     setLoading(true);
@@ -117,7 +121,11 @@ export function AssetDialogForm(props: AssetDialogFormProps) {
     }
 
     if (existingAssetId) {
-      updateAsset(existingAssetId, asset)
+      updateContent
+        .mutateAsync({
+          contentId: existingAssetId,
+          dataJson: asset,
+        })
         .then(() => {
           setLoading(false);
           onClose();
@@ -126,7 +134,11 @@ export function AssetDialogForm(props: AssetDialogFormProps) {
           setLoading(false);
         });
     } else {
-      createAsset(asset)
+      createContent
+        .mutateAsync({
+          contentType: "asset",
+          dataJson: asset,
+        })
         .then(() => {
           setLoading(false);
           onClose();

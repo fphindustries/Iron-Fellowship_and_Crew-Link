@@ -1,7 +1,7 @@
 import { CreateSliceType } from "stores/store.type";
 import { AIGuideSlice } from "./aiGuide.slice.type";
 import { defaultAIGuideSlice } from "./aiGuide.slice.default";
-import { defaultAIGuideState, AIGuideState, CanonFact, FocusMode, SpotlightState } from "types/AIGuideState.type";
+import { defaultAIGuideState, AIGuideState, CanonFact } from "types/AIGuideState.type";
 import { getAIGuideState } from "api/ai/getAIGuideState";
 import { updateAIGuideState } from "api/ai/updateAIGuideState";
 
@@ -27,12 +27,18 @@ export const createAIGuideSlice: CreateSliceType<AIGuideSlice> = (set, getState)
   },
 
   saveGuideState: async (campaignId, state) => {
+    const previousState = getState().aiGuide.state;
     set((store) => {
       store.aiGuide.isSaving = true;
       store.aiGuide.state = state;
     });
     try {
       await updateAIGuideState(campaignId, state);
+    } catch (e) {
+      set((store) => {
+        store.aiGuide.state = previousState;
+      });
+      throw e;
     } finally {
       set((store) => {
         store.aiGuide.isSaving = false;
@@ -50,13 +56,11 @@ export const createAIGuideSlice: CreateSliceType<AIGuideSlice> = (set, getState)
   },
 
   addCanonFact: async (campaignId, fact) => {
-    const current = getState().aiGuide.state ?? defaultAIGuideState;
-    if (current.canonFacts.includes(fact)) return;
-    const updated: AIGuideState = {
-      ...current,
-      canonFacts: [...current.canonFacts, fact],
-    };
-    await getState().aiGuide.saveGuideState(campaignId, updated);
+    await getState().aiGuide.addCanonToLedger(campaignId, {
+      text: fact,
+      source: "ai",
+      status: "proposed",
+    });
   },
 
   addCanonToLedger: async (campaignId, entry) => {
@@ -118,33 +122,17 @@ export const createAIGuideSlice: CreateSliceType<AIGuideSlice> = (set, getState)
 
   applyClockAdvance: async (campaignId, clockId, clockLabel, advanceBy) => {
     const current = getState().aiGuide.state ?? defaultAIGuideState;
-    // Try to find the clock by id first, then by label
     const matchClock = (c: { id: string; label: string }) =>
       (clockId && c.id === clockId) || (clockLabel && c.label === clockLabel);
 
     const existingIndex = current.tensionClocks.findIndex(matchClock);
-    let tensionClocks = [...current.tensionClocks];
+    if (existingIndex < 0) return; // no matching clock — skip, don't auto-create
 
-    if (existingIndex >= 0) {
-      const existing = tensionClocks[existingIndex];
-      tensionClocks[existingIndex] = {
-        ...existing,
-        filled: Math.min(existing.filled + advanceBy, existing.segments),
-      };
-    } else if (clockLabel) {
-      // New tension clock the AI referenced — create it with default shape
-      tensionClocks = [
-        ...tensionClocks,
-        {
-          id: clockId ?? `${Date.now()}`,
-          label: clockLabel,
-          segments: 6,
-          filled: Math.max(0, advanceBy),
-          hiddenFromPlayers: true,
-          consequence: "",
-        },
-      ];
-    }
+    const tensionClocks = current.tensionClocks.map((c, i) =>
+      i === existingIndex
+        ? { ...c, filled: Math.min(c.filled + advanceBy, c.segments) }
+        : c
+    );
 
     const updated: AIGuideState = { ...current, tensionClocks };
     await getState().aiGuide.saveGuideState(campaignId, updated);
@@ -152,12 +140,12 @@ export const createAIGuideSlice: CreateSliceType<AIGuideSlice> = (set, getState)
 
   setFocusMode: async (campaignId, mode) => {
     const current = getState().aiGuide.state ?? defaultAIGuideState;
-    await getState().aiGuide.saveGuideState(campaignId, { ...current, focusMode: mode as FocusMode });
+    await getState().aiGuide.saveGuideState(campaignId, { ...current, focusMode: mode });
   },
 
   setSpotlight: async (campaignId, spotlight) => {
     const current = getState().aiGuide.state ?? defaultAIGuideState;
-    await getState().aiGuide.saveGuideState(campaignId, { ...current, spotlight: spotlight as SpotlightState });
+    await getState().aiGuide.saveGuideState(campaignId, { ...current, spotlight });
   },
 
   resetStore: () => {

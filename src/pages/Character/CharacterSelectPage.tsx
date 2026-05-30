@@ -25,16 +25,29 @@ import { FooterFab } from "components/shared/Layout/FooterFab";
 import { LinkComponent } from "components/shared/LinkComponent";
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
+import { useMemo } from "react";
+import { useCharactersQuery } from "hooks/queries/useCharactersQuery";
+import { toCharacterDocument } from "stores/character/character.slice";
+import { getErrorMessage } from "functions/getErrorMessage";
 
 export function Component() {
-  const characters = useStore((store) => store.characters.characterMap);
-  const isLoading = useStore((store) => store.characters.loading);
-  const errorMessage = useStore((store) => store.characters.error);
+  const uid = useStore((store) => store.auth.user?.id);
+  const { data: characterRows = [], isLoading, error } = useCharactersQuery(uid);
   const appName = useAppName();
   const showGuidedCreate = useGameSystemValue({
     [GAME_SYSTEMS.IRONSWORN]: false,
     [GAME_SYSTEMS.STARFORGED]: true,
   });
+  const characters = useMemo(
+    () =>
+      Object.fromEntries(
+        characterRows.map((row) => [row.id, toCharacterDocument(row)])
+      ),
+    [characterRows]
+  );
+  const errorMessage = error
+    ? getErrorMessage(error, "Failed to load your characters.")
+    : undefined;
 
   if (isLoading) {
     return <LinearProgress color={"primary"} />;

@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import { constructCharacterCreateInCampaignUrl, constructCharacterGuidedCreateInCampaignUrl } from "pages/Character/routes";
 import { useStore } from "stores/store";
 import { useState } from "react";
+import { useUpdateCampaignCharacterMutation } from "hooks/queries/useCampaignsQuery";
 
 export interface AddCharacterDialogProps {
   open: boolean;
@@ -26,18 +27,19 @@ export function AddCharacterDialog(props: AddCharacterDialogProps) {
 
   const characters = useStore((store) => store.characters.characterMap);
   const isLoading = useStore((store) => store.characters.loading);
+  const uid = useStore((store) => store.auth.uid);
 
-  const addCharacterToCampaign = useStore(
-    (store) => store.campaigns.currentCampaign.addCharacter
-  );
+  const addCharacterToCampaign = useUpdateCampaignCharacterMutation(campaignId);
   const [addCharacterLoading, setAddCharacterLoading] = useState(false);
 
   const addCharacter = (characterId: string) => {
     setAddCharacterLoading(true);
-    addCharacterToCampaign(characterId).finally(() => {
-      setAddCharacterLoading(false);
-      handleClose();
-    });
+    addCharacterToCampaign
+      .mutateAsync({ characterId, userId: uid })
+      .finally(() => {
+        setAddCharacterLoading(false);
+        handleClose();
+      });
   };
 
   return (

@@ -2,6 +2,8 @@ import { Grid } from "@mui/material";
 import { NonLinearMeter } from "components/features/charactersAndCampaigns/NonLinearMeter";
 import { useStore } from "stores/store";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
+import { useUpdateCampaignMutation } from "hooks/queries/useCampaignsQuery";
 
 const getMdSize = (optionLength: number): number => {
   if (optionLength <= 6) {
@@ -16,6 +18,9 @@ const getMdSize = (optionLength: number): number => {
 export function NonLinearMeters() {
   const nonLinearMeters = useStore((store) => store.rules.nonLinearMeters);
 
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
   const characterValues = useStore(
     (store) =>
       store.characters.currentCharacter.currentCharacter?.customTracks ?? {}
@@ -29,24 +34,31 @@ export function NonLinearMeters() {
     (store) => store.campaigns.currentCampaign.currentCampaignId
   );
 
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
-  const updateCampaign = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaign
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
+  const updateCampaign = useUpdateCampaignMutation(campaignId ?? "");
 
   const updateTrackValue = (id: string, index: number) => {
     const meter = nonLinearMeters[id];
     if (campaignId && meter.shared) {
-      updateCampaign({
-        [`customTracks.${meter.dataswornId}`]: index,
-      });
+      updateCampaign
+        .mutateAsync({
+          customTracksJson: {
+            ...campaignValues,
+            [meter.dataswornId]: index,
+          },
+        })
+        .catch(ignoreApiError);
+      return;
     }
-    updateCharacter({
-      [`customTracks.${meter.dataswornId}`]: index,
-      [`customTracks.${meter.label}`]: index,
-    }).catch(ignoreApiError);
+    updateCharacter
+      .mutateAsync({
+        customTracksJson: {
+          ...characterValues,
+          [meter.dataswornId]: index,
+          [meter.label]: index,
+        },
+      })
+      .catch(ignoreApiError);
   };
 
   return (

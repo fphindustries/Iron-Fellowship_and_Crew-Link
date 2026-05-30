@@ -23,6 +23,11 @@ import { ROLL_RESULT } from "types/DieRolls.type";
 import { TrackTypes } from "types/Track.type";
 import { useRoller } from "stores/appState/useRoller";
 import { useJourneyTracks, JourneyTrackEntry } from "./useJourneyTracks";
+import {
+  useUpdateCharacterMutation,
+  useUpdateCharacterTrackMutation,
+} from "hooks/queries/useCharactersQuery";
+import { useUpdateCampaignTrackMutation } from "hooks/queries/useCampaignsQuery";
 
 const REACH_YOUR_DESTINATION_MOVE_ID =
   "classic/moves/adventure/reach_your_destination";
@@ -51,15 +56,15 @@ export function ReachYourDestinationDialog({
   const logStatChangeEvent = useStore((s) => s.sessionLog.logStatChangeEvent);
   const logProgressEvent = useStore((s) => s.sessionLog.logProgressEvent);
 
-  const updateCurrentCharacter = useStore(
-    (s) => s.characters.currentCharacter.updateCurrentCharacter
+  const characterId = useStore(
+    (s) => s.characters.currentCharacter.currentCharacterId
   );
-  const updateCharacterTrack = useStore(
-    (s) => s.characters.currentCharacter.tracks.updateTrack
+  const campaignId = useStore(
+    (s) => s.campaigns.currentCampaign.currentCampaignId
   );
-  const updateCampaignTrack = useStore(
-    (s) => s.campaigns.currentCampaign.tracks.updateTrack
-  );
+  const updateCurrentCharacter = useUpdateCharacterMutation(characterId ?? "");
+  const updateCharacterTrack = useUpdateCharacterTrackMutation(characterId);
+  const updateCampaignTrack = useUpdateCampaignTrackMutation(campaignId);
   const momentum = useStore(
     (s) =>
       s.characters.currentCharacter.currentCharacter?.momentum ?? 0
@@ -119,7 +124,7 @@ export function ReachYourDestinationDialog({
 
       if (rollResult === ROLL_RESULT.HIT) {
         if (strongHitChoice === "adds") {
-          await updateCurrentCharacter({ adds: adds + 1 });
+          await updateCurrentCharacter.mutateAsync({ adds: adds + 1 });
           logStatChangeEvent({
             stat: "Adds",
             previousValue: adds,
@@ -128,7 +133,9 @@ export function ReachYourDestinationDialog({
           });
         } else {
           if (newMomentumPreview !== momentum) {
-            await updateCurrentCharacter({ momentum: newMomentumPreview });
+            await updateCurrentCharacter.mutateAsync({
+              momentum: newMomentumPreview,
+            });
             logStatChangeEvent({
               stat: "Momentum",
               previousValue: momentum,
@@ -142,9 +149,15 @@ export function ReachYourDestinationDialog({
         const newValue = 4; // 1 box remaining
         const prevValue = selectedEntry.track.value;
         if (selectedEntry.source === "campaign") {
-          await updateCampaignTrack(selectedEntry.id, { value: newValue });
+          await updateCampaignTrack.mutateAsync({
+            trackId: selectedEntry.id,
+            dataJson: { value: newValue },
+          });
         } else {
-          await updateCharacterTrack(selectedEntry.id, { value: newValue });
+          await updateCharacterTrack.mutateAsync({
+            trackId: selectedEntry.id,
+            dataJson: { value: newValue },
+          });
         }
         logProgressEvent({
           trackName: selectedEntry.track.label,

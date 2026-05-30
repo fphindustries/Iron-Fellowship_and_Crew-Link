@@ -10,6 +10,7 @@ import MoveIcon from "@mui/icons-material/DriveFileMove";
 import ViewIcon from "@mui/icons-material/Visibility";
 import { MoveOracleTableDialog } from "./MoveOracleTableDialog";
 import { ignoreApiError } from "config/api.config";
+import { useDeleteHomebrewContentMutation } from "hooks/queries/useHomebrewQuery";
 
 export interface OracleTableCardProps {
   oracleId: string;
@@ -23,7 +24,7 @@ export function OracleTableCard(props: OracleTableCardProps) {
   const { oracleId, oracle, onClick, collections, isEditor } = props;
   const confirm = useConfirm();
 
-  const deleteOracle = useStore((store) => store.homebrew.deleteOracleTable);
+  const deleteContent = useDeleteHomebrewContentMutation(oracle.collectionId);
   const handleDeleteOracle = () => {
     confirm({
       title: `Delete ${oracle.label}`,
@@ -36,7 +37,7 @@ export function OracleTableCard(props: OracleTableCardProps) {
       },
     })
       .then(() => {
-        deleteOracle(oracleId).catch(ignoreApiError);
+        deleteContent.mutateAsync(oracleId).catch(ignoreApiError);
       })
       .catch(ignoreApiError);
   };

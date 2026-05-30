@@ -3,6 +3,7 @@ import { SectionHeading } from "components/shared/SectionHeading";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "stores/store";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateWorldMutation } from "hooks/queries/useWorldsQuery";
 
 export function WorldNameSection() {
   const worldName = useStore(
@@ -11,15 +12,17 @@ export function WorldNameSection() {
   const [tmpWorldName, setTmpWorldName] = useState(worldName);
 
   const [loading, setLoading] = useState(false);
-  const updateWorld = useStore(
-    (store) => store.worlds.currentWorld.updateCurrentWorld
+  const worldId = useStore(
+    (store) => store.worlds.currentWorld.currentWorldId
   );
+  const updateWorld = useUpdateWorldMutation(worldId);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = () => {
     setLoading(true);
-    updateWorld({ name: tmpWorldName })
+    updateWorld
+      .mutateAsync({ name: tmpWorldName })
       .catch(ignoreApiError)
       .finally(() => {
         setLoading(false);

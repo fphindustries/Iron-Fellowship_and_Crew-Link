@@ -19,6 +19,7 @@ import { MovesSection } from "./MovesSection";
 import { AssetsSection } from "./AssetsSection";
 import { useSnackbar } from "providers/SnackbarProvider";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateHomebrewMutation } from "hooks/queries/useHomebrewQuery";
 
 enum TABS {
   ABOUT = "about",
@@ -75,19 +76,18 @@ export function HomebrewEditorPage() {
 
   const { success } = useSnackbar();
 
-  const updateHomebrewCollection = useStore(
-    (store) => store.homebrew.updateExpansion
-  );
+  const updateHomebrewCollection = useUpdateHomebrewMutation(homebrewId ?? "");
   const addSelfAsViewer = useCallback(() => {
     if (homebrewId && uid) {
       const currentViewers = homebrewCollections[homebrewId]?.base?.viewers ?? [];
-      updateHomebrewCollection(homebrewId, { viewers: [...currentViewers, uid] })
+      updateHomebrewCollection
+        .mutateAsync({ viewers: [...currentViewers, uid] })
         .catch(ignoreApiError)
         .then(() => {
           success("Added collection to your homebrew");
         });
     }
-  }, [uid, updateHomebrewCollection, homebrewId, success]);
+  }, [uid, updateHomebrewCollection, homebrewId, homebrewCollections, success]);
 
   if (loading || (!homebrewDetails && syncLoading)) {
     return <LinearProgress />;

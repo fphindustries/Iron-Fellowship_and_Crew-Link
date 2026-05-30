@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useStore } from "stores/store";
 import { HomebrewOracleCollectionDocument } from "types/homebrew/HomebrewOracleCollection.type";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateHomebrewContentMutation } from "hooks/queries/useHomebrewQuery";
 
 export interface MoveOracleCollectionDialogProps {
   open: boolean;
@@ -41,16 +42,27 @@ export function MoveOracleCollectionDialog(
     setCollectionId(parentOracleCollectionId);
   }, [parentOracleCollectionId]);
 
-  const updateOracleCollection = useStore(
-    (store) => store.homebrew.updateOracleCollection
+  const oracleCollection = useStore((store) =>
+    Object.values(store.homebrew.collections).find(
+      (collection) =>
+        !!collection.oracleCollections?.data?.[oracleCollectionId]
+    )?.oracleCollections?.data?.[oracleCollectionId]
+  );
+  const updateContent = useUpdateHomebrewContentMutation(
+    oracleCollection?.collectionId
   );
   const handleMove = () => {
-    updateOracleCollection(
-      oracleCollectionId,
-      collectionId
-        ? { parentOracleCollectionId: collectionId }
-        : { parentOracleCollectionId: null as any }
-    )
+    if (!oracleCollection) {
+      return;
+    }
+    updateContent
+      .mutateAsync({
+        contentId: oracleCollectionId,
+        dataJson: {
+          ...oracleCollection,
+          parentOracleCollectionId: collectionId ?? null,
+        },
+      })
       .then(() => {
         onClose();
       })

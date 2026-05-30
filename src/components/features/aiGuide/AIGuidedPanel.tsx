@@ -23,6 +23,7 @@ import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { useAIGuideQueue } from "hooks/useAIGuideQueue";
 import { BookkeeperOutput } from "types/AI.type";
+import { useApplyBookkeeperSuggestion } from "hooks/useApplyBookkeeperSuggestion";
 
 function buildContext(
   gameSystem: GAME_SYSTEMS,
@@ -247,7 +248,7 @@ function ProposalCard(props: {
   onTriggerBookkeeping: () => void;
 }) {
   const { proposal, campaignId, onAccept, onDismiss, onTriggerBookkeeping } = props;
-  const applyBookkeeperSuggestion = useStore((s) => s.ai.applyBookkeeperSuggestion);
+  const applyBookkeeperSuggestion = useApplyBookkeeperSuggestion();
   const addCanonFact = useStore((s) => s.aiGuide.addCanonFact);
   const [bookkeepingApplied, setBookkeepingApplied] = useState(false);
 

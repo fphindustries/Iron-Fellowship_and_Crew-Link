@@ -8,6 +8,8 @@ import { TensionClock } from "types/AIGuideState.type";
 import { useState } from "react";
 import { useCockpit } from "../shared/CockpitContext";
 import { KnowledgeBadge } from "../shared/KnowledgeBadge";
+import { useUpdateCampaignTrackMutation } from "hooks/queries/useCampaignsQuery";
+import { ignoreApiError } from "config/api.config";
 
 export function CockpitRightRail() {
   const campaignId = useStore(
@@ -16,14 +18,11 @@ export function CockpitRightRail() {
   const trackMap = useStore(
     (store) => store.campaigns.currentCampaign.tracks.trackMap
   );
-  const updateTrack = useStore(
-    (store) => store.campaigns.currentCampaign.tracks.updateTrack
-  );
+  const updateTrack = useUpdateCampaignTrackMutation(campaignId);
   const tensionClocks = useStore(
     (store) => store.aiGuide.state?.tensionClocks ?? []
   );
   const saveGuideState = useStore((store) => store.aiGuide.saveGuideState);
-  const guideState = useStore((store) => store.aiGuide.state);
 
   const activeVows = Object.entries(
     trackMap[TrackStatus.Active]?.[TrackTypes.Vow] ?? {}
@@ -38,7 +37,9 @@ export function CockpitRightRail() {
   const { openEntity } = useCockpit();
 
   const handleAdvanceTensionClock = async (clock: TensionClock) => {
-    if (!campaignId || !guideState) return;
+    if (!campaignId) return;
+    const guideState = useStore.getState().aiGuide.state;
+    if (!guideState) return;
     const newFilled = Math.min(clock.segments, clock.filled + 1);
     await saveGuideState(campaignId, {
       ...guideState,
@@ -97,9 +98,21 @@ export function CockpitRightRail() {
                   value={track.value}
                   max={40}
                   hideRollButton
-                  onValueChange={(value) => updateTrack(trackId, { value })}
+                  onValueChange={(value) =>
+                    updateTrack
+                      .mutateAsync({
+                        trackId,
+                        dataJson: { ...track, value },
+                      })
+                      .catch(ignoreApiError)
+                  }
                   onComplete={() =>
-                    updateTrack(trackId, { status: TrackStatus.Completed })
+                    updateTrack
+                      .mutateAsync({
+                        trackId,
+                        dataJson: { ...track, status: TrackStatus.Completed },
+                      })
+                      .catch(ignoreApiError)
                   }
                 />
                 <Tooltip title="View details">
@@ -141,9 +154,21 @@ export function CockpitRightRail() {
                   value={track.value}
                   max={40}
                   hideRollButton
-                  onValueChange={(value) => updateTrack(trackId, { value })}
+                  onValueChange={(value) =>
+                    updateTrack
+                      .mutateAsync({
+                        trackId,
+                        dataJson: { ...track, value },
+                      })
+                      .catch(ignoreApiError)
+                  }
                   onComplete={() =>
-                    updateTrack(trackId, { status: TrackStatus.Completed })
+                    updateTrack
+                      .mutateAsync({
+                        trackId,
+                        dataJson: { ...track, status: TrackStatus.Completed },
+                      })
+                      .catch(ignoreApiError)
                   }
                 />
               ))}
@@ -172,7 +197,20 @@ export function CockpitRightRail() {
                     segments={clock.segments ?? 4}
                     value={clock.value}
                     size="small"
-                    onClick={() => updateTrack(trackId, { value: Math.min(clock.segments ?? 4, clock.value + 1) })}
+                    onClick={() =>
+                      updateTrack
+                        .mutateAsync({
+                          trackId,
+                          dataJson: {
+                            ...clock,
+                            value: Math.min(
+                              clock.segments ?? 4,
+                              clock.value + 1
+                            ),
+                          },
+                        })
+                        .catch(ignoreApiError)
+                    }
                   />
                   <Typography variant="caption" textAlign="center" sx={{ lineHeight: 1.2, wordBreak: "break-word" }}>
                     {clock.label}

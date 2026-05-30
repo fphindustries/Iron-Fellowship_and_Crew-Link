@@ -1,15 +1,22 @@
 import { Box, Typography } from "@mui/material";
 import { MobileStatTrack } from "pages/Character/CharacterSheetPage/components/MobileStatTrack";
 import { useStore } from "stores/store";
+import { useUpdateCampaignMutation } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export function CharacterConditionMeters() {
   const conditionMeters = useStore((store) => store.rules.conditionMeters);
   const isInCampaign = useStore(
     (store) => !!store.characters.currentCharacter.currentCharacter?.campaignId
   );
-  const updateCampaignConditionMeter = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaignConditionMeter
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
   );
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
+  const updateCampaign = useUpdateCampaignMutation(campaignId ?? "");
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
   const updateConditionMeter = (
     conditionMeterKey: string,
     newValue: number
@@ -17,14 +24,21 @@ export function CharacterConditionMeters() {
     const conditionMeter = conditionMeters[conditionMeterKey];
 
     if (conditionMeter.shared && isInCampaign) {
-      return updateCampaignConditionMeter(conditionMeterKey, newValue);
+      return updateCampaign.mutateAsync({
+        conditionMetersJson: {
+          ...(campaignConditionMeters ?? {}),
+          [conditionMeterKey]: newValue,
+        },
+      });
     } else {
-      return updateCharacterConditionMeter(conditionMeterKey, newValue);
+      return updateCharacter.mutateAsync({
+        conditionMetersJson: {
+          ...(characterConditionMeters ?? {}),
+          [conditionMeterKey]: newValue,
+        },
+      });
     }
   };
-  const updateCharacterConditionMeter = useStore(
-    (store) => store.characters.currentCharacter.updateCharacterConditionMeter
-  );
 
   const characterConditionMeters = useStore(
     (store) =>

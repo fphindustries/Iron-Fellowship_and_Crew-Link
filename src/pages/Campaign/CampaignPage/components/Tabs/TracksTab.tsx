@@ -1,7 +1,11 @@
 import { Container, Grid, Stack } from "@mui/material";
 import { SectionHeading } from "components/shared/SectionHeading";
 import { Track } from "components/features/Track";
-import { TrackStatus, TrackTypes } from "types/Track.type";
+import {
+  TrackStatus,
+  TrackTypes,
+  ProgressTrack as ProgressTrackDocument,
+} from "types/Track.type";
 import {
   ProgressTrack,
   ProgressTrackList,
@@ -11,6 +15,8 @@ import { ClockSection } from "components/features/charactersAndCampaigns/Clocks/
 import { useGameSystem } from "hooks/useGameSystem";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCampaignMutation } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCharacterTrackMutation } from "hooks/queries/useCharactersQuery";
 
 export function TracksTab() {
   const isStarforged = useGameSystem().gameSystem === GAME_SYSTEMS.STARFORGED;
@@ -19,19 +25,16 @@ export function TracksTab() {
   const conditionMeterValues = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaign?.conditionMeters
   );
-  const updateCampaignConditionMeter = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaignConditionMeter
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
   );
+  const updateCampaign = useUpdateCampaignMutation(campaignId ?? "");
 
   const characterTracks = useStore(
     (store) => store.campaigns.currentCampaign.characters.characterTracks
   );
   const characters = useStore(
     (store) => store.campaigns.currentCampaign.characters.characterMap
-  );
-
-  const updateCharacterProgressTrack = useStore(
-    (store) => store.campaigns.currentCampaign.tracks.updateCharacterTrack
   );
 
   return (
@@ -51,7 +54,14 @@ export function TracksTab() {
                   }
                   label={conditionMeterRules[cm].label}
                   onChange={(newValue) =>
-                    updateCampaignConditionMeter(cm, newValue).catch(ignoreApiError)
+                    updateCampaign
+                      .mutateAsync({
+                        conditionMetersJson: {
+                          ...(conditionMeterValues ?? {}),
+                          [cm]: newValue,
+                        },
+                      })
+                      .catch(ignoreApiError)
                   }
                 />
               </Grid>
@@ -94,32 +104,16 @@ export function TracksTab() {
                   <Stack mt={2} spacing={4} mb={4} px={{ xs: 2, sm: 3 }}>
                     {Object.keys(
                       characterTracks[characterId]?.[TrackTypes.Vow] ?? {}
-                    ).map((trackId, index) => {
-                      const track =
-                        characterTracks[characterId][TrackTypes.Vow][trackId];
-                      return (
-                        <ProgressTrack
-                          key={index}
-                          status={track.status}
-                          trackType={TrackTypes.Vow}
-                          label={track.label}
-                          description={track.description}
-                          difficulty={track.difficulty}
-                          value={track.value}
-                          max={40}
-                          onValueChange={(value) =>
-                            updateCharacterProgressTrack(characterId, trackId, {
-                              value,
-                            })
-                          }
-                          onComplete={() =>
-                            updateCharacterProgressTrack(characterId, trackId, {
-                              status: TrackStatus.Completed,
-                            })
-                          }
-                        />
-                      );
-                    })}
+                    ).map((trackId) => (
+                      <CharacterProgressTrack
+                        key={trackId}
+                        characterId={characterId}
+                        trackId={trackId}
+                        track={
+                          characterTracks[characterId][TrackTypes.Vow][trackId]
+                        }
+                      />
+                    ))}
                   </Stack>
                 </>
               )}
@@ -128,5 +122,39 @@ export function TracksTab() {
       </div>
       <ClockSection />
     </Stack>
+  );
+}
+
+function CharacterProgressTrack(props: {
+  characterId: string;
+  trackId: string;
+  track: ProgressTrackDocument;
+}) {
+  const { characterId, trackId, track } = props;
+  const updateCharacterTrack = useUpdateCharacterTrackMutation(characterId);
+
+  return (
+    <ProgressTrack
+      status={track.status}
+      trackType={TrackTypes.Vow}
+      label={track.label}
+      description={track.description}
+      difficulty={track.difficulty}
+      value={track.value}
+      max={40}
+      onValueChange={(value) =>
+        updateCharacterTrack
+          .mutateAsync({ trackId, dataJson: { ...track, value } })
+          .catch(ignoreApiError)
+      }
+      onComplete={() =>
+        updateCharacterTrack
+          .mutateAsync({
+            trackId,
+            dataJson: { ...track, status: TrackStatus.Completed },
+          })
+          .catch(ignoreApiError)
+      }
+    />
   );
 }

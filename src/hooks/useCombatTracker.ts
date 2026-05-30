@@ -13,6 +13,14 @@ import { useActiveCombatQuery } from "hooks/queries/useCombatQuery";
 import { api } from "config/api.config";
 import { useQueryClient } from "@tanstack/react-query";
 import { combatKeys } from "hooks/queries/useCombatQuery";
+import {
+  useCreateCharacterTrackMutation,
+  useUpdateCharacterTrackMutation,
+} from "hooks/queries/useCharactersQuery";
+import {
+  useCreateCampaignTrackMutation,
+  useUpdateCampaignTrackMutation,
+} from "hooks/queries/useCampaignsQuery";
 
 export function useCombatTracker() {
   const qc = useQueryClient();
@@ -30,24 +38,14 @@ export function useCombatTracker() {
   );
   const logCombatEndEvent = useStore((s) => s.sessionLog.logCombatEndEvent);
 
-  const updateCharacterTrack = useStore(
-    (s) => s.characters.currentCharacter.tracks.updateTrack
+  const updateCharacterTrack = useUpdateCharacterTrackMutation(
+    characterId ?? undefined
   );
-  const updateCampaignTrack = useStore(
-    (s) => s.campaigns.currentCampaign.tracks.updateTrack
+  const updateCampaignTrack = useUpdateCampaignTrackMutation(campaignId);
+  const createCharacterTrack = useCreateCharacterTrackMutation(
+    characterId ?? undefined
   );
-  const addCharacterTrack = useStore(
-    (s) => s.characters.currentCharacter.tracks.addTrack
-  );
-  const addCampaignTrack = useStore(
-    (s) => s.campaigns.currentCampaign.tracks.addTrack
-  );
-  const deleteCharacterTrack = useStore(
-    (s) => s.characters.currentCharacter.tracks.deleteTrack
-  );
-  const deleteCampaignTrack = useStore(
-    (s) => s.campaigns.currentCampaign.tracks.deleteTrack
-  );
+  const createCampaignTrack = useCreateCampaignTrackMutation(campaignId);
 
   const characterFrayTracks = useStore(
     (s) =>
@@ -119,10 +117,16 @@ export function useCombatTracker() {
     };
     let trackId: string | undefined;
     if (campaignId) {
-      const row = await addCampaignTrack(frayTrackData);
+      const row = await createCampaignTrack.mutateAsync({
+        type: frayTrackData.type,
+        dataJson: frayTrackData,
+      });
       trackId = (row as any)?.id;
     } else {
-      const row = await addCharacterTrack(frayTrackData);
+      const row = await createCharacterTrack.mutateAsync({
+        type: frayTrackData.type,
+        dataJson: frayTrackData,
+      });
       trackId = (row as any)?.id;
     }
 
@@ -183,9 +187,15 @@ export function useCombatTracker() {
     const step = getDifficultyStep(frayTrack.difficulty) * times;
     const newValue = Math.min(40, frayTrack.value + step);
     if (campaignId) {
-      await updateCampaignTrack(frayTrack.id, { value: newValue });
+      await updateCampaignTrack.mutateAsync({
+        trackId: frayTrack.id,
+        dataJson: { value: newValue },
+      });
     } else {
-      await updateCharacterTrack(frayTrack.id, { value: newValue });
+      await updateCharacterTrack.mutateAsync({
+        trackId: frayTrack.id,
+        dataJson: { value: newValue },
+      });
     }
   };
 
@@ -197,9 +207,15 @@ export function useCombatTracker() {
 
     if (activeCombat?.trackId) {
       if (campaignId) {
-        await deleteCampaignTrack(activeCombat.trackId);
+        await updateCampaignTrack.mutateAsync({
+          trackId: activeCombat.trackId,
+          remove: true,
+        });
       } else {
-        await deleteCharacterTrack(activeCombat.trackId);
+        await updateCharacterTrack.mutateAsync({
+          trackId: activeCombat.trackId,
+          remove: true,
+        });
       }
     }
 

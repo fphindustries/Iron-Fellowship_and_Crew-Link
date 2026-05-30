@@ -19,6 +19,7 @@ import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { ignoreApiError } from "config/api.config";
 import {
   useCampaignStarshipQuery,
+  useUpdateCampaignAssetMutation,
 } from "hooks/queries/useCampaignsQuery";
 import { StarshipCard, StarshipDialog } from "./StarshipSection";
 
@@ -51,27 +52,14 @@ export function SharedAssetSection() {
   const sharedAssetsLoading = useStore(
     (store) => store.characters.currentCharacter.assets.loading
   );
-  const addSharedAsset = useStore(
-    (store) => store.campaigns.currentCampaign.assets.addAsset
-  );
-  const removeSharedAsset = useStore(
-    (store) => store.campaigns.currentCampaign.assets.removeAsset
-  );
-  const updateSharedAssetCheckbox = useStore(
-    (store) => store.campaigns.currentCampaign.assets.updateAssetCheckbox
-  );
-  const updateSharedAssetOption = useStore(
-    (store) => store.campaigns.currentCampaign.assets.updateAssetOption
-  );
-  const updateSharedAssetControl = useStore(
-    (store) => store.campaigns.currentCampaign.assets.updateAssetControl
-  );
+  const updateSharedAsset = useUpdateCampaignAssetMutation(campaignId);
 
   const [addAssetLoading, setAddAssetLoading] = useState(false);
 
   const handleAssetAdd = (asset: AssetDocument) => {
     setAddAssetLoading(true);
-    addSharedAsset(asset)
+    updateSharedAsset
+      .mutateAsync({ dataJson: asset })
       .catch(ignoreApiError)
       .finally(() => {
         setIsAssetDialogOpen(false);
@@ -92,7 +80,69 @@ export function SharedAssetSection() {
       },
     })
       .then(() => {
-        removeSharedAsset(assetId).catch(ignoreApiError);
+        updateSharedAsset
+          .mutateAsync({ assetId, remove: true })
+          .catch(ignoreApiError);
+      })
+      .catch(ignoreApiError);
+  };
+
+  const handleAssetAbilityToggle = (
+    assetId: string,
+    abilityIndex: number,
+    checked: boolean
+  ) => {
+    const existing = sharedAssets[assetId];
+    if (!existing) return;
+    updateSharedAsset
+      .mutateAsync({
+        assetId,
+        dataJson: {
+          ...existing,
+          enabledAbilities: {
+            ...(existing.enabledAbilities ?? {}),
+            [abilityIndex]: checked,
+          },
+        },
+      })
+      .catch(ignoreApiError);
+  };
+
+  const handleAssetOptionChange = (
+    assetId: string,
+    optionKey: string,
+    value: string
+  ) => {
+    const existing = sharedAssets[assetId];
+    if (!existing) return;
+    updateSharedAsset
+      .mutateAsync({
+        assetId,
+        dataJson: {
+          ...existing,
+          optionValues: { ...(existing.optionValues ?? {}), [optionKey]: value },
+        },
+      })
+      .catch(ignoreApiError);
+  };
+
+  const handleAssetControlChange = (
+    assetId: string,
+    controlKey: string,
+    value: boolean | string | number
+  ) => {
+    const existing = sharedAssets[assetId];
+    if (!existing) return;
+    updateSharedAsset
+      .mutateAsync({
+        assetId,
+        dataJson: {
+          ...existing,
+          controlValues: {
+            ...(existing.controlValues ?? {}),
+            [controlKey]: value,
+          },
+        },
       })
       .catch(ignoreApiError);
   };
@@ -155,13 +205,13 @@ export function SharedAssetSection() {
                   storedAsset={sharedAssets[assetId]}
                   onAssetRemove={() => handleClick(assetId)}
                   onAssetAbilityToggle={(abilityIndex, checked) =>
-                    updateSharedAssetCheckbox(assetId, abilityIndex, checked)
+                    handleAssetAbilityToggle(assetId, abilityIndex, checked)
                   }
                   onAssetOptionChange={(optionKey, value) =>
-                    updateSharedAssetOption(assetId, optionKey, value)
+                    handleAssetOptionChange(assetId, optionKey, value)
                   }
                   onAssetControlChange={(controlKey, value) =>
-                    updateSharedAssetControl(assetId, controlKey, value)
+                    handleAssetControlChange(assetId, controlKey, value)
                   }
                 />
               </Grid>

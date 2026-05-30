@@ -19,6 +19,11 @@ import { NonLinearMeterDialog } from "./NonLinearMeterDialog";
 import { ClampedMarkdownRenderer } from "components/shared/ClampedMarkdownRenderer";
 import { NonLinearMeterPreviewDialog } from "./NonLinearMeterPreviewDialog";
 import { ignoreApiError } from "config/api.config";
+import {
+  useCreateHomebrewContentMutation,
+  useDeleteHomebrewContentMutation,
+  useUpdateHomebrewContentMutation,
+} from "hooks/queries/useHomebrewQuery";
 
 export interface NonLinearMetersProps {
   homebrewId: string;
@@ -46,15 +51,9 @@ export function NonLinearMeters(props: NonLinearMetersProps) {
     string | undefined
   >(undefined);
 
-  const createNonLinearMeter = useStore(
-    (store) => store.homebrew.createNonLinearMeter
-  );
-  const updateNonLinearMeter = useStore(
-    (store) => store.homebrew.updateNonLinearMeter
-  );
-  const deleteNonLinearMeter = useStore(
-    (store) => store.homebrew.deleteNonLinearMeter
-  );
+  const createNonLinearMeter = useCreateHomebrewContentMutation(homebrewId);
+  const updateNonLinearMeter = useUpdateHomebrewContentMutation(homebrewId);
+  const deleteNonLinearMeter = useDeleteHomebrewContentMutation(homebrewId);
 
   if (nonLinearMetersLoading) {
     return <></>;
@@ -62,9 +61,15 @@ export function NonLinearMeters(props: NonLinearMetersProps) {
 
   const handleDialogOutput = (meter: HomebrewNonLinearMeterDocument) => {
     if (editingNonLinearMeterKey) {
-      return updateNonLinearMeter(editingNonLinearMeterKey, meter);
+      return updateNonLinearMeter.mutateAsync({
+        contentId: editingNonLinearMeterKey,
+        dataJson: meter,
+      }).then(() => undefined);
     } else {
-      return createNonLinearMeter(meter);
+      return createNonLinearMeter.mutateAsync({
+        contentType: "nonLinearMeter",
+        dataJson: meter,
+      }).then(() => undefined);
     }
   };
 
@@ -80,7 +85,7 @@ export function NonLinearMeters(props: NonLinearMetersProps) {
       },
     })
       .then(() => {
-        deleteNonLinearMeter(meterId).catch(ignoreApiError);
+        deleteNonLinearMeter.mutateAsync(meterId).catch(ignoreApiError);
       })
       .catch(ignoreApiError);
   };

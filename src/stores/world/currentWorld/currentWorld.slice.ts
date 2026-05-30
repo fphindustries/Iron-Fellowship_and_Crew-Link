@@ -50,45 +50,6 @@ export const createCurrentWorldSlice: CreateSliceType<CurrentWorldSlice> = (
       await api.patch(`/api/worlds/${worldId}`, { newTruths });
     },
 
-    subscribeToWorldAiSettings: (worldId) => {
-      let active = true;
-      set((store) => {
-        store.worlds.currentWorld.worldAiSettingsLoading = true;
-      });
-
-      api
-        .get<any>(`/api/worlds/${worldId}/ai-settings`)
-        .then((settings) => {
-          if (!active) return;
-          set((store) => {
-            store.worlds.currentWorld.worldAiSettings = settings ?? undefined;
-            store.worlds.currentWorld.worldAiSettingsLoading = false;
-          });
-        })
-        .catch(() => {
-          if (!active) return;
-          set((store) => {
-            store.worlds.currentWorld.worldAiSettingsLoading = false;
-          });
-        });
-
-      return () => {
-        active = false;
-      };
-    },
-
-    updateWorldAiSettings: async (settings) => {
-      const worldId = getState().worlds.currentWorld.currentWorldId;
-      if (!worldId) return Promise.reject("No world id defined.");
-      await api.patch(`/api/worlds/${worldId}/ai-settings`, settings);
-      set((store) => {
-        const current = store.worlds.currentWorld.worldAiSettings;
-        store.worlds.currentWorld.worldAiSettings = current
-          ? { ...current, ...settings }
-          : (settings as any);
-      });
-    },
-
     resetStore: () => {
       const state = getState();
       state.worlds.currentWorld.currentWorldLocations.resetStore();

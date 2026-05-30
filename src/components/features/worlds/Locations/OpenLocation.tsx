@@ -48,6 +48,12 @@ import { useState } from "react";
 import { MoveLocationDialog } from "./MoveLocationDialog";
 import { LocationBreadcrumbs } from "./LocationBreadcrumbs";
 import { ignoreApiError } from "config/api.config";
+import {
+  useDeleteLocationMutation,
+  useUpdateLocationMutation,
+  useUpdateLocationNotesMutation,
+} from "hooks/queries/useWorldEntitiesQuery";
+import { fileToBase64 } from "lib/storage.lib";
 
 export interface OpenLocationProps {
   worldId: string;
@@ -94,29 +100,55 @@ export function OpenLocation(props: OpenLocationProps) {
   const { error } = useSnackbar();
   const confirm = useConfirm();
 
-  const updateLocation = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLocations.updateLocation
-  );
+  const updateLocation = useUpdateLocationMutation(worldId);
+  const updateLocationNotes = useUpdateLocationNotesMutation(worldId);
+  const deleteLocation = useDeleteLocationMutation(worldId);
 
-  const updateLocationGMNotes = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldLocations.updateLocationGMNotes
-  );
-  const deleteLocation = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLocations.deleteLocation
-  );
-  const updateLocationNotes = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldLocations.updateLocationNotes
-  );
-  const uploadLocationImage = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldLocations.uploadLocationImage
-  );
-  const removeLocationImage = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldLocations.removeLocationImage
-  );
+  const buildLocationPatch = (
+    partialLocation: Partial<LocationWithGMProperties>
+  ) => {
+    const {
+      name: _existingName,
+      imageFilenames: _existingImageFilenames,
+      gmProperties: _existingGMProperties,
+      notes: _existingNotes,
+      imageUrl: _existingImageUrl,
+      mapBackgroundImageUrl: _existingMapBackgroundImageUrl,
+      updatedDate: _existingUpdatedDate,
+      createdDate: _existingCreatedDate,
+      ...existingData
+    } = location as Partial<LocationWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+    const {
+      name,
+      imageFilenames,
+      gmProperties: _gmProperties,
+      notes: _notes,
+      imageUrl: _imageUrl,
+      mapBackgroundImageUrl: _mapBackgroundImageUrl,
+      updatedDate: _updatedDate,
+      createdDate: _createdDate,
+      ...nextData
+    } = partialLocation as Partial<LocationWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+
+    const patch: Record<string, unknown> = {
+      dataJson: { ...existingData, ...nextData },
+    };
+    if (name !== undefined) patch.name = name;
+    if (imageFilenames !== undefined) patch.imageFilenames = imageFilenames;
+    return patch;
+  };
+
+  const updateLocationDocument = (
+    partialLocation: Partial<LocationWithGMProperties>
+  ) =>
+    updateLocation.mutateAsync({
+      locationId,
+      patch: buildLocationPatch(partialLocation),
+    });
 
   const currentCharacterId = useStore(
     (store) => store.characters.currentCharacter.currentCharacterId
@@ -125,12 +157,6 @@ export function OpenLocation(props: OpenLocationProps) {
     currentCharacterId && location.characterBonds
       ? location.characterBonds[currentCharacterId]
       : false;
-  const updateLocationCharacterBond = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldLocations
-        .updateLocationCharacterBond
-  );
-
   const currentTab = useStore(
     (store) => store.worlds.currentWorld.currentWorldLocations.openTab
   );
@@ -159,7 +185,8 @@ export function OpenLocation(props: OpenLocationProps) {
       },
     })
       .then(() => {
-        deleteLocation(locationId)
+        deleteLocation
+          .mutateAsync(locationId)
           .catch(ignoreApiError)
           .then(() => {
             closeLocation();
@@ -167,6 +194,14 @@ export function OpenLocation(props: OpenLocationProps) {
       })
       .catch(ignoreApiError);
   };
+
+  const updateLocationCharacterBond = (characterId: string, bonded: boolean) =>
+    updateLocationDocument({
+      characterBonds: {
+        ...(location.characterBonds ?? {}),
+        [characterId]: bonded,
+      },
+    });
 
   const onFileUpload = (file: File) => {
     if (file) {
@@ -176,7 +211,13 @@ export function OpenLocation(props: OpenLocationProps) {
         );
         return;
       }
-      uploadLocationImage(locationId, file).catch(ignoreApiError);
+      fileToBase64(file)
+        .then((imageUrl) =>
+          updateLocationDocument({ imageFilenames: [imageUrl] }).catch(
+            ignoreApiError
+          )
+        )
+        .catch(ignoreApiError);
     }
   };
 
@@ -215,7 +256,7 @@ export function OpenLocation(props: OpenLocationProps) {
                   >
                     <IconButton
                       onClick={() => {
-                        updateLocation(locationId, {
+                        updateLocationDocument({
                           showMap: !location.showMap,
                         }).catch(ignoreApiError);
                       }}
@@ -255,7 +296,9 @@ export function OpenLocation(props: OpenLocationProps) {
           joinOracleTables={nameConfig?.joinOracles}
           initialValue={location.name}
           updateValue={(newName) =>
-            updateLocation(locationId, { name: newName }).catch(ignoreApiError)
+            updateLocationDocument({ name: newName })
+              .then(() => undefined)
+              .catch(ignoreApiError)
           }
           fullWidth={true}
           sx={{
@@ -266,11 +309,15 @@ export function OpenLocation(props: OpenLocationProps) {
       handleImageUpload={onFileUpload}
       handleIconSelection={(icon) => {
         if (location.imageUrl) {
-          removeLocationImage(locationId).catch(ignoreApiError);
+          updateLocationDocument({ imageFilenames: [] }).catch(ignoreApiError);
         }
-        updateLocation(locationId, { icon }).catch(ignoreApiError);
+        updateLocationDocument({ icon }).catch(ignoreApiError);
       }}
-      handleImageRemove={() => removeLocationImage(locationId)}
+      handleImageRemove={() =>
+        updateLocationDocument({ imageFilenames: [] })
+          .then(() => undefined)
+          .catch(ignoreApiError)
+      }
       handlePageClose={closeLocation}
     >
       <Box display={"flex"} flexDirection={"column"}>
@@ -312,9 +359,9 @@ export function OpenLocation(props: OpenLocationProps) {
                     ).map((config) => config.label)}
                     value={getLabelFromTypeKey(settingConfig, location.type)}
                     onChange={(evt, value) => {
-                      updateLocation(locationId, {
+                      updateLocationDocument({
                         type: getTypeKeyFromLabel(settingConfig, value),
-                      });
+                      }).catch(ignoreApiError);
                     }}
                     renderInput={(params) => (
                       <TextField
@@ -365,7 +412,7 @@ export function OpenLocation(props: OpenLocationProps) {
                             <Checkbox
                               checked={location.sharedWithPlayers ?? false}
                               onChange={(evt, value) =>
-                                updateLocation(locationId, {
+                                updateLocationDocument({
                                   sharedWithPlayers: value,
                                 }).catch(ignoreApiError)
                               }
@@ -383,7 +430,6 @@ export function OpenLocation(props: OpenLocationProps) {
                           currentCharacterId
                             ? (bonded) =>
                                 updateLocationCharacterBond(
-                                  locationId,
                                   currentCharacterId,
                                   bonded
                                 ).catch(ignoreApiError)
@@ -397,7 +443,14 @@ export function OpenLocation(props: OpenLocationProps) {
                         id={locationId}
                         roomPrefix={`iron-fellowship-${worldId}-location-gmnotes-`}
                         documentPassword={worldId}
-                        onSave={updateLocationGMNotes}
+                        onSave={(_documentId, notes) =>
+                          updateLocationNotes
+                            .mutateAsync({
+                              locationId,
+                              privateNotes: notes,
+                            })
+                            .then(() => undefined)
+                        }
                         initialValue={location.gmProperties?.gmNotes}
                       />
                     </Grid>
@@ -418,7 +471,6 @@ export function OpenLocation(props: OpenLocationProps) {
                           currentCharacterId
                             ? (bonded) =>
                                 updateLocationCharacterBond(
-                                  locationId,
                                   currentCharacterId,
                                   bonded
                                 ).catch(ignoreApiError)
@@ -441,7 +493,11 @@ export function OpenLocation(props: OpenLocationProps) {
                           id={locationId}
                           roomPrefix={`iron-fellowship-${worldId}-location-`}
                           documentPassword={worldId}
-                          onSave={updateLocationNotes}
+                          onSave={(_documentId, notes) =>
+                            updateLocationNotes
+                              .mutateAsync({ locationId, notes })
+                              .then(() => undefined)
+                          }
                           initialValue={location.notes || undefined}
                         />
                       )}

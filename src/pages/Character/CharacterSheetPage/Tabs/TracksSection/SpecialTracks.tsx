@@ -7,10 +7,18 @@ import { ExperienceTrack } from "./ExperienceTrack";
 import { ProgressTrack } from "components/features/ProgressTrack";
 import { LegacyTrack as ILegacyTrack } from "types/LegacyTrack.type";
 import { LegacyTrack } from "./LegacyTrack";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
+import { useUpdateCampaignMutation } from "hooks/queries/useCampaignsQuery";
 
 export function SpecialTracks() {
   const specialTracksRules = useStore((store) => store.rules.specialTracks);
 
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
   const isInCampaign = useStore(
     (store) => store.characters.currentCharacter.currentCharacter?.campaignId
   );
@@ -36,12 +44,23 @@ export function SpecialTracks() {
     return undefined;
   };
 
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
-  );
-  const updateCampaign = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaign
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
+  const updateCampaign = useUpdateCampaignMutation(campaignId ?? "");
+
+  const getUpdatedSpecialTracks = (
+    currentValues: Record<string, ILegacyTrack> | undefined,
+    specialTrackKey: string,
+    patch: Partial<ILegacyTrack>
+  ) => ({
+    ...(currentValues ?? {}),
+    [specialTrackKey]: {
+      value: 0,
+      isLegacy: false,
+      spentExperience: {},
+      ...(currentValues?.[specialTrackKey] ?? {}),
+      ...patch,
+    },
+  });
 
   const updateSpecialTrackValue = (
     specialTrackKey: string,
@@ -50,12 +69,20 @@ export function SpecialTracks() {
     const specialTrack = specialTracksRules[specialTrackKey];
 
     if (specialTrack.shared && isInCampaign) {
-      return updateCampaign({
-        [`specialTracks.${specialTrackKey}.value`]: newValue,
+      return updateCampaign.mutateAsync({
+        specialTracksJson: getUpdatedSpecialTracks(
+          specialTracksCampaignValues,
+          specialTrackKey,
+          { value: newValue }
+        ),
       });
     } else {
-      return updateCharacter({
-        [`specialTracks.${specialTrackKey}.value`]: newValue,
+      return updateCharacter.mutateAsync({
+        specialTracksJson: getUpdatedSpecialTracks(
+          specialTracksCharacterValues,
+          specialTrackKey,
+          { value: newValue }
+        ),
       });
     }
   };
@@ -68,12 +95,32 @@ export function SpecialTracks() {
     const specialTrack = specialTracksRules[specialTrackKey];
 
     if (specialTrack.shared && isInCampaign) {
-      return updateCampaign({
-        [`specialTracks.${specialTrackKey}.spentExperience.${index}`]: checked,
+      return updateCampaign.mutateAsync({
+        specialTracksJson: getUpdatedSpecialTracks(
+          specialTracksCampaignValues,
+          specialTrackKey,
+          {
+            spentExperience: {
+              ...(specialTracksCampaignValues?.[specialTrackKey]
+                ?.spentExperience ?? {}),
+              [index]: checked,
+            },
+          }
+        ),
       });
     } else {
-      return updateCharacter({
-        [`specialTracks.${specialTrackKey}.spentExperience.${index}`]: checked,
+      return updateCharacter.mutateAsync({
+        specialTracksJson: getUpdatedSpecialTracks(
+          specialTracksCharacterValues,
+          specialTrackKey,
+          {
+            spentExperience: {
+              ...(specialTracksCharacterValues?.[specialTrackKey]
+                ?.spentExperience ?? {}),
+              [index]: checked,
+            },
+          }
+        ),
       });
     }
   };
@@ -91,12 +138,18 @@ export function SpecialTracks() {
     };
 
     if (specialTrack.shared && isInCampaign) {
-      return updateCampaign({
-        [`specialTracks.${specialTrackKey}`]: newTrack,
+      return updateCampaign.mutateAsync({
+        specialTracksJson: {
+          ...(specialTracksCampaignValues ?? {}),
+          [specialTrackKey]: newTrack,
+        },
       });
     } else {
-      return updateCharacter({
-        [`specialTracks.${specialTrackKey}`]: newTrack,
+      return updateCharacter.mutateAsync({
+        specialTracksJson: {
+          ...(specialTracksCharacterValues ?? {}),
+          [specialTrackKey]: newTrack,
+        },
       });
     }
   };

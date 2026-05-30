@@ -126,3 +126,185 @@ export function useDeleteCampaignMutation() {
     onSuccess: () => qc.invalidateQueries({ queryKey: campaignKeys.all }),
   });
 }
+
+export function useUpdateCampaignWorldMutation(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      worldId,
+      ownerIds,
+    }: {
+      worldId: string | null;
+      ownerIds?: string[];
+    }) => {
+      await api.patch<void>(`/api/campaigns/${id}`, { worldId });
+      if (worldId) {
+        await Promise.all(
+          (ownerIds ?? []).map((userId) =>
+            api.post<void>(`/api/worlds/${worldId}/owners`, { userId }).catch(() => undefined)
+          )
+        );
+      }
+    },
+    onSuccess: () => {
+      if (!id) return;
+      qc.invalidateQueries({ queryKey: campaignKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: campaignKeys.all });
+      qc.invalidateQueries({ queryKey: ["worlds"] });
+    },
+  });
+}
+
+export function useUpdateCampaignGMMutation(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      remove,
+      worldId,
+    }: {
+      userId: string;
+      remove?: boolean;
+      worldId?: string;
+    }) => {
+      if (remove) {
+        await api.del<void>(`/api/campaigns/${id}/gms/${userId}`);
+        return;
+      }
+      await api.post<void>(`/api/campaigns/${id}/gms`, { userId });
+      if (worldId) {
+        await api.post<void>(`/api/worlds/${worldId}/owners`, { userId }).catch(() => undefined);
+      }
+    },
+    onSuccess: () => {
+      if (!id) return;
+      qc.invalidateQueries({ queryKey: campaignKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: campaignKeys.all });
+    },
+  });
+}
+
+export function useUpdateCampaignMemberMutation(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, remove }: { userId: string; remove?: boolean }) =>
+      remove
+        ? api.del<void>(`/api/campaigns/${id}/members/${userId}`)
+        : api.post<void>(`/api/campaigns/${id}/members`, { userId }),
+    onSuccess: () => {
+      if (!id) return;
+      qc.invalidateQueries({ queryKey: campaignKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: campaignKeys.all });
+    },
+  });
+}
+
+export function useLeaveCampaignMutation(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      gmIds,
+      characterIds,
+    }: {
+      userId: string;
+      gmIds?: string[];
+      characterIds?: string[];
+    }) => {
+      if (gmIds?.includes(userId)) {
+        await api.del<void>(`/api/campaigns/${id}/gms/${userId}`).catch(() => undefined);
+      }
+      await Promise.all(
+        (characterIds ?? []).map((characterId) =>
+          api.del<void>(`/api/campaigns/${id}/characters/${characterId}`).catch(() => undefined)
+        )
+      );
+      await api.del<void>(`/api/campaigns/${id}/members/${userId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: campaignKeys.all });
+      if (id) qc.invalidateQueries({ queryKey: campaignKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: ["characters"] });
+    },
+  });
+}
+
+export function useUpdateCampaignCharacterMutation(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      characterId,
+      userId,
+      remove,
+    }: {
+      characterId: string;
+      userId?: string;
+      remove?: boolean;
+    }) =>
+      remove
+        ? api.del<void>(`/api/campaigns/${id}/characters/${characterId}`)
+        : api.post<void>(`/api/campaigns/${id}/characters`, { characterId, userId }),
+    onSuccess: () => {
+      if (!id) return;
+      qc.invalidateQueries({ queryKey: campaignKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: campaignKeys.all });
+      qc.invalidateQueries({ queryKey: ["characters"] });
+    },
+  });
+}
+
+export function useUpdateCampaignAssetMutation(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      assetId,
+      dataJson,
+      remove,
+    }: {
+      assetId?: string;
+      dataJson?: object;
+      remove?: boolean;
+    }) => {
+      if (remove && assetId) return api.del<void>(`/api/campaigns/${id}/assets/${assetId}`);
+      if (assetId) return api.patch<void>(`/api/campaigns/${id}/assets/${assetId}`, dataJson);
+      return api.post<void>(`/api/campaigns/${id}/assets`, dataJson);
+    },
+    onSuccess: () => {
+      if (id) qc.invalidateQueries({ queryKey: campaignKeys.assets(id) });
+    },
+  });
+}
+
+export function useCreateCampaignTrackMutation(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ type, dataJson }: { type?: string; dataJson?: object }) =>
+      api.post<Record<string, unknown>>(`/api/campaigns/${id}/tracks`, { type, dataJson }),
+    onSuccess: () => {
+      if (id) qc.invalidateQueries({ queryKey: campaignKeys.tracks(id) });
+    },
+  });
+}
+
+export function useUpdateCampaignTrackMutation(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      trackId,
+      dataJson,
+      remove,
+    }: {
+      trackId?: string;
+      type?: string;
+      dataJson?: object;
+      remove?: boolean;
+    }) => {
+      if (remove && trackId) return api.del<void>(`/api/campaigns/${id}/tracks/${trackId}`);
+      if (trackId) return api.patch<void>(`/api/campaigns/${id}/tracks/${trackId}`, dataJson);
+      return api.post<void>(`/api/campaigns/${id}/tracks`, { dataJson });
+    },
+    onSuccess: () => {
+      if (id) qc.invalidateQueries({ queryKey: campaignKeys.tracks(id) });
+    },
+  });
+}

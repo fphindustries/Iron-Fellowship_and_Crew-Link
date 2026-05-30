@@ -5,8 +5,14 @@ import OverflowMenuIcon from "@mui/icons-material/MoreHoriz";
 import { useStore } from "stores/store";
 import { useSnackbar } from "providers/SnackbarProvider";
 import { useConfirm } from "material-ui-confirm";
-import { MAX_FILE_SIZE, MAX_FILE_SIZE_LABEL } from "lib/storage.lib";
+import {
+  fileToBase64,
+  MAX_FILE_SIZE,
+  MAX_FILE_SIZE_LABEL,
+} from "lib/storage.lib";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateLocationMutation } from "hooks/queries/useWorldEntitiesQuery";
+import { LocationWithGMProperties } from "stores/world/currentWorld/locations/locations.slice.type";
 
 export interface MapOverflowOptionsMenuProps {
   locationId: string;
@@ -27,19 +33,59 @@ export function MapOverflowOptionsMenu(props: MapOverflowOptionsMenuProps) {
   const menuParentRef = useRef<HTMLButtonElement>(null);
   const mapInputRef = useRef<HTMLInputElement>(null);
 
-  const updateLocation = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLocations.updateLocation
-  );
-  const uploadBackgroundImage = useStore(
+  const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
+  const location = useStore(
     (store) =>
-      store.worlds.currentWorld.currentWorldLocations
-        .uploadLocationMapBackground
+      store.worlds.currentWorld.currentWorldLocations.locationMap[locationId]
   );
-  const removeBackgroundImage = useStore(
-    (store) =>
-      store.worlds.currentWorld.currentWorldLocations
-        .removeLocationMapBackground
-  );
+  const updateLocation = useUpdateLocationMutation(worldId);
+
+  const buildLocationPatch = (
+    partialLocation: Partial<LocationWithGMProperties>
+  ) => {
+    const {
+      name: _existingName,
+      imageFilenames: _existingImageFilenames,
+      gmProperties: _existingGMProperties,
+      notes: _existingNotes,
+      imageUrl: _existingImageUrl,
+      mapBackgroundImageUrl: _existingMapBackgroundImageUrl,
+      updatedDate: _existingUpdatedDate,
+      createdDate: _existingCreatedDate,
+      ...existingData
+    } = location as Partial<LocationWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+    const {
+      name,
+      imageFilenames,
+      gmProperties: _gmProperties,
+      notes: _notes,
+      imageUrl: _imageUrl,
+      mapBackgroundImageUrl: _mapBackgroundImageUrl,
+      updatedDate: _updatedDate,
+      createdDate: _createdDate,
+      ...nextData
+    } = partialLocation as Partial<LocationWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+    const patch: Record<string, unknown> = {
+      dataJson: { ...existingData, ...nextData },
+    };
+    if (name !== undefined) patch.name = name;
+    if (imageFilenames !== undefined) patch.imageFilenames = imageFilenames;
+    return patch;
+  };
+
+  const updateLocationDocument = (
+    partialLocation: Partial<LocationWithGMProperties>
+  ) => {
+    if (!location) return Promise.reject("Location not found");
+    return updateLocation.mutateAsync({
+      locationId,
+      patch: buildLocationPatch(partialLocation),
+    });
+  };
 
   const { error } = useSnackbar();
   const confirm = useConfirm();
@@ -51,7 +97,13 @@ export function MapOverflowOptionsMenu(props: MapOverflowOptionsMenuProps) {
         );
         return;
       }
-      uploadBackgroundImage(locationId, file).catch(ignoreApiError);
+      fileToBase64(file)
+        .then((imageUrl) =>
+          updateLocationDocument({
+            mapBackgroundImageFilename: imageUrl,
+          }).catch(ignoreApiError)
+        )
+        .catch(ignoreApiError);
     }
   };
 
@@ -63,7 +115,9 @@ export function MapOverflowOptionsMenu(props: MapOverflowOptionsMenuProps) {
         color: "error",
       },
     }).then(() => {
-      removeBackgroundImage(locationId).catch(ignoreApiError);
+      updateLocationDocument({ mapBackgroundImageFilename: undefined }).catch(
+        ignoreApiError
+      );
     });
   };
 
@@ -103,7 +157,7 @@ export function MapOverflowOptionsMenu(props: MapOverflowOptionsMenuProps) {
           <MenuItem
             onClick={() => {
               setIsMenuOpen(false);
-              updateLocation(locationId, {
+              updateLocationDocument({
                 mapStrokeColor:
                   mapStrokeColor === MapStrokeColors.Dark
                     ? MapStrokeColors.Light
@@ -119,7 +173,7 @@ export function MapOverflowOptionsMenu(props: MapOverflowOptionsMenuProps) {
           <MenuItem
             onClick={() => {
               setIsMenuOpen(false);
-              updateLocation(locationId, {
+              updateLocationDocument({
                 mapBackgroundImageFit:
                   mapBackgroundImageFit === MapBackgroundImageFit.Contain
                     ? MapBackgroundImageFit.Cover

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useStore } from "stores/store";
 import {
   SceneChallenge,
+  Track,
   TrackSectionProgressTracks,
   TrackStatus,
   TrackTypes,
@@ -11,6 +12,8 @@ import { ProgressTrack } from "./ProgressTrack";
 import { EmptyState } from "components/shared/EmptyState";
 import { EditOrCreateTrackDialog } from "components/features/ProgressTrack";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCampaignTrackMutation } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCharacterTrackMutation } from "hooks/queries/useCharactersQuery";
 
 export interface ProgressTracksProps {
   isCampaign?: boolean;
@@ -32,6 +35,15 @@ export function ProgressTracks(props: ProgressTracksProps) {
           isCompleted ? TrackStatus.Completed : TrackStatus.Active
         ][trackType]
   );
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
+  const logProgressEvent = useStore(
+    (store) => store.sessionLog.logProgressEvent
+  );
 
   const orderedTrackIds = Object.keys(tracks).sort((trackId1, trackId2) => {
     const track1 = tracks[trackId1];
@@ -48,16 +60,28 @@ export function ProgressTracks(props: ProgressTracksProps) {
       ? tracks[currentlyEditingTrackId]
       : undefined;
 
-  const updateCampaignProgressTrack = useStore(
-    (store) => store.campaigns.currentCampaign.tracks.updateTrack
-  );
-  const updateCharacterProgressTrack = useStore(
-    (store) => store.characters.currentCharacter.tracks.updateTrack
-  );
+  const updateCampaignProgressTrack =
+    useUpdateCampaignTrackMutation(campaignId);
+  const updateCharacterProgressTrack =
+    useUpdateCharacterTrackMutation(characterId);
 
-  const updateProgressTrack = isCampaign
-    ? updateCampaignProgressTrack
-    : updateCharacterProgressTrack;
+  const updateProgressTrack = (trackId: string, track: Partial<Track>) => {
+    const existingTrack = tracks[trackId];
+    if (track.value !== undefined && existingTrack) {
+      logProgressEvent({
+        trackName: existingTrack.label,
+        trackType: existingTrack.type,
+        previousValue: existingTrack.value,
+        newValue: track.value,
+      });
+    }
+
+    const dataJson = { ...(existingTrack ?? {}), ...track };
+    const mutation = isCampaign
+      ? updateCampaignProgressTrack
+      : updateCharacterProgressTrack;
+    return mutation.mutateAsync({ trackId, dataJson });
+  };
 
   const completeProgressTrack = (trackId: string) => {
     updateProgressTrack(trackId, { status: TrackStatus.Completed }).catch(
@@ -76,16 +100,12 @@ export function ProgressTracks(props: ProgressTracksProps) {
     updateProgressTrack(trackId, { segmentsFilled }).catch(ignoreApiError);
   };
 
-  const deleteCampaignProgressTrack = useStore(
-    (store) => store.campaigns.currentCampaign.tracks.deleteTrack
-  );
-  const deleteCharacterProgressTrack = useStore(
-    (store) => store.characters.currentCharacter.tracks.deleteTrack
-  );
-
-  const deleteProgressTrack = isCampaign
-    ? deleteCampaignProgressTrack
-    : deleteCharacterProgressTrack;
+  const deleteProgressTrack = (trackId: string) => {
+    const mutation = isCampaign
+      ? updateCampaignProgressTrack
+      : updateCharacterProgressTrack;
+    return mutation.mutateAsync({ trackId, remove: true });
+  };
 
   return (
     <>

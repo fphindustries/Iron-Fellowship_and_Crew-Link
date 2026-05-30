@@ -21,6 +21,14 @@ import { useRoller } from "stores/appState/useRoller";
 import { GMLocation, LocationMap, MapEntryType } from "types/Locations.type";
 import { Difficulty } from "types/Track.type";
 import { CUSTOM_TRUTH_INDEX } from "components/features/worlds/WorldTruths/customTruthIndex";
+import {
+  useCreateLocationMutation,
+  useCreateNPCMutation,
+  useUpdateLocationMutation,
+  useUpdateLocationNotesMutation,
+  useUpdateNPCNotesMutation,
+} from "hooks/queries/useWorldEntitiesQuery";
+import { useWorldAiSettingsQuery } from "hooks/queries/useWorldsQuery";
 
 const SETTLEMENT_COUNT: Record<string, number> = {
   Terminus: 4,
@@ -255,40 +263,40 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
 
   const { rollOracleTable } = useRoller();
 
-  const createSpecificLocation = useStore(
-    (s) => s.worlds.currentWorld.currentWorldLocations.createSpecificLocation
-  );
-  const updateLocation = useStore(
-    (s) => s.worlds.currentWorld.currentWorldLocations.updateLocation
-  );
-  const updateLocationGMProperties = useStore(
-    (s) =>
-      s.worlds.currentWorld.currentWorldLocations.updateLocationGMProperties
-  );
-  const updateLocationNotes = useStore(
-    (s) => s.worlds.currentWorld.currentWorldLocations.updateLocationNotes
-  );
+  const worldId = useStore((s) => s.worlds.currentWorld.currentWorldId);
+  const createLocation = useCreateLocationMutation(worldId);
+  const updateLocation = useUpdateLocationMutation(worldId);
+  const updateLocationNotes = useUpdateLocationNotesMutation(worldId);
+  const createNPC = useCreateNPCMutation(worldId);
+  const updateNPCNotes = useUpdateNPCNotesMutation(worldId);
   const setOpenLocationId = useStore(
     (s) => s.worlds.currentWorld.currentWorldLocations.setOpenLocationId
-  );
-  const createNPC = useStore(
-    (s) => s.worlds.currentWorld.currentWorldNPCs.createNPC
-  );
-  const updateNPCGMProperties = useStore(
-    (s) => s.worlds.currentWorld.currentWorldNPCs.updateNPCGMProperties
-  );
-  const updateNPCNotes = useStore(
-    (s) => s.worlds.currentWorld.currentWorldNPCs.updateNPCNotes
   );
 
   const world = useStore((s) => s.worlds.currentWorld.currentWorld);
   const worldTruths = useStore((s) => s.rules.worldTruths);
-  const worldAiSettings = useStore(
-    (s) => s.worlds.currentWorld.worldAiSettings
-  );
+  const { data: worldAiSettings } = useWorldAiSettingsQuery(worldId);
   const oracleCollectionMap = useStore(
     (s) => s.rules.oracleMaps.oracleCollectionMap
   );
+
+  const createSpecificLocation = async (
+    location: Record<string, unknown> & { name?: string; imageFilenames?: string[] }
+  ) => {
+    const {
+      name,
+      imageFilenames,
+      updatedDate: _updatedDate,
+      createdDate: _createdDate,
+      ...dataJson
+    } = location;
+    const row = await createLocation.mutateAsync({
+      name: name ?? "New Location",
+      imageFilenames: imageFilenames ?? [],
+      dataJson,
+    });
+    return row.id as string;
+  };
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -446,11 +454,17 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
       // Store trouble + GM narrative notes in sector GM properties
       const sectorGMProps: Partial<GMLocation> = {};
       if (trouble) sectorGMProps.fields = { sectorTrouble: trouble };
-      if (aiResult?.sectorGMNotes) {
-        sectorGMProps.gmNotes = textToYjsBytes(aiResult.sectorGMNotes);
-      }
       if (Object.keys(sectorGMProps).length > 0) {
-        await updateLocationGMProperties(sectorLocationId, sectorGMProps);
+        await updateLocationNotes.mutateAsync({
+          locationId: sectorLocationId,
+          gmProperties: sectorGMProps,
+        });
+      }
+      if (aiResult?.sectorGMNotes) {
+        await updateLocationNotes.mutateAsync({
+          locationId: sectorLocationId,
+          privateNotes: textToYjsBytes(aiResult.sectorGMNotes),
+        });
       }
 
       // 8. Plan random hex positions, then create settlements and planets
@@ -478,8 +492,9 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
         if (s.projects) settlementGMFields.settlementProjects = s.projects;
         if (s.trouble) settlementGMFields.settlementTrouble = s.trouble;
         if (Object.keys(settlementGMFields).length > 0) {
-          await updateLocationGMProperties(settlementLocationId, {
-            fields: settlementGMFields,
+          await updateLocationNotes.mutateAsync({
+            locationId: settlementLocationId,
+            gmProperties: { fields: settlementGMFields },
           });
         }
 
@@ -494,12 +509,16 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
         const settlementOutput = aiResult?.settlementOutputs?.[i];
         if (settlementOutput?.publicDescription) {
           const bytes = textToYjsBytes(settlementOutput.publicDescription);
-          await updateLocationNotes(settlementLocationId, bytes, false);
+          await updateLocationNotes.mutateAsync({
+            locationId: settlementLocationId,
+            notes: bytes,
+          });
         }
         // Write AI GM notes to GM-only properties
         if (settlementOutput?.gmNotes) {
-          await updateLocationGMProperties(settlementLocationId, {
-            gmNotes: textToYjsBytes(settlementOutput.gmNotes),
+          await updateLocationNotes.mutateAsync({
+            locationId: settlementLocationId,
+            privateNotes: textToYjsBytes(settlementOutput.gmNotes),
           });
         }
 
@@ -526,14 +545,20 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
           });
           // Atmosphere is a gmField in planet config
           if (s.planet.atmosphere) {
-            await updateLocationGMProperties(planetLocationId, {
-              fields: { planetAtmosphere: s.planet.atmosphere },
+            await updateLocationNotes.mutateAsync({
+              locationId: planetLocationId,
+              gmProperties: {
+                fields: { planetAtmosphere: s.planet.atmosphere },
+              },
             });
           }
           // Write AI planet description to player-facing notes
           if (settlementOutput?.planetDescription) {
             const bytes = textToYjsBytes(settlementOutput.planetDescription);
-            await updateLocationNotes(planetLocationId, bytes, false);
+            await updateLocationNotes.mutateAsync({
+              locationId: planetLocationId,
+              notes: bytes,
+            });
           }
 
           // Place planet on map adjacent to its settlement (if a free hex was found)
@@ -565,29 +590,43 @@ export function GenerateSectorDialog(props: GenerateSectorDialogProps) {
       }
 
       // Update sector with completed hex map (locations + passages)
-      await updateLocation(sectorLocationId, {
-        map: sectorMap,
-        updatedDate: now,
+      await updateLocation.mutateAsync({
+        locationId: sectorLocationId,
+        patch: {
+          dataJson: {
+            type: "sector",
+            sharedWithPlayers: true,
+            showMap: true,
+            fields: { region },
+            map: sectorMap,
+          },
+        },
       });
 
       // 10. Create NPC connection
-      const npcId = await createNPC({
+      const npcRow = await createNPC.mutateAsync({
         name: npcName,
-        sharedWithPlayers: true,
-        rank: Difficulty.Dangerous,
+        dataJson: {
+          sharedWithPlayers: true,
+          rank: Difficulty.Dangerous,
+        },
       });
-      await updateNPCGMProperties(npcId, {
-        role: npcRole,
-        ...(aiResult?.npcFirstLook ? { firstLook: aiResult.npcFirstLook } : {}),
-        ...(aiResult?.npcGoal ? { goal: aiResult.npcGoal } : {}),
-        ...(aiResult?.npcRevealedAspect
-          ? { revealedAspect: aiResult.npcRevealedAspect }
-          : {}),
+      const npcId = npcRow.id as string;
+      await updateNPCNotes.mutateAsync({
+        npcId,
+        gmProperties: {
+          role: npcRole,
+          ...(aiResult?.npcFirstLook ? { firstLook: aiResult.npcFirstLook } : {}),
+          ...(aiResult?.npcGoal ? { goal: aiResult.npcGoal } : {}),
+          ...(aiResult?.npcRevealedAspect
+            ? { revealedAspect: aiResult.npcRevealedAspect }
+            : {}),
+        },
       });
 
       if (aiResult?.npcPublicDescription) {
         const bytes = textToYjsBytes(aiResult.npcPublicDescription);
-        await updateNPCNotes(npcId, bytes);
+        await updateNPCNotes.mutateAsync({ npcId, notes: bytes });
       }
 
       // 11. Open the new sector in the Locations section

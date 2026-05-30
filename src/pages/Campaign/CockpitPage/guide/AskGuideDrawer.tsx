@@ -55,7 +55,7 @@ export function AskGuideDrawer({ open, onClose }: AskGuideDrawerProps) {
   );
 
   const [freeform, setFreeform] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loadingMode, setLoadingMode] = useState<string | null>(null);
 
   const drawerProposals = pendingProposals.filter(
     (p) => GUIDE_RESPONSE_MODES.has(p.mode) && p.status !== "rejected"
@@ -63,11 +63,11 @@ export function AskGuideDrawer({ open, onClose }: AskGuideDrawerProps) {
 
   const handleQuickPrompt = useCallback(
     async (mode: "askOrAnswer" | "moveSuggestion" | "actionSuggestions" | "bookkeepingProposal", freeformInput?: string) => {
-      setLoading(true);
+      setLoadingMode(mode);
       try {
         await request(mode, freeformInput);
       } finally {
-        setLoading(false);
+        setLoadingMode(null);
       }
     },
     [request]
@@ -77,11 +77,11 @@ export function AskGuideDrawer({ open, onClose }: AskGuideDrawerProps) {
     if (!freeform.trim()) return;
     const text = freeform.trim();
     setFreeform("");
-    setLoading(true);
+    setLoadingMode("freeform");
     try {
       await request("askOrAnswer", text);
     } finally {
-      setLoading(false);
+      setLoadingMode(null);
     }
   }, [freeform, request]);
 
@@ -138,7 +138,7 @@ export function AskGuideDrawer({ open, onClose }: AskGuideDrawerProps) {
               label={qp.label}
               size="small"
               clickable
-              disabled={loading}
+              disabled={loadingMode !== null}
               onClick={() => handleQuickPrompt(qp.mode, qp.freeform)}
             />
           ))}
@@ -147,13 +147,13 @@ export function AskGuideDrawer({ open, onClose }: AskGuideDrawerProps) {
 
       {/* Responses */}
       <Box sx={{ flex: 1, overflow: "auto", p: 1.5 }}>
-        {drawerProposals.length === 0 && !loading && (
+        {drawerProposals.length === 0 && loadingMode === null && (
           <Typography variant="body2" color="text.disabled" textAlign="center" mt={2}>
             Ask the guide anything about the current scene.
           </Typography>
         )}
 
-        {loading && (
+        {loadingMode !== null && (
           <Box display="flex" alignItems="center" gap={1} mt={1}>
             <CircularProgress size={16} />
             <Typography variant="body2" color="text.secondary">
@@ -200,7 +200,7 @@ export function AskGuideDrawer({ open, onClose }: AskGuideDrawerProps) {
                   <span>
                     <IconButton
                       size="small"
-                      disabled={!freeform.trim() || loading}
+                      disabled={!freeform.trim() || loadingMode !== null}
                       onClick={handleAsk}
                     >
                       <SendIcon sx={{ fontSize: 16 }} />

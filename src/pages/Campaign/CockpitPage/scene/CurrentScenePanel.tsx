@@ -12,12 +12,13 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import EditIcon from "@mui/icons-material/Edit";
 import { useState } from "react";
 import { useStore } from "stores/store";
-import { useParams } from "react-router-dom";
 import { CockpitProposalCard } from "../shared/CockpitProposalCard";
 import { useCockpitAiRequest } from "../shared/useCockpitAiRequest";
 
 export function CurrentScenePanel() {
-  const { campaignId } = useParams();
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
   const scene = useStore((store) => store.aiGuide.state?.currentScene);
   const isLoading = useStore((store) => store.aiGuide.isLoading);
   const isRequesting = useStore((store) => store.ai.isRequesting);

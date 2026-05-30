@@ -2,6 +2,7 @@ import { Autocomplete, TextField } from "@mui/material";
 import { useStore } from "stores/store";
 import { Regions } from "types/Sector.type";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateSectorMutation } from "hooks/queries/useWorldEntitiesQuery";
 
 export interface SectorRegionAutocompleteProps {}
 
@@ -14,10 +15,11 @@ export function SectorRegionAutocomplete() {
     }
     return undefined;
   });
-
-  const updateRegion = useStore(
-    (store) => store.worlds.currentWorld.currentWorldSectors.updateRegion
+  const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
+  const sectorId = useStore(
+    (store) => store.worlds.currentWorld.currentWorldSectors.openSectorId
   );
+  const updateSector = useUpdateSectorMutation(worldId);
 
   const allRegions = useStore((store) => {
     const regions = new Set<string>();
@@ -44,7 +46,14 @@ export function SectorRegionAutocomplete() {
       renderOption={(props, option) => <li {...props}>{option}</li>}
       value={currentRegion ?? null}
       onChange={(evt, newValue) =>
-        updateRegion(newValue ?? undefined).catch(ignoreApiError)
+        sectorId
+          ? updateSector
+              .mutateAsync({
+                sectorId,
+                patch: { region: newValue ?? null },
+              })
+              .catch(ignoreApiError)
+          : undefined
       }
       renderInput={(params) => <TextField {...params} label={"Region"} />}
     />

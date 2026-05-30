@@ -17,6 +17,8 @@ import { LocationWithGMProperties } from "stores/world/currentWorld/locations/lo
 import { LocationItemAvatar } from "./LocationMap/LocationItemAvatar";
 import { useState } from "react";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateLocationMutation } from "hooks/queries/useWorldEntitiesQuery";
+import { MapEntryType } from "types/Locations.type";
 
 export interface MoveLocationDialogProps {
   open: boolean;
@@ -31,6 +33,8 @@ export function MoveLocationDialog(props: MoveLocationDialogProps) {
   const locationMap = useStore(
     (store) => store.worlds.currentWorld.currentWorldLocations.locationMap
   );
+  const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
+  const updateLocation = useUpdateLocationMutation(worldId);
 
   const sortedLocations = Object.keys(locationMap)
     .sort((a, b) => {
@@ -60,14 +64,10 @@ export function MoveLocationDialog(props: MoveLocationDialogProps) {
         !isLocationADescendantOf(lid, locationId, locationMap)
     );
 
-  const moveLocation = useStore(
-    (store) => store.worlds.currentWorld.currentWorldLocations.moveLocation
-  );
-
   const [moveLoading, setMoveLoading] = useState(false);
   const handleMove = (newParentId?: string) => {
     setMoveLoading(true);
-    moveLocation(locationId, location, newParentId, undefined, undefined)
+    moveLocation(newParentId)
       .then(() => {
         onClose();
       })
@@ -75,6 +75,85 @@ export function MoveLocationDialog(props: MoveLocationDialogProps) {
       .finally(() => {
         setMoveLoading(false);
       });
+  };
+
+  const buildLocationPatch = (
+    targetLocation: LocationWithGMProperties,
+    partialLocation: Partial<LocationWithGMProperties>
+  ) => {
+    const {
+      name: _existingName,
+      imageFilenames: _existingImageFilenames,
+      gmProperties: _existingGMProperties,
+      notes: _existingNotes,
+      imageUrl: _existingImageUrl,
+      mapBackgroundImageUrl: _existingMapBackgroundImageUrl,
+      updatedDate: _existingUpdatedDate,
+      createdDate: _existingCreatedDate,
+      ...existingData
+    } = targetLocation as Partial<LocationWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+    const {
+      name,
+      imageFilenames,
+      gmProperties: _gmProperties,
+      notes: _notes,
+      imageUrl: _imageUrl,
+      mapBackgroundImageUrl: _mapBackgroundImageUrl,
+      updatedDate: _updatedDate,
+      createdDate: _createdDate,
+      ...nextData
+    } = partialLocation as Partial<LocationWithGMProperties> & {
+      imageFilenames?: string[];
+    };
+    const patch: Record<string, unknown> = {
+      dataJson: { ...existingData, ...nextData },
+    };
+    if (name !== undefined) patch.name = name;
+    if (imageFilenames !== undefined) patch.imageFilenames = imageFilenames;
+    return patch;
+  };
+
+  const moveLocation = async (newParentId?: string) => {
+    const updates: Promise<unknown>[] = [];
+    const oldParentId = location.parentLocationId;
+    if (oldParentId) {
+      const parentLocation = locationMap[oldParentId];
+      if (parentLocation?.map) {
+        const newMap = JSON.parse(JSON.stringify(parentLocation.map));
+        for (const row of Object.keys(newMap)) {
+          for (const col of Object.keys(newMap[row])) {
+            const entry = newMap[row][col];
+            if (
+              entry?.type === MapEntryType.Location &&
+              entry.locationIds?.includes(locationId)
+            ) {
+              entry.locationIds = entry.locationIds.filter(
+                (id: string) => id !== locationId
+              );
+            }
+          }
+        }
+        updates.push(
+          updateLocation.mutateAsync({
+            locationId: oldParentId,
+            patch: buildLocationPatch(parentLocation, { map: newMap }),
+          })
+        );
+      }
+    }
+
+    updates.push(
+      updateLocation.mutateAsync({
+        locationId,
+        patch: buildLocationPatch(location, {
+          parentLocationId: newParentId ?? null,
+        }),
+      })
+    );
+
+    await Promise.all(updates);
   };
 
   return (

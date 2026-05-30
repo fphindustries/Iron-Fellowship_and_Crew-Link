@@ -11,6 +11,7 @@ import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { useStore } from "stores/store";
 import { GAME_SYSTEMS } from "types/GameSystems.type";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export function DebilitiesOrImpacts() {
   const impacts = useStore((store) => store.rules.impacts);
@@ -19,12 +20,17 @@ export function DebilitiesOrImpacts() {
     (store) =>
       store.characters.currentCharacter.currentCharacter?.debilities ?? {}
   );
-  const updateCharacter = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
   );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
 
   const updateDebility = (debilityKey: string, active: boolean) => {
-    updateCharacter({ [`debilities.${debilityKey}`]: active }).catch(ignoreApiError);
+    updateCharacter
+      .mutateAsync({
+        debilitiesJson: { ...debilityChecks, [debilityKey]: active },
+      })
+      .catch(ignoreApiError);
   };
 
   const impactsLabel = useGameSystemValue({

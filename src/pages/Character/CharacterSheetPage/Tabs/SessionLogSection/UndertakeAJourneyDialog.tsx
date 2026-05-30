@@ -26,6 +26,8 @@ import { MomentumBurnAlerts } from "./MomentumBurnAlerts";
 import { RollSummaryBox } from "./RollSummaryBox";
 import { PayThePriceSection } from "./PayThePriceSection";
 import { useJourneyTracks, JourneyTrackEntry } from "./useJourneyTracks";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
+import { useUpdateCampaignMutation } from "hooks/queries/useCampaignsQuery";
 
 const UNDERTAKE_A_JOURNEY_MOVE_IDS = [
   "classic/moves/adventure/undertake_a_journey",
@@ -80,18 +82,20 @@ export function UndertakeAJourneyDialog({
   const isInCampaign = useStore(
     (s) => !!s.characters.currentCharacter.currentCharacter?.campaignId
   );
+  const characterId = useStore(
+    (s) => s.characters.currentCharacter.currentCharacterId
+  );
+  const campaignId = useStore(
+    (s) => s.campaigns.currentCampaign.currentCampaignId
+  );
   const characterConditionMeters = useStore(
     (s) => s.characters.currentCharacter.currentCharacter?.conditionMeters
   );
   const campaignConditionMeters = useStore(
     (s) => s.campaigns.currentCampaign.currentCampaign?.conditionMeters
   );
-  const updateCharacterConditionMeter = useStore(
-    (s) => s.characters.currentCharacter.updateCharacterConditionMeter
-  );
-  const updateCampaignConditionMeter = useStore(
-    (s) => s.campaigns.currentCampaign.updateCampaignConditionMeter
-  );
+  const updateCharacter = useUpdateCharacterMutation(characterId ?? "");
+  const updateCampaign = useUpdateCampaignMutation(campaignId ?? "");
 
   const supplyRule = conditionMeterRules["supply"];
   const supplyIsShared = !!supplyRule?.shared;
@@ -123,9 +127,19 @@ export function UndertakeAJourneyDialog({
 
   const updateSupply = async (newValue: number) => {
     if (supplyIsShared && isInCampaign) {
-      await updateCampaignConditionMeter("supply", newValue);
+      await updateCampaign.mutateAsync({
+        conditionMeters: {
+          ...(campaignConditionMeters ?? {}),
+          supply: newValue,
+        },
+      });
     } else {
-      await updateCharacterConditionMeter("supply", newValue);
+      await updateCharacter.mutateAsync({
+        conditionMeters: {
+          ...(characterConditionMeters ?? {}),
+          supply: newValue,
+        },
+      });
     }
   };
 

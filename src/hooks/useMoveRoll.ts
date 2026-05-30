@@ -4,6 +4,7 @@ import { getRoll } from "stores/appState/useRoller";
 import { ROLL_RESULT, ROLL_TYPE } from "types/DieRolls.type";
 import { momentumTrack } from "data/defaultTracks";
 import { useMomentumBurn } from "./useMomentumBurn";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export interface RollData {
   statKey: string;
@@ -49,8 +50,13 @@ export function useMoveRoll() {
   );
 
   // ── Store actions ─────────────────────────────────────────────────────────
-  const updateCurrentCharacter = useStore(
-    (s) => s.characters.currentCharacter.updateCurrentCharacter
+  const updateCurrentCharacterMutation = useUpdateCharacterMutation(
+    characterId ?? ""
+  );
+  const updateCurrentCharacter = useCallback(
+    (partialCharacter: object) =>
+      updateCurrentCharacterMutation.mutateAsync(partialCharacter),
+    [updateCurrentCharacterMutation]
   );
   const logMoveEvent = useStore((s) => s.sessionLog.logMoveEvent);
   const logStatChangeEvent = useStore((s) => s.sessionLog.logStatChangeEvent);

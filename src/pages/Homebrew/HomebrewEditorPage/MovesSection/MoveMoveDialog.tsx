@@ -10,9 +10,10 @@ import {
 } from "@mui/material";
 import { DialogTitleWithCloseButton } from "components/shared/DialogTitleWithCloseButton";
 import { useState } from "react";
-import { useStore } from "stores/store";
 import { HomebrewMoveCategoryDocument } from "types/homebrew/HomebrewMoveCategory.type";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateHomebrewContentMutation } from "hooks/queries/useHomebrewQuery";
+import { useStore } from "stores/store";
 
 export interface MoveMoveDialogProps {
   open: boolean;
@@ -29,10 +30,20 @@ export function MoveMoveDialog(props: MoveMoveDialogProps) {
     moveCategoryId
   );
 
-  const updateMove = useStore((store) => store.homebrew.updateMove);
+  const move = useStore((store) => {
+    const collection = Object.values(store.homebrew.collections).find(
+      (collection) => !!collection.moves?.data?.[moveId]
+    );
+    return collection?.moves?.data?.[moveId];
+  });
+  const updateMove = useUpdateHomebrewContentMutation(move?.collectionId);
   const handleMove = () => {
-    if (categoryId) {
-      updateMove(moveId, { categoryId })
+    if (categoryId && move) {
+      updateMove
+        .mutateAsync({
+          contentId: moveId,
+          dataJson: { ...move, categoryId },
+        })
         .then(() => {
           onClose();
         })

@@ -13,6 +13,7 @@ import { useState } from "react";
 import { useCampaignType } from "hooks/useCampaignType";
 import { ignoreApiError } from "config/api.config";
 import { useWorldsQuery } from "hooks/queries/useWorldsQuery";
+import { useUpdateCampaignWorldMutation } from "hooks/queries/useCampaignsQuery";
 
 export function WorldTab() {
   const confirm = useConfirm();
@@ -22,6 +23,12 @@ export function WorldTab() {
 
   const worldId = useStore((store) => store.worlds.currentWorld.currentWorldId);
   const world = useStore((store) => store.worlds.currentWorld.currentWorld);
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
+  const gmIds = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaign?.gmIds ?? []
+  );
 
   const { data: ownedWorlds } = useWorldsQuery(uid);
   const sortedWorlds = (ownedWorlds ?? [])
@@ -29,9 +36,7 @@ export function WorldTab() {
     .sort((a, b) => b.name.localeCompare(a.name));
   const worldIds = sortedWorlds.map((w) => w.id);
 
-  const updateCampaignWorld = useStore(
-    (store) => store.campaigns.currentCampaign.updateCampaignWorld
-  );
+  const updateCampaignWorld = useUpdateCampaignWorldMutation(campaignId);
   const [updateCampaignWorldLoading, setUpdateCampaignWorldLoading] =
     useState(false);
 
@@ -48,7 +53,8 @@ export function WorldTab() {
       },
     })
       .then(() => {
-        updateCampaignWorld(undefined)
+        updateCampaignWorld
+          .mutateAsync({ worldId: null })
           .catch(ignoreApiError)
           .finally(() => {
             setUpdateCampaignWorldLoading(false);
@@ -88,7 +94,8 @@ export function WorldTab() {
           worldsToChooseFrom={sortedWorlds}
           onChooseWorld={(worldIndex) => {
             setUpdateCampaignWorldLoading(true);
-            updateCampaignWorld(worldIds[worldIndex])
+            updateCampaignWorld
+              .mutateAsync({ worldId: worldIds[worldIndex], ownerIds: gmIds })
               .catch(ignoreApiError)
               .finally(() => setUpdateCampaignWorldLoading(false));
           }}

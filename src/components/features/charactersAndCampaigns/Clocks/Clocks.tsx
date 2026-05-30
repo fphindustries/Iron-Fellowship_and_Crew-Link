@@ -6,6 +6,8 @@ import { useState } from "react";
 import { EmptyState } from "components/shared/EmptyState";
 import { ClockDialog } from "./ClockDialog";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCampaignTrackMutation } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCharacterTrackMutation } from "hooks/queries/useCharactersQuery";
 
 export interface ClocksProps {
   isCampaignSection?: boolean;
@@ -25,6 +27,12 @@ export function Clocks(props: ClocksProps) {
           isCompleted ? TrackStatus.Completed : TrackStatus.Active
         ][TrackTypes.Clock]
   );
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
+  );
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
   const sortedClockIds = getSortedClockIds(clocks);
 
   const [editingClock, setEditingClock] = useState<{
@@ -32,36 +40,37 @@ export function Clocks(props: ClocksProps) {
     shared?: boolean;
   }>({ clock: undefined });
 
-  const updateCharacterClock = useStore(
-    (store) => store.characters.currentCharacter.tracks.updateTrack
-  );
-  const updateCampaignClock = useStore(
-    (store) => store.campaigns.currentCampaign.tracks.updateTrack
-  );
+  const updateCharacterClock = useUpdateCharacterTrackMutation(characterId);
+  const updateCampaignClock = useUpdateCampaignTrackMutation(campaignId);
 
   const handleEditClock = (
     clockId: string,
     clock: IClock,
     shared?: boolean
   ) => {
-    const editFn = shared ? updateCampaignClock : updateCharacterClock;
-    return editFn(clockId, clock);
+    const mutation = shared ? updateCampaignClock : updateCharacterClock;
+    return mutation.mutateAsync({
+      trackId: clockId,
+      dataJson: { ...(clocks[clockId] ?? {}), ...clock },
+    });
   };
 
-  const updateClock = isCampaignSection
-    ? updateCampaignClock
-    : updateCharacterClock;
+  const updateClock = (clockId: string, clock: Partial<IClock>) => {
+    const mutation = isCampaignSection
+      ? updateCampaignClock
+      : updateCharacterClock;
+    return mutation.mutateAsync({
+      trackId: clockId,
+      dataJson: { ...(clocks[clockId] ?? {}), ...clock },
+    });
+  };
 
-  const deleteCharacterClock = useStore(
-    (store) => store.characters.currentCharacter.tracks.deleteTrack
-  );
-  const deleteCampaignClock = useStore(
-    (store) => store.campaigns.currentCampaign.tracks.deleteTrack
-  );
-
-  const deleteClock = isCampaignSection
-    ? deleteCampaignClock
-    : deleteCharacterClock;
+  const deleteClock = (clockId: string) => {
+    const mutation = isCampaignSection
+      ? updateCampaignClock
+      : updateCharacterClock;
+    return mutation.mutateAsync({ trackId: clockId, remove: true });
+  };
 
   return (
     <>

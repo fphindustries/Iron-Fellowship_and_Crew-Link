@@ -2,9 +2,11 @@ import { Button, Checkbox, FormControlLabel } from "@mui/material";
 import { SectionHeading } from "components/shared/SectionHeading";
 import { useState } from "react";
 import { useStore } from "stores/store";
-import { Clock as IClock } from "types/Track.type";
+import { Clock as IClock, TrackTypes } from "types/Track.type";
 import { ClockDialog } from "./ClockDialog";
 import { Clocks } from "./Clocks";
+import { useUpdateCampaignTrackMutation } from "hooks/queries/useCampaignsQuery";
+import { useUpdateCharacterTrackMutation } from "hooks/queries/useCharactersQuery";
 
 export interface ClockSectionProps {
   headingBreakContainer?: boolean;
@@ -48,16 +50,19 @@ export function ClockSection(props: ClockSectionProps) {
     shared?: boolean;
   }>({ open: false });
 
-  const addCharacterClock = useStore(
-    (store) => store.characters.currentCharacter.tracks.addTrack
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
   );
-  const addCampaignClock = useStore(
-    (store) => store.campaigns.currentCampaign.tracks.addTrack
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
   );
+  const addCharacterClock = useUpdateCharacterTrackMutation(characterId);
+  const addCampaignClock = useUpdateCampaignTrackMutation(campaignId);
 
   const handleAddClock = (clock: IClock, shared?: boolean) => {
-    const addFn = shared ? addCampaignClock : addCharacterClock;
-    return addFn(clock);
+    const { createdDate: _createdDate, ...dataJson } = clock;
+    const mutation = shared ? addCampaignClock : addCharacterClock;
+    return mutation.mutateAsync({ type: TrackTypes.Clock, dataJson });
   };
 
   return (

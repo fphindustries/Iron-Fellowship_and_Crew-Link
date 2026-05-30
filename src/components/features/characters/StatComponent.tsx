@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useIsMobile } from "hooks/useIsMobile";
 import { useRoller } from "stores/appState/useRoller";
 import { ignoreApiError } from "config/api.config";
+import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
 
 export interface StatComponentProps {
   label: string;
@@ -42,9 +43,10 @@ export function StatComponent(props: StatComponentProps) {
     (store) => store.characters.currentCharacter.currentCharacter?.adds ?? 0
   );
   const hasAdds = adds !== 0;
-  const resetAdds = useStore(
-    (store) => store.characters.currentCharacter.updateCurrentCharacter
+  const characterId = useStore(
+    (store) => store.characters.currentCharacter.currentCharacterId
   );
+  const resetAdds = useUpdateCharacterMutation(characterId ?? "");
 
   const handleStatUpdate = (stringVal: string) => {
     setInputValue(stringVal);
@@ -109,7 +111,7 @@ export function StatComponent(props: StatComponentProps) {
       onClick={() => {
         if (!(updateTrack || disableRoll)) {
           rollStat(label, value, moveInfo, adds, true, playerContext);
-          resetAdds({ adds: 0 }).catch(ignoreApiError);
+          resetAdds.mutateAsync({ adds: 0 }).catch(ignoreApiError);
           onRollComplete?.();
         }
       }}
