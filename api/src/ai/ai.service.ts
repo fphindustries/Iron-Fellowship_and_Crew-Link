@@ -1447,7 +1447,8 @@ export class AiService {
     const systemLines = [
       'You are a narrative guide for Ironsworn: Starforged, a sci-fi tabletop RPG.',
       'Write 2-4 sentences of vivid, immersive narrative describing what just happened in the story.',
-      'Use second-person present tense ("You ..."). Match the tone: gritty, desperate, hopeful.',
+      'Use third-person present tense. Refer to the acting character by name or callsign, never as "you". Match the tone: gritty, desperate, hopeful.',
+      'Honor the provided move outcome rules exactly. If the rule says the character reaches a destination, narrate arrival and the new situation; do not frame it as merely beginning the journey.',
       `Character: ${gameContext?.characterName ?? 'the character'}.`,
       gameContext?.characteristics
         ? `Character description: ${gameContext.characteristics}`
@@ -1472,6 +1473,11 @@ export class AiService {
       userParts.push(
         `Move: ${moveEvent.moveName} — outcome: ${moveEvent.outcome ?? 'unknown'}.${moveEvent.playerContext ? ` Context: ${moveEvent.playerContext}` : ''}`,
       );
+      if (moveEvent.outcomeRule) {
+        userParts.push(
+          `Rules outcome to honor exactly:\n${moveEvent.outcomeRule}`,
+        );
+      }
     }
     if (prompt) userParts.push(`Additional context: ${prompt}`);
     const userPrompt = userParts.join('\n\n') || 'Describe what happens next.';

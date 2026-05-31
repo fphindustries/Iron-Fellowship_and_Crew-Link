@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -11,6 +11,7 @@ import {
   IconButton,
   List,
   ListItemButton,
+  Stack,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -20,18 +21,9 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import { useStore } from "stores/store";
 import { Virtuoso } from "react-virtuoso";
 import { EmptyState } from "components/shared/EmptyState";
-import { SessionLogEventCard } from "pages/Character/CharacterSheetPage/Tabs/SessionLogSection/SessionLogEventCard";
-import { JournalInput } from "pages/Character/CharacterSheetPage/Tabs/SessionLogSection/JournalInput";
-import {
-  MoveSessionEvent,
-  SESSION_EVENT_TYPE,
-  SessionDocument,
-  SessionLogEvent,
-} from "types/SessionLog.type";
-import { useAIGuide } from "hooks/useAIGuide";
+import { SessionDocument } from "types/SessionLog.type";
 import {
   useSessionsListQuery,
-  useSessionEventsQuery,
   useEndSessionMutation,
   sessionLogKeys,
 } from "hooks/queries/useSessionLogQuery";
@@ -43,7 +35,13 @@ import { useNavigate } from "react-router-dom";
 import { constructCampaignSheetPath, CAMPAIGN_ROUTES } from "pages/Campaign/routes";
 import { SessionPreflightDialog } from "pages/Campaign/CampaignPage/components/SessionPreflightDialog";
 import { defaultAIGuideState } from "types/AIGuideState.type";
-import { sceneEventKeys } from "hooks/queries/useSceneEventsQuery";
+import {
+  SceneEvent,
+  sceneEventKeys,
+  useDeleteSceneEventMutation,
+  useSceneEventsQuery,
+} from "hooks/queries/useSceneEventsQuery";
+import { MarkdownRenderer } from "components/shared/MarkdownRenderer/MarkdownRenderer";
 
 type SessionRow = {
   id: string;
@@ -54,17 +52,6 @@ type SessionRow = {
   title?: string | null;
   isActive: boolean;
   summary?: string | null;
-};
-
-type SessionEventRow = {
-  id: string;
-  sessionId: string;
-  characterId?: string | null;
-  characterName?: string | null;
-  createdBy?: string | null;
-  type: string;
-  dataJson?: Partial<SessionLogEvent> | null;
-  createdAt: string | Date;
 };
 
 function rowToSessionDocument(row: SessionRow): SessionDocument {
@@ -79,25 +66,6 @@ function rowToSessionDocument(row: SessionRow): SessionDocument {
   };
 }
 
-function rowToSessionEvent(row: SessionEventRow): SessionLogEvent {
-  const data = row.dataJson ?? {};
-  return {
-    ...data,
-    type: row.type as SESSION_EVENT_TYPE,
-    sessionId: row.sessionId,
-    characterId: row.characterId ?? null,
-    characterName: row.characterName ?? "",
-    uid: row.createdBy ?? "",
-    timestamp: new Date(row.createdAt),
-  } as SessionLogEvent;
-}
-
-function getEventTimestamp(event: SessionLogEvent): number {
-  const timestamp = event.timestamp;
-  if (timestamp instanceof Date) return timestamp.getTime();
-  return new Date(timestamp).getTime();
-}
-
 export function SessionsTab() {
   const campaignId = useStore(
     (s) => s.campaigns.currentCampaign.currentCampaignId
@@ -106,7 +74,6 @@ export function SessionsTab() {
     (s) => s.campaigns.currentCampaign.currentCampaign?.type
   );
   const activeSessionId = useStore((s) => s.sessionLog.activeSessionId);
-  const activeEvents = useStore((s) => s.sessionLog.events);
 
   const { campaignType } = useCampaignType();
   const isAIGuided =
@@ -158,42 +125,21 @@ export function SessionsTab() {
   const selectedSession = sessions.find((s) => s.id === selectedSessionId);
   const isSelectedActive = selectedSession?.session.isActive ?? false;
 
-  const { data: pastEventsData } = useSessionEventsQuery(
-    !isSelectedActive ? selectedSessionId : undefined
+  const { data: selectedSceneEvents } = useSceneEventsQuery(
+    campaignId,
+    selectedSessionId,
+    Boolean(selectedSessionId)
   );
+  const deleteSceneEvent = useDeleteSceneEventMutation(campaignId);
 
-  const pastEvents: { [key: string]: SessionLogEvent } = useMemo(() => {
-    if (!pastEventsData) return {};
-    const map: { [key: string]: SessionLogEvent } = {};
-    (pastEventsData as SessionEventRow[]).forEach((row) => {
-      map[row.id] = rowToSessionEvent(row);
-    });
-    return map;
-  }, [pastEventsData]);
-
-  const displayEvents = isSelectedActive ? activeEvents : pastEvents;
-
-  const orderedEventKeys = useMemo(
+  const displaySceneEvents = useMemo(
     () =>
-      Object.keys(displayEvents).sort(
-        (a, b) => getEventTimestamp(displayEvents[a]) - getEventTimestamp(displayEvents[b])
-      ),
-    [displayEvents]
-  );
-
-  const {
-    state: runtimeGuideState,
-    requestNarrative,
-    requestFreeformNarrative,
-  } = useAIGuide();
-
-  const handleRequestNarrative = useCallback(
-    (eventId: string, event: SessionLogEvent) => {
-      if (event.type === SESSION_EVENT_TYPE.MOVE) {
-        requestNarrative(eventId, event as MoveSessionEvent).catch(console.error);
-      }
-    },
-    [requestNarrative]
+      (selectedSceneEvents ?? []).slice().sort((a, b) => {
+        const aTime = new Date(a.createdAt).getTime();
+        const bTime = new Date(b.createdAt).getTime();
+        return aTime - bTime;
+      }),
+    [selectedSceneEvents]
   );
 
   const handleEndSession = (sessionId: string) => {
@@ -415,39 +361,27 @@ export function SessionsTab() {
         )}
         {!selectedSessionId ? (
           <EmptyState message="Select a session to view its events." />
-        ) : orderedEventKeys.length === 0 ? (
-          <EmptyState
-            message={
-              isSelectedActive
-                ? "Session is active. Events will appear here as you play."
-                : "No events recorded in this session."
-            }
-          />
         ) : (
-          <Box flexGrow={1} overflow="hidden">
-            <Virtuoso
-              data={orderedEventKeys}
-              itemContent={(_index, eventId) => (
-                <SessionLogEventCard
-                  key={eventId}
-                  eventId={eventId}
-                  event={displayEvents[eventId]}
-                  onRequestNarrative={isSelectedActive ? handleRequestNarrative : undefined}
-                  narratingEventId={runtimeGuideState.narratingEventId}
-                  streamingNarrativeText={runtimeGuideState.narrativeText}
-                />
-              )}
-            />
-          </Box>
-        )}
-
-        {isSelectedActive && (
-          <Box borderTop={1} borderColor="divider">
-            <JournalInput
-              onRequestGuide={requestFreeformNarrative}
-              guideIsStreaming={runtimeGuideState.isStreaming}
-            />
-          </Box>
+          displaySceneEvents.length === 0 ? (
+            <EmptyState message="No cockpit activity recorded in this session." />
+          ) : (
+            <Box flexGrow={1} overflow="hidden">
+              <Virtuoso
+                data={displaySceneEvents}
+                itemContent={(_index, event) => (
+                  <SceneActivityCard
+                    event={event}
+                    onDelete={() =>
+                      deleteSceneEvent.mutate({
+                        eventId: event.id,
+                        sessionId: event.sessionId ?? selectedSessionId,
+                      })
+                    }
+                  />
+                )}
+              />
+            </Box>
+          )
         )}
       </Box>
 
@@ -479,4 +413,75 @@ export function SessionsTab() {
       )}
     </Box>
   );
+}
+
+function SceneActivityCard({
+  event,
+  onDelete,
+}: {
+  event: SceneEvent;
+  onDelete: () => void;
+}) {
+  const payload = event.payloadJson ?? {};
+  const moveName = getScenePayloadText(payload, "moveName");
+  const content = getScenePayloadText(payload, "content");
+  const narrative = getScenePayloadText(payload, "narrative");
+  const outcome = getScenePayloadText(payload, "outcome");
+  const title =
+    moveName ||
+    (event.type === "move_roll" ? "Move" : event.type.replace(/_/g, " "));
+
+  return (
+    <Box px={2} py={0.5}>
+      <Box
+        sx={{
+          border: 1,
+          borderColor: "divider",
+          borderRadius: 1,
+          p: 1.5,
+          bgcolor: "background.paper",
+        }}
+      >
+        <Stack direction="row" alignItems="flex-start" gap={1}>
+          <Box flex={1} minWidth={0}>
+            <Stack direction="row" alignItems="center" gap={0.75} flexWrap="wrap">
+              <Typography variant="subtitle2">{title}</Typography>
+              {outcome && (
+                <Typography variant="caption" color="text.secondary">
+                  {outcome}
+                </Typography>
+              )}
+            </Stack>
+            {content && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {content}
+              </Typography>
+            )}
+            {narrative && (
+              <Box sx={{ mt: 0.75 }}>
+                <MarkdownRenderer markdown={narrative} typographyVariant="body2" />
+              </Box>
+            )}
+          </Box>
+          <Tooltip title="Delete">
+            <IconButton
+              size="small"
+              onClick={onDelete}
+              sx={{ p: 0.25, flexShrink: 0 }}
+            >
+              <DeleteIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Box>
+    </Box>
+  );
+}
+
+function getScenePayloadText(
+  payload: Record<string, unknown>,
+  key: string
+): string {
+  const value = payload[key];
+  return typeof value === "string" ? value.trim() : "";
 }

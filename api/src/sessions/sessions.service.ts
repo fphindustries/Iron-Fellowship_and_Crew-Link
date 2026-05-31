@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { eq, desc, asc, and, isNull } from 'drizzle-orm';
+import { eq, desc, and, isNull } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DB } from '../db/database.module';
 import * as schema from '../db/schema';
@@ -93,54 +93,6 @@ export class SessionsService {
       .returning();
     if (!row) throw new NotFoundException('Session not found');
     return row;
-  }
-
-  async findEvents(sessionId: string) {
-    return this.db
-      .select()
-      .from(schema.sessionEvents)
-      .where(eq(schema.sessionEvents.sessionId, sessionId))
-      .orderBy(asc(schema.sessionEvents.createdAt));
-  }
-
-  async addEvent(
-    sessionId: string,
-    data: {
-      characterId?: string | null;
-      characterName?: string;
-      createdBy?: string;
-      type: string;
-      dataJson?: any;
-    },
-  ) {
-    const [row] = await this.db
-      .insert(schema.sessionEvents)
-      .values({
-        sessionId,
-        characterId: data.characterId ?? null,
-        characterName: data.characterName ?? '',
-        createdBy: data.createdBy ?? null,
-        type: data.type,
-        dataJson: data.dataJson ?? {},
-      })
-      .returning();
-    return row;
-  }
-
-  async updateEvent(id: string, dataJson: any) {
-    const [row] = await this.db
-      .update(schema.sessionEvents)
-      .set({ dataJson })
-      .where(eq(schema.sessionEvents.id, id))
-      .returning();
-    if (!row) throw new NotFoundException('Event not found');
-    return row;
-  }
-
-  async removeEvent(id: string) {
-    await this.db
-      .delete(schema.sessionEvents)
-      .where(eq(schema.sessionEvents.id, id));
   }
 
   async remove(id: string) {

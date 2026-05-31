@@ -373,7 +373,7 @@ export class CampaignsService {
     return Boolean(row);
   }
 
-  async getSceneEvents(campaignId: string, userId: string) {
+  async getSceneEvents(campaignId: string, userId: string, sessionId?: string) {
     const gm = await this.isGm(campaignId, userId);
     const conditions = gm
       ? [eq(schema.campaignSceneEvents.campaignId, campaignId)]
@@ -381,6 +381,9 @@ export class CampaignsService {
           eq(schema.campaignSceneEvents.campaignId, campaignId),
           eq(schema.campaignSceneEvents.visibility, 'public'),
         ];
+    if (sessionId) {
+      conditions.push(eq(schema.campaignSceneEvents.sessionId, sessionId));
+    }
     return this.db
       .select()
       .from(schema.campaignSceneEvents)
@@ -392,6 +395,7 @@ export class CampaignsService {
     campaignId: string,
     event: {
       sceneId: string;
+      sessionId?: string | null;
       type: string;
       actorId?: string | null;
       visibility?: string;
@@ -402,6 +406,7 @@ export class CampaignsService {
       .insert(schema.campaignSceneEvents)
       .values({
         campaignId,
+        sessionId: event.sessionId ?? null,
         sceneId: event.sceneId,
         type: event.type,
         actorId: event.actorId ?? null,
@@ -416,5 +421,16 @@ export class CampaignsService {
     await this.db
       .delete(schema.campaignSceneEvents)
       .where(eq(schema.campaignSceneEvents.campaignId, campaignId));
+  }
+
+  async removeSceneEvent(campaignId: string, eventId: string) {
+    await this.db
+      .delete(schema.campaignSceneEvents)
+      .where(
+        and(
+          eq(schema.campaignSceneEvents.campaignId, campaignId),
+          eq(schema.campaignSceneEvents.id, eventId),
+        ),
+      );
   }
 }

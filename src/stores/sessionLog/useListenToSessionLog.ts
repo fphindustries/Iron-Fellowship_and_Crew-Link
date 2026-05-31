@@ -1,10 +1,7 @@
 import { useEffect } from "react";
 import { useStore } from "stores/store";
-import {
-  useActiveSessionQuery,
-  useSessionEventsQuery,
-} from "hooks/queries/useSessionLogQuery";
-import { SessionDocument, SessionLogEvent, SESSION_EVENT_TYPE } from "types/SessionLog.type";
+import { useActiveSessionQuery } from "hooks/queries/useSessionLogQuery";
+import { SessionDocument } from "types/SessionLog.type";
 
 export function useListenToSessionLog() {
   const characterId = useStore(
@@ -46,28 +43,12 @@ export function useListenToSessionLog() {
     (store) => store.sessionLog.activeSessionId
   );
 
-  const { data: eventsData } = useSessionEventsQuery(activeSessionId);
-
   useEffect(() => {
-    if (!eventsData) return;
-    const eventsMap: Record<string, SessionLogEvent> = {};
-    for (const row of eventsData) {
-      const event = {
-        ...(row.dataJson ?? {}),
-        type: row.type as SESSION_EVENT_TYPE,
-        sessionId: row.sessionId,
-        characterId: row.characterId,
-        characterName: row.characterName,
-        uid: row.createdBy ?? "",
-        timestamp: new Date(row.createdAt),
-      } as SessionLogEvent;
-      eventsMap[row.id] = event;
-    }
     useStore.setState((store) => {
-      store.sessionLog.events = eventsMap;
+      store.sessionLog.events = {};
       store.sessionLog.loading = false;
     });
-  }, [eventsData]);
+  }, [activeSessionId]);
 
   const loadMostRecentPastSession = useStore(
     (store) => store.sessionLog.loadMostRecentPastSession

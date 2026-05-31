@@ -22,7 +22,6 @@ import { useUpdateQueryStringValueWithoutNavigation } from "hooks/useUpdateQuery
 import { useGameSystemValue } from "hooks/useGameSystemValue";
 import { useCampaignType } from "hooks/useCampaignType";
 import { useNewMaps } from "hooks/featureFlags/useNewMaps";
-import { SessionLogSection } from "../Tabs/SessionLogSection/SessionLogSection";
 
 enum TABS {
   MOVES = "moves",
@@ -35,7 +34,6 @@ enum TABS {
   SECTORS = "sectors",
   NPCS = "npcs",
   LORE = "lore",
-  SESSION_LOG = "session-log",
   IMPACTS = "impacts",
 }
 
@@ -110,7 +108,6 @@ export function TabsSection() {
         )}
         <StyledTab label={"NPCs"} value={TABS.NPCS} />
         <StyledTab label={"Lore"} value={TABS.LORE} />
-        <StyledTab label={"Session Log"} value={TABS.SESSION_LOG} />
         <StyledTab label={impactsLabel} value={TABS.IMPACTS} />
       </StyledTabs>
       <ContainedTabPanel isVisible={selectedTab === TABS.ASSETS} greyBackground>
@@ -162,9 +159,6 @@ export function TabsSection() {
           isSinglePlayer={!isInCampaign}
           showHiddenTag={showGuideTips}
         />
-      </ContainedTabPanel>
-      <ContainedTabPanel isVisible={selectedTab === TABS.SESSION_LOG}>
-        <SessionLogSection />
       </ContainedTabPanel>
       <ContainedTabPanel isVisible={selectedTab === TABS.IMPACTS}>
         <CharacterSection />

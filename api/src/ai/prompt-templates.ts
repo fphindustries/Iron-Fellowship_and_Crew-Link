@@ -626,6 +626,7 @@ function buildActionSuggestionsPrompts(
     'Generate 4-6 concrete player actions appropriate for the current scene.',
     'Group them by intent: investigative (safe/curious), risky (direct/dangerous), social (people-focused), meta (oracle/recap).',
     'For each action, identify the most likely Ironsworn/Starforged move and stat.',
+    'For Starforged travel: suggest Undertake an Expedition only for unknown/perilous routes or surveys that should create or advance an expedition progress track over multiple segments. Use Set a Course for a known perilous route resolved as a single roll.',
     'Rate confidence as high/medium/low based on how clearly the scene matches the move trigger.',
     'Return a JSON object matching the action_suggestions schema exactly.',
   ];

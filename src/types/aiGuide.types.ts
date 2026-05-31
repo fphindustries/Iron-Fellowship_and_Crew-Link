@@ -46,7 +46,9 @@ export interface NarrativeRequestPayload {
     | "action"
     | "challengeDice"
     | "score"
-  >;
+  > & {
+    outcomeRule?: string;
+  };
   prompt?: string;
   gameContext: NarrativeGameContext;
   debugOverride?: NarrativeDebugOverride;

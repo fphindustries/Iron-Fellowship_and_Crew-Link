@@ -3,105 +3,179 @@ import {
   Button,
   CircularProgress,
   Divider,
-  IconButton,
-  InputAdornment,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  List,
+  ListItemButton,
+  ListItemText,
+  Popover,
   Stack,
-  TextField,
-  Tooltip,
+  Typography,
 } from "@mui/material";
-import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import SendIcon from "@mui/icons-material/Send";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { useState, useCallback } from "react";
+import { MouseEvent, useState, useCallback } from "react";
 import { useStore } from "stores/store";
-import { SuggestedAction, ActionSuggestionsOutput, IntentToMoveOutput } from "types/AI.type";
-import { SuggestedActionChips } from "../composer/SuggestedActionChips";
-import { MoveMappingPreview } from "../composer/MoveMappingPreview";
+import { SuggestedAction, ActionSuggestionsOutput } from "types/AI.type";
 import { useCockpitAiRequest } from "../shared/useCockpitAiRequest";
 import { GuidedMoveModal } from "../moves/GuidedMoveModal";
+import { TrackStatus, TrackTypes } from "types/Track.type";
+import { useActiveCombatQuery } from "hooks/queries/useCombatQuery";
+
+interface PaletteGroup {
+  label: string;
+  actions: SuggestedAction[];
+}
+
+const ADVENTURE_ACTIONS: SuggestedAction[] = [
+  paletteAction("Face Danger", "Face danger", "risky", "Act despite danger or pressure"),
+  paletteAction("Secure an Advantage", "Secure an advantage", "investigative", "Prepare, gain leverage, or improve your position"),
+  paletteAction("Gather Information", "Gather information", "investigative", "Investigate, ask questions, or study a situation"),
+  paletteAction("Compel", "Compel", "social", "Persuade, threaten, bargain, or negotiate"),
+  paletteAction("Check Your Gear", "Check your gear", "investigative", "See if you have the right item or resource"),
+  paletteAction("Aid Your Ally", "Aid an ally", "social", "Help another protagonist with their action"),
+];
+
+const START_COMBAT_ACTIONS: SuggestedAction[] = [
+  paletteAction("Enter the Fray", "Enter the fray", "risky", "Start a combat objective"),
+];
+
+const COMBAT_ACTIONS: SuggestedAction[] = [
+  paletteAction("Gain Ground", "Gain ground", "risky", "Reinforce your position or move toward an objective"),
+  paletteAction("Strike", "Strike", "risky", "Attack while in control"),
+  paletteAction("React Under Fire", "React under fire", "risky", "Avoid danger or overcome an obstacle in a bad spot"),
+  paletteAction("Clash", "Clash", "risky", "Fight back while in a bad spot"),
+];
+
+const EXPLORATION_ACTIONS: SuggestedAction[] = [
+  paletteAction("Set a Course", "Set a course", "investigative", "Travel through known perilous space"),
+  paletteAction("Explore a Waypoint", "Explore a waypoint", "investigative", "Examine a notable location"),
+  paletteAction("Confront Chaos", "Confront chaos", "risky", "Face a dire chaotic manifestation"),
+];
+
+const ACTIVE_EXPEDITION_ACTIONS: SuggestedAction[] = [
+  paletteAction("Undertake an Expedition", "Undertake an expedition", "investigative", "Make progress on a perilous journey"),
+  paletteAction("Finish an Expedition", "Finish an expedition", "investigative", "Resolve an expedition progress track"),
+  ...EXPLORATION_ACTIONS,
+];
+
+function paletteAction(
+  moveName: string,
+  label: string,
+  intentCategory: SuggestedAction["intentCategory"],
+  reason: string
+): SuggestedAction {
+  return {
+    label,
+    intentCategory,
+    moveName,
+    stat: null,
+    confidence: "high",
+    reason,
+  };
+}
 
 export function CockpitComposer() {
   const isRequesting = useStore((store) => store.ai.isRequesting);
   const { request } = useCockpitAiRequest();
+  const campaignId = useStore(
+    (store) => store.campaigns.currentCampaign.currentCampaignId
+  );
+  const npcCount = useStore(
+    (store) => Object.keys(store.aiGuide.state?.npcIntents ?? {}).length
+  );
+  const activeJourneyCount = useStore(
+    (store) =>
+      Object.keys(
+        store.campaigns.currentCampaign.tracks.trackMap[TrackStatus.Active]?.[
+          TrackTypes.Journey
+        ] ?? {}
+      ).length
+  );
+  const { data: activeCombat } = useActiveCombatQuery({
+    campaignId: campaignId ?? undefined,
+  });
 
   const [suggestions, setSuggestions] = useState<SuggestedAction[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
-  const [freeform, setFreeform] = useState("");
-  const [resolving, setResolving] = useState(false);
-  const [resolvedMove, setResolvedMove] = useState<IntentToMoveOutput | null>(null);
-  const [selectedAction, setSelectedAction] = useState<SuggestedAction | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalIntent, setModalIntent] = useState("");
   const [modalMoveName, setModalMoveName] = useState<string | null>(null);
+  const [paletteAnchor, setPaletteAnchor] = useState<HTMLElement | null>(null);
+  const [activePaletteGroup, setActivePaletteGroup] = useState<PaletteGroup | null>(null);
+  const [guideDialogOpen, setGuideDialogOpen] = useState(false);
 
   const handleGetSuggestions = useCallback(async () => {
+    setGuideDialogOpen(true);
     setLoadingSuggestions(true);
     try {
       const result = await request("actionSuggestions");
       if (result?.structuredData) {
         const data = result.structuredData as unknown as ActionSuggestionsOutput;
         setSuggestions(data.suggestions ?? []);
+        setGuideDialogOpen(true);
       }
     } finally {
       setLoadingSuggestions(false);
     }
   }, [request]);
 
-  const handleSelectSuggestion = (action: SuggestedAction) => {
-    setFreeform(action.label);
-    setResolvedMove(null);
-    setSelectedAction(action);
-    setModalIntent(action.label);
-    setModalMoveName(action.moveName ?? null);
-    setModalOpen(true);
+  const handleOpenPalette = (
+    event: MouseEvent<HTMLElement>,
+    group: PaletteGroup
+  ) => {
+    setPaletteAnchor(event.currentTarget);
+    setActivePaletteGroup(group);
   };
 
-  const handleResolveIntent = useCallback(async () => {
-    if (!freeform.trim()) return;
-    setResolving(true);
-    setResolvedMove(null);
-    setSelectedAction(null);
-    try {
-      const result = await request("intentToMove", freeform.trim());
-      if (result?.structuredData) {
-        const data = result.structuredData as unknown as IntentToMoveOutput;
-        setResolvedMove(data);
-        setModalIntent(freeform.trim());
-        setModalMoveName(data.moveName ?? null);
-        setModalOpen(true);
-      }
-    } finally {
-      setResolving(false);
-    }
-  }, [freeform, request]);
+  const handleClosePalette = () => {
+    setPaletteAnchor(null);
+  };
 
-  const handleSubmit = () => {
-    setModalIntent(freeform.trim());
-    setModalMoveName(resolvedMove?.moveName ?? selectedAction?.moveName ?? null);
+  const handleSelectSuggestion = (
+    action: SuggestedAction,
+    initialIntent = action.label
+  ) => {
+    setModalIntent(initialIntent);
+    setModalMoveName(action.moveName ?? null);
     setModalOpen(true);
+    handleClosePalette();
+    setGuideDialogOpen(false);
   };
 
   const handleModalClose = () => {
     setModalOpen(false);
-    setFreeform("");
-    setResolvedMove(null);
-    setSelectedAction(null);
   };
 
   const handleModalComplete = () => {
     setModalOpen(false);
-    setFreeform("");
-    setResolvedMove(null);
-    setSelectedAction(null);
     setSuggestions([]);
   };
 
-  const movePreview = selectedAction
-    ? { fromSuggestion: selectedAction }
-    : resolvedMove
-    ? { fromIntent: resolvedMove }
-    : null;
+  const paletteGroups: PaletteGroup[] = [
+    { label: "Adventure", actions: ADVENTURE_ACTIONS },
+    {
+      label: "Combat",
+      actions: activeCombat ? COMBAT_ACTIONS : START_COMBAT_ACTIONS,
+    },
+    {
+      label: "Exploration",
+      actions: activeJourneyCount > 0
+        ? ACTIVE_EXPEDITION_ACTIONS
+        : EXPLORATION_ACTIONS,
+    },
+    ...(npcCount > 0
+      ? [{
+          label: "Connection",
+          actions: [
+            paletteAction("Compel", "Compel", "social", "Negotiate, persuade, intimidate, or bargain"),
+            paletteAction("Gather Information", "Ask questions", "social", "Learn what someone knows"),
+            paletteAction("Secure an Advantage", "Read the room", "social", "Assess an interaction or gain leverage"),
+          ],
+        }]
+      : []),
+  ];
 
   return (
     <Box>
@@ -115,79 +189,27 @@ export function CockpitComposer() {
           gap: 1,
         }}
       >
-        {/* Suggested action chips */}
-        {suggestions.length > 0 && (
-          <SuggestedActionChips
-            suggestions={suggestions}
-            onSelect={handleSelectSuggestion}
-            disabled={isRequesting}
-          />
-        )}
-
-        {/* Move mapping preview */}
-        {movePreview && (
-          <MoveMappingPreview
-            fromSuggestion={movePreview.fromSuggestion}
-            fromIntent={movePreview.fromIntent}
-          />
-        )}
-
-        {/* Freeform input row */}
-        <Stack direction="row" gap={1} alignItems="flex-start">
-          <TextField
-            size="small"
-            fullWidth
-            multiline
-            maxRows={3}
-            placeholder="What do you do?"
-            value={freeform}
-            onChange={(e) => {
-              setFreeform(e.target.value);
-              if (resolvedMove) setResolvedMove(null);
-              if (selectedAction) setSelectedAction(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (freeform.trim()) handleResolveIntent();
+        <Stack direction="row" gap={0.75} alignItems="center" flexWrap="wrap">
+          <Typography variant="caption" color="text.secondary">
+            Moves
+          </Typography>
+          {paletteGroups.map((group) => (
+            <Button
+              key={group.label}
+              size="small"
+              variant={
+                activePaletteGroup?.label === group.label && paletteAnchor
+                  ? "contained"
+                  : "outlined"
               }
-            }}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  {resolving ? (
-                    <CircularProgress size={16} />
-                  ) : (
-                    <Tooltip title="Identify move">
-                      <span>
-                        <IconButton
-                          size="small"
-                          disabled={!freeform.trim() || isRequesting}
-                          onClick={handleResolveIntent}
-                        >
-                          <AutoFixHighIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  )}
-                </InputAdornment>
-              ),
-            }}
-          />
-          <Button
-            variant="contained"
-            size="small"
-            disabled={!freeform.trim() || isRequesting}
-            endIcon={<SendIcon sx={{ fontSize: 14 }} />}
-            onClick={handleSubmit}
-            sx={{ whiteSpace: "nowrap", alignSelf: "flex-end" }}
-          >
-            Play
-          </Button>
-        </Stack>
-
-        {/* Suggestion controls */}
-        <Stack direction="row" gap={1} alignItems="center">
+              color="inherit"
+              disabled={isRequesting}
+              onClick={(event) => handleOpenPalette(event, group)}
+              sx={{ fontSize: 11, py: 0.25, px: 1 }}
+            >
+              {group.label}
+            </Button>
+          ))}
           <Button
             size="small"
             color="inherit"
@@ -202,10 +224,96 @@ export function CockpitComposer() {
             onClick={handleGetSuggestions}
             sx={{ opacity: 0.7, fontSize: 11 }}
           >
-            {suggestions.length > 0 ? "Refresh suggestions" : "Get suggestions"}
+            {suggestions.length > 0 ? "Ask Guide Again" : "Ask Guide"}
           </Button>
         </Stack>
       </Box>
+      <Popover
+        open={Boolean(paletteAnchor && activePaletteGroup)}
+        anchorEl={paletteAnchor}
+        onClose={handleClosePalette}
+        anchorOrigin={{ vertical: "top", horizontal: "left" }}
+        transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+        PaperProps={{ sx: { width: 280, maxWidth: "calc(100vw - 24px)" } }}
+      >
+        <Box sx={{ py: 0.75 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", px: 1.5, pb: 0.5 }}
+          >
+            {activePaletteGroup?.label}
+          </Typography>
+          <List dense disablePadding>
+            {(activePaletteGroup?.actions ?? []).map((action) => (
+              <ListItemButton
+                key={`${activePaletteGroup?.label}-${action.label}-${action.moveName}`}
+                onClick={() =>
+                  handleSelectSuggestion(
+                    action,
+                    activePaletteGroup?.label === "Guide" ? action.label : ""
+                  )
+                }
+              >
+                <ListItemText
+                  primary={action.label}
+                  secondary={
+                    action.moveName
+                      ? `${action.moveName}${action.stat ? ` +${action.stat}` : ""} - ${action.reason}`
+                      : action.reason
+                  }
+                  primaryTypographyProps={{ variant: "body2" }}
+                  secondaryTypographyProps={{ variant: "caption" }}
+                />
+              </ListItemButton>
+            ))}
+          </List>
+        </Box>
+      </Popover>
+      <Dialog
+        open={guideDialogOpen}
+        onClose={() => setGuideDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Guide Recommendations</DialogTitle>
+        <DialogContent dividers sx={{ p: 0 }}>
+          {loadingSuggestions ? (
+            <Box display="flex" alignItems="center" gap={1} p={2}>
+              <CircularProgress size={18} />
+              <Typography variant="body2" color="text.secondary">
+                Asking the Guide...
+              </Typography>
+            </Box>
+          ) : suggestions.length === 0 ? (
+            <Box p={2}>
+              <Typography variant="body2" color="text.secondary">
+                No recommendations returned. Try again or choose a move from the palette.
+              </Typography>
+            </Box>
+          ) : (
+            <List dense disablePadding>
+              {suggestions.map((action) => (
+                <ListItemButton
+                  key={`guide-${action.label}-${action.moveName}`}
+                  onClick={() => handleSelectSuggestion(action, action.label)}
+                >
+                  <ListItemText
+                    primary={action.label}
+                    secondary={
+                      action.moveName
+                        ? `${action.moveName}${action.stat ? ` +${action.stat}` : ""} - ${action.reason}`
+                        : action.reason
+                    }
+                    primaryTypographyProps={{ variant: "body2" }}
+                    secondaryTypographyProps={{ variant: "caption" }}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+      </Dialog>
       <GuidedMoveModal
         open={modalOpen}
         onClose={handleModalClose}

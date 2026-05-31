@@ -325,6 +325,9 @@ export const campaignSceneEvents = pgTable('campaign_scene_events', {
   campaignId: uuid('campaign_id')
     .notNull()
     .references(() => campaigns.id, { onDelete: 'cascade' }),
+  sessionId: uuid('session_id').references(() => sessions.id, {
+    onDelete: 'cascade',
+  }),
   sceneId: text('scene_id').notNull(),
   type: text('type').notNull(),
   actorId: text('actor_id'),
@@ -614,25 +617,6 @@ export const sessions = pgTable('sessions', {
     .notNull()
     .defaultNow(),
   endedAt: timestamp('ended_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
-
-export const sessionEvents = pgTable('session_events', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  sessionId: uuid('session_id')
-    .notNull()
-    .references(() => sessions.id, { onDelete: 'cascade' }),
-  characterId: uuid('character_id').references(() => characters.id, {
-    onDelete: 'set null',
-  }),
-  characterName: text('character_name').notNull().default(''),
-  createdBy: uuid('created_by').references(() => users.id, {
-    onDelete: 'set null',
-  }),
-  type: text('type').notNull(),
-  dataJson: jsonb('data_json').notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

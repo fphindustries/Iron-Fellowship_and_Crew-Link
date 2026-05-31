@@ -1,4 +1,4 @@
-import { Box, Drawer, IconButton, Typography } from "@mui/material";
+import { Box, Chip, Divider, Drawer, IconButton, Stack, Typography } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useStore } from "stores/store";
 import { MoveRollers } from "components/features/charactersAndCampaigns/LinkedDialog/LinkedDialogContent/MoveDialogContent/MoveRollers";
@@ -35,6 +35,7 @@ export function EntityDrawer({ entity, onClose }: EntityDrawerProps) {
       >
         <Typography variant="h6" sx={{ flex: 1, fontSize: "1rem" }}>
           {entity?.type === "npc" && entity.name}
+          {entity?.type === "character" && "Character"}
           {entity?.type === "move" && "Move"}
           {entity?.type === "vow" && entity.label}
         </Typography>
@@ -44,11 +45,138 @@ export function EntityDrawer({ entity, onClose }: EntityDrawerProps) {
       </Box>
 
       <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
+        {entity?.type === "character" && (
+          <CharacterDetail characterId={entity.characterId} />
+        )}
         {entity?.type === "npc" && <NPCDetail name={entity.name} />}
         {entity?.type === "move" && <MoveDetail moveId={entity.moveId} />}
         {entity?.type === "vow" && <VowDetail trackId={entity.trackId} />}
       </Box>
     </Drawer>
+  );
+}
+
+function CharacterDetail({ characterId }: { characterId: string }) {
+  const character = useStore(
+    (store) =>
+      store.campaigns.currentCampaign.characters.characterMap[characterId] ??
+      store.characters.characterMap[characterId]
+  );
+  const assets = useStore(
+    (store) =>
+      store.campaigns.currentCampaign.characters.characterAssets[characterId] ??
+      []
+  );
+  const assetMap = useStore((store) => store.rules.assetMaps.assetMap);
+  const tracks = useStore(
+    (store) => store.campaigns.currentCampaign.characters.characterTracks[characterId]
+  );
+
+  if (!character) {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        Character not found.
+      </Typography>
+    );
+  }
+
+  const activeImpacts = Object.entries(character.debilities ?? {})
+    .filter(([, active]) => active)
+    .map(([key]) => key);
+  const assetNames = assets
+    .map((asset) => assetMap[asset.id]?.name ?? asset.id)
+    .filter(Boolean);
+  const activeTracks = Object.values(tracks ?? {}).flatMap((trackGroup) =>
+    Object.entries(trackGroup ?? {}).map(([id, track]) => ({ id, track }))
+  );
+
+  return (
+    <Box display="flex" flexDirection="column" gap={1.5}>
+      <Box>
+        <Typography variant="h6">{character.name}</Typography>
+        {[character.callsign, character.pronouns, character.role]
+          .filter(Boolean)
+          .join(" · ") && (
+          <Typography variant="body2" color="text.secondary">
+            {[character.callsign, character.pronouns, character.role]
+              .filter(Boolean)
+              .join(" · ")}
+          </Typography>
+        )}
+      </Box>
+
+      {character.characteristics && (
+        <Field label="Characteristics" value={character.characteristics} />
+      )}
+
+      <Divider />
+
+      <Box>
+        <Typography variant="caption" color="text.secondary" display="block" mb={0.75} sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Stats
+        </Typography>
+        <Stack direction="row" flexWrap="wrap" gap={0.75}>
+          {Object.entries(character.stats ?? {}).map(([stat, value]) => (
+            <Chip key={stat} label={`${stat} ${value}`} size="small" sx={{ textTransform: "capitalize" }} />
+          ))}
+        </Stack>
+      </Box>
+
+      <Box>
+        <Typography variant="caption" color="text.secondary" display="block" mb={0.75} sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Meters
+        </Typography>
+        <Stack direction="row" flexWrap="wrap" gap={0.75}>
+          <Chip label={`Momentum ${character.momentum}`} size="small" />
+          {Object.entries(character.conditionMeters ?? {}).map(([meter, value]) => (
+            <Chip key={meter} label={`${meter} ${value}`} size="small" sx={{ textTransform: "capitalize" }} />
+          ))}
+        </Stack>
+      </Box>
+
+      {activeImpacts.length > 0 && (
+        <Box>
+          <Typography variant="caption" color="text.secondary" display="block" mb={0.75} sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Impacts
+          </Typography>
+          <Stack direction="row" flexWrap="wrap" gap={0.75}>
+            {activeImpacts.map((impact) => (
+              <Chip key={impact} label={impact} size="small" color="warning" sx={{ textTransform: "capitalize" }} />
+            ))}
+          </Stack>
+        </Box>
+      )}
+
+      {assetNames.length > 0 && (
+        <Box>
+          <Typography variant="caption" color="text.secondary" display="block" mb={0.75} sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Assets
+          </Typography>
+          <Stack direction="row" flexWrap="wrap" gap={0.75}>
+            {assetNames.map((asset) => (
+              <Chip key={asset} label={asset} size="small" variant="outlined" />
+            ))}
+          </Stack>
+        </Box>
+      )}
+
+      {activeTracks.length > 0 && (
+        <Box>
+          <Typography variant="caption" color="text.secondary" display="block" mb={0.75} sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Active Tracks
+          </Typography>
+          <Stack gap={0.75}>
+            {activeTracks.map(({ id, track }) => (
+              <Typography key={id} variant="body2">
+                {track.label}: {track.value}
+              </Typography>
+            ))}
+          </Stack>
+        </Box>
+      )}
+
+      {character.backstory && <Field label="Backstory" value={character.backstory} />}
+    </Box>
   );
 }
 

@@ -27,13 +27,9 @@ function buildBaseEvent(state: ReturnType<typeof import("stores/store").useStore
 }
 
 async function postEvent(sessionId: string, event: SessionLogEvent): Promise<string> {
-  const row = await api.post<{ id: string }>(`/api/sessions/${sessionId}/events`, {
-    characterId: event.characterId,
-    characterName: event.characterName,
-    type: event.type,
-    dataJson: event,
-  });
-  return row.id;
+  void sessionId;
+  void event;
+  return "";
 }
 
 export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
@@ -230,11 +226,6 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
         (event as import("types/SessionLog.type").MoveSessionEvent).narrative = narrative;
       }
     });
-    api
-      .patch(`/api/sessions/${sessionId}/events/${eventId}`, {
-        dataJson: { narrative },
-      })
-      .catch(() => {});
   },
 
   deleteEvent: (eventId) => {
@@ -242,7 +233,6 @@ export const createSessionLogSlice: CreateSliceType<SessionLogSlice> = (
     const sessionId = state.sessionLog.activeSessionId;
     if (!sessionId) return;
     set((store) => { delete store.sessionLog.events[eventId]; });
-    api.del(`/api/sessions/${sessionId}/events/${eventId}`).catch(() => {});
   },
 
   loadMoreEvents: () => {

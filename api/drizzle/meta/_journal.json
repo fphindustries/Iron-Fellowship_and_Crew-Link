@@ -78,6 +78,20 @@
       "when": 1748649600000,
       "tag": "0010_campaign_scene_events",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1780272000000,
+      "tag": "0011_campaign_scene_events_session",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780358400000,
+      "tag": "0012_drop_session_events",
+      "breakpoints": true
     }
   ]
 }

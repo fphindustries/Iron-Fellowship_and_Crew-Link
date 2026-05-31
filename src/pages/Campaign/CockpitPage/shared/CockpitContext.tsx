@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react";
 
 export type EntityRef =
+  | { type: "character"; characterId: string }
   | { type: "npc"; name: string }
   | { type: "move"; moveId: string }
   | { type: "vow"; trackId: string; label: string };

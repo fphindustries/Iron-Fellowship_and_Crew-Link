@@ -55,7 +55,7 @@ export function CockpitLeftRail() {
           )}
           <Stack spacing={0.75}>
             {characters.map(([charId, char]) => (
-              <CharacterRow key={charId} character={char} />
+              <CharacterRow key={charId} characterId={charId} character={char} />
             ))}
           </Stack>
         </Box>
@@ -93,6 +93,7 @@ export function CockpitLeftRail() {
 }
 
 interface CharacterRowProps {
+  characterId: string;
   character: {
     name: string;
     momentum: number;
@@ -101,18 +102,25 @@ interface CharacterRowProps {
   };
 }
 
-function CharacterRow({ character }: CharacterRowProps) {
+function CharacterRow({ characterId, character }: CharacterRowProps) {
+  const { openEntity } = useCockpit();
   const health = character.conditionMeters?.health;
   const spirit = character.conditionMeters?.spirit;
 
   return (
     <Card
       variant="outlined"
+      component={ButtonBase}
+      onClick={() => openEntity({ type: "character", characterId })}
       sx={{
         p: 1,
         display: "flex",
         flexDirection: "column",
+        alignItems: "flex-start",
         gap: 0.5,
+        width: "100%",
+        textAlign: "left",
+        "&:hover": { bgcolor: "action.hover" },
       }}
     >
       <Typography variant="subtitle2" sx={{ lineHeight: 1.2 }}>

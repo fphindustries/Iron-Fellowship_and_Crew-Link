@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -254,9 +255,13 @@ export class CampaignsController {
 
   @Get(':campaignId/scene-events')
   @UseGuards(CampaignMemberGuard)
-  getSceneEvents(@Param('campaignId') cid: string, @Req() req: any) {
+  getSceneEvents(
+    @Param('campaignId') cid: string,
+    @Req() req: any,
+    @Query('sessionId') sessionId?: string,
+  ) {
     const userId = (req.user as { id: string }).id;
-    return this.svc.getSceneEvents(cid, userId);
+    return this.svc.getSceneEvents(cid, userId, sessionId);
   }
 
   @Post(':campaignId/scene-events')
@@ -271,6 +276,16 @@ export class CampaignsController {
   @UseGuards(CampaignMemberGuard)
   async clearSceneEvents(@Param('campaignId') cid: string) {
     await this.svc.clearSceneEvents(cid);
+    this.gateway.emit('updated', cid, {});
+  }
+
+  @Delete(':campaignId/scene-events/:eventId')
+  @UseGuards(CampaignMemberGuard)
+  async removeSceneEvent(
+    @Param('campaignId') cid: string,
+    @Param('eventId') eventId: string,
+  ) {
+    await this.svc.removeSceneEvent(cid, eventId);
     this.gateway.emit('updated', cid, {});
   }
 

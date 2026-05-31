@@ -1,32 +1,35 @@
-import { Box, ButtonGroup, Button } from "@mui/material";
+import { Box, Chip, Stack, Typography } from "@mui/material";
 import { useStore } from "stores/store";
-import { FocusMode } from "types/AIGuideState.type";
 import { CurrentScenePanel } from "../scene/CurrentScenePanel";
 import { CockpitComposer } from "./CockpitComposer";
-import { CombatFocusMode } from "../focus/CombatFocusMode";
-import { ExpeditionFocusMode } from "../focus/ExpeditionFocusMode";
-import { SocialFocusMode } from "../focus/SocialFocusMode";
-
-const FOCUS_MODES: { mode: FocusMode; label: string }[] = [
-  { mode: "standard", label: "Scene" },
-  { mode: "combat", label: "Combat" },
-  { mode: "expedition", label: "Journey" },
-  { mode: "social", label: "Social" },
-];
+import { TrackStatus, TrackTypes } from "types/Track.type";
+import { useActiveCombatQuery } from "hooks/queries/useCombatQuery";
 
 export function CockpitCenter() {
-  const focusMode = useStore(
-    (store) => store.aiGuide.state?.focusMode ?? "standard"
-  );
   const campaignId = useStore(
     (store) => store.campaigns.currentCampaign.currentCampaignId
   );
-  const setFocusMode = useStore((store) => store.aiGuide.setFocusMode);
-
-  const handleFocusChange = (mode: FocusMode) => {
-    if (!campaignId) return;
-    setFocusMode(campaignId, mode);
-  };
+  const npcCount = useStore(
+    (store) => Object.keys(store.aiGuide.state?.npcIntents ?? {}).length
+  );
+  const activeJourneyCount = useStore(
+    (store) =>
+      Object.keys(
+        store.campaigns.currentCampaign.tracks.trackMap[TrackStatus.Active]?.[
+          TrackTypes.Journey
+        ] ?? {}
+      ).length
+  );
+  const { data: activeCombat } = useActiveCombatQuery({
+    campaignId: campaignId ?? undefined,
+  });
+  const contextLabel = activeCombat
+    ? "Combat"
+    : activeJourneyCount > 0
+    ? "Expedition"
+    : npcCount > 0
+    ? "Social"
+    : "Scene";
 
   return (
     <Box
@@ -37,7 +40,6 @@ export function CockpitCenter() {
         overflow: "hidden",
       }}
     >
-      {/* Focus mode switcher */}
       <Box
         sx={{
           px: 1.5,
@@ -46,39 +48,40 @@ export function CockpitCenter() {
           flexShrink: 0,
         }}
       >
-        <ButtonGroup size="small" variant="outlined" color="inherit">
-          {FOCUS_MODES.map(({ mode, label }) => (
-            <Button
-              key={mode}
-              onClick={() => handleFocusChange(mode)}
-              variant={focusMode === mode ? "contained" : "outlined"}
-              color={
-                mode === "combat"
-                  ? "error"
-                  : mode === "expedition"
-                  ? "primary"
-                  : mode === "social"
-                  ? "secondary"
-                  : "inherit"
+        <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
+          <Typography variant="caption" color="text.secondary">
+            Current context
+          </Typography>
+          <Chip
+            label={contextLabel}
+            size="small"
+            color={
+              contextLabel === "Combat"
+                ? "error"
+                : contextLabel === "Expedition"
+                ? "primary"
+                : contextLabel === "Social"
+                ? "secondary"
+                : "default"
+            }
+            variant="outlined"
+          />
+          {activeCombat?.dataJson?.position && (
+            <Chip
+              label={
+                activeCombat.dataJson.position === "in_control"
+                  ? "In control"
+                  : "In a bad spot"
               }
-              sx={{
-                fontSize: 11,
-                py: 0.4,
-                opacity: focusMode === mode ? 1 : 0.6,
-              }}
-            >
-              {label}
-            </Button>
-          ))}
-        </ButtonGroup>
+              size="small"
+              variant="outlined"
+            />
+          )}
+        </Stack>
       </Box>
 
-      {/* Main content area */}
       <Box flex={1} overflow="auto">
-        {focusMode === "standard" && <CurrentScenePanel />}
-        {focusMode === "combat" && <CombatFocusMode />}
-        {focusMode === "expedition" && <ExpeditionFocusMode />}
-        {focusMode === "social" && <SocialFocusMode />}
+        <CurrentScenePanel />
       </Box>
 
       <CockpitComposer />
