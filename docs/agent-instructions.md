@@ -97,6 +97,11 @@ pnpm --filter api run drizzle:migrate    # Apply pending migrations
 pnpm --filter api run drizzle:studio     # Open Drizzle Studio (browser DB inspector)
 ```
 
+If a defect is caused by missing database migrations, do not work around the
+missing schema in application code. Resolve the migration gap so the database
+matches `api/src/db/schema.ts` and the intended application path works
+correctly.
+
 ---
 
 ## Architecture
@@ -186,12 +191,17 @@ Before the first AIGuided session starts, `SessionPreflightDialog` runs the **Be
 The launch gate must:
 - Verify the campaign has a character, starship, linked world, sector/location, and starting connection NPC
 - Help define an inciting incident using manual input, relevant oracles, and the streamed AI incident generator
-- Frame the opening scene as either a prologue or in medias res
-- Create the shared starting vow as a campaign vow, defaulting to **Dangerous** with **Troublesome** also allowed
+- Frame the opening scene as either a prologue or in medias res, with manual input or the streamed AI opening scene generator
+- Create the shared starting vow as a campaign vow, using manual input or the streamed AI vow generator, defaulting to **Dangerous** with **Troublesome** also allowed
 - Roll **Swear an Iron Vow** with the selected character, including the +1 when the vow is sworn to the starting connection
 - Apply the move's momentum reward, log the move as the first session event, mark the starting connection on the NPC, and persist `AIGuideState.launchSetup`
+- If **Swear an Iron Vow** is a miss, require a concrete starting obstacle before the session starts. Persist it in `launchSetup`, the current scene, unresolved questions, and canon ledger. This obstacle must be overcome before the quest can truly begin, and resolving it must not mark vow progress or count as reaching a milestone.
 
 The AI incident generator uses `POST /api/ai/launch/inciting-incident/stream`. It should randomly vary among the rulebook inspiration sources from `docs/rules.md` pages 128-130 (truths, character, starship/team, settlements, connection, sector trouble, Action/Theme, Character Goal, and the page 130 starter table), stream directly into the inciting incident field, and let the user request a different incident.
+
+The AI opening scene generator uses `POST /api/ai/launch/opening-scene/stream`. It should follow the page 131 opening mode guidance, stream directly into the opening scene field, tie the scene to the selected inciting incident, and let the user request a different opening scene.
+
+The AI launch vow generator uses `POST /api/ai/launch/vow/stream`. It should follow the pages 132-135 vow guidance, stream directly into the vow field, produce a concise actionable vow tied to the inciting incident, opening scene, selected connection, and chosen rank, and let the user request a different vow.
 
 Once `launchSetup.completedAt` is present, normal session starts may bypass the launch wizard. Any future edits to campaign startup, session preflight, or AI-guided first-session flow should verify behavior against `docs/rules.md` pages 128-135.
 

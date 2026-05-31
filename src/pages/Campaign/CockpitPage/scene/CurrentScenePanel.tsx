@@ -15,6 +15,7 @@ import { useStore } from "stores/store";
 import { CockpitProposalCard } from "../shared/CockpitProposalCard";
 import { useCockpitAiRequest } from "../shared/useCockpitAiRequest";
 import { MarkdownRenderer } from "components/shared/MarkdownRenderer/MarkdownRenderer";
+import { useSceneEventsQuery } from "hooks/queries/useSceneEventsQuery";
 
 export function CurrentScenePanel() {
   const campaignId = useStore(
@@ -24,6 +25,7 @@ export function CurrentScenePanel() {
   const isLoading = useStore((store) => store.aiGuide.isLoading);
   const isRequesting = useStore((store) => store.ai.isRequesting);
   const activeRequestMode = useStore((store) => store.ai.activeRequestMode);
+  const { data: sceneEvents } = useSceneEventsQuery(campaignId);
 
   // Pending sceneFrame proposals
   const sceneProposals = useStore(
@@ -169,6 +171,56 @@ export function CurrentScenePanel() {
         </Box>
       )}
 
+      {sceneEvents && sceneEvents.length > 0 && (
+        <Box>
+          <Typography
+            variant="overline"
+            color="text.secondary"
+            display="block"
+            gutterBottom
+          >
+            Recent Events
+          </Typography>
+          <Stack gap={1}>
+            {sceneEvents.slice(-5).reverse().map((event) => {
+              const payload = event.payloadJson as Record<string, unknown>;
+              const action = getPayloadText(payload, "content");
+              const narrative = getPayloadText(payload, "narrative");
+              const moveName = getPayloadText(payload, "moveName");
+              const outcome = getPayloadText(payload, "outcome");
+
+              return (
+                <Box
+                  key={event.id}
+                  sx={{
+                    borderLeft: 2,
+                    borderColor:
+                      event.type === "move_roll" ? "warning.main" : "primary.main",
+                    pl: 1,
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary">
+                    {moveName
+                      ? `${moveName}${outcome ? `: ${outcome}` : ""}`
+                      : event.type === "move_roll"
+                      ? "Move"
+                      : "Action"}
+                  </Typography>
+                  {action && (
+                    <Typography variant="body2" color="text.secondary">
+                      {action}
+                    </Typography>
+                  )}
+                  {narrative && (
+                    <Typography variant="body2">{narrative}</Typography>
+                  )}
+                </Box>
+              );
+            })}
+          </Stack>
+        </Box>
+      )}
+
       {/* Pending sceneFrame proposals */}
       {sceneProposals.length > 0 && (
         <>
@@ -186,67 +238,73 @@ export function CurrentScenePanel() {
         </>
       )}
 
-      {/* Frame Scene controls */}
-      <Box>
-        {!hasScene && !showInput && (
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mb: 1, fontStyle: "italic" }}
-          >
-            Use the Guide to frame your opening scene, or set a title yourself.
-          </Typography>
-        )}
+      {!hasScene && (
+        <Box>
+          {!showInput && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mb: 1, fontStyle: "italic" }}
+            >
+              Use the Guide to frame your opening scene, or set a title yourself.
+            </Typography>
+          )}
 
-        {showInput && (
-          <Stack gap={1} sx={{ mb: 1 }}>
-            <TextField
-              size="small"
-              multiline
-              fullWidth
-              rows={2}
-              placeholder="Optional context for the Guide (location, mood, who is present…)"
-              value={freeformInput}
-              onChange={(e) => setFreeformInput(e.target.value)}
-              autoFocus
-            />
-          </Stack>
-        )}
-
-        <Stack direction="row" gap={1} flexWrap="wrap">
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={
-              isFraming ? (
-                <CircularProgress size={14} />
-              ) : (
-                <AutoFixHighIcon sx={{ fontSize: 16 }} />
-              )
-            }
-            disabled={isFraming}
-            onClick={showInput ? handleFrameScene : () => setShowInput(true)}
-          >
-            {isFraming
-              ? "Framing…"
-              : showInput
-              ? "Frame Scene"
-              : "Ask Guide to Frame Scene"}
-          </Button>
           {showInput && (
+            <Stack gap={1} sx={{ mb: 1 }}>
+              <TextField
+                size="small"
+                multiline
+                fullWidth
+                rows={2}
+                placeholder="Optional context for the Guide (location, mood, who is present…)"
+                value={freeformInput}
+                onChange={(e) => setFreeformInput(e.target.value)}
+                autoFocus
+              />
+            </Stack>
+          )}
+
+          <Stack direction="row" gap={1} flexWrap="wrap">
             <Button
               size="small"
-              color="inherit"
-              onClick={() => {
-                setShowInput(false);
-                setFreeformInput("");
-              }}
+              variant="outlined"
+              startIcon={
+                isFraming ? (
+                  <CircularProgress size={14} />
+                ) : (
+                  <AutoFixHighIcon sx={{ fontSize: 16 }} />
+                )
+              }
+              disabled={isFraming}
+              onClick={showInput ? handleFrameScene : () => setShowInput(true)}
             >
-              Cancel
+              {isFraming
+                ? "Framing…"
+                : showInput
+                ? "Frame Scene"
+                : "Ask Guide to Frame Scene"}
             </Button>
-          )}
-        </Stack>
-      </Box>
+            {showInput && (
+              <Button
+                size="small"
+                color="inherit"
+                onClick={() => {
+                  setShowInput(false);
+                  setFreeformInput("");
+                }}
+              >
+                Cancel
+              </Button>
+            )}
+          </Stack>
+        </Box>
+      )}
     </Box>
   );
+}
+
+function getPayloadText(payload: Record<string, unknown>, key: string): string {
+  const value = payload[key];
+  return typeof value === "string" ? value.trim() : "";
 }

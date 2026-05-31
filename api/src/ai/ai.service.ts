@@ -94,6 +94,25 @@ interface LaunchIncidentBody {
   previousIncidents?: string[];
 }
 
+interface LaunchOpeningSceneBody {
+  worldId?: string;
+  sceneMode?: 'prologue' | 'in_medias_res';
+  incitingIncident?: string;
+  previousOpeningScenes?: string[];
+  context?: LaunchIncidentBody['context'];
+}
+
+interface LaunchVowBody {
+  worldId?: string;
+  incitingIncident?: string;
+  openingScene?: string;
+  vowRank?: string;
+  connectionName?: string;
+  swearingCharacterName?: string;
+  previousVows?: string[];
+  context?: LaunchIncidentBody['context'];
+}
+
 interface WorldAiSettingsConfig {
   worldTonePrompt?: string;
   assumptions?: string;
@@ -117,7 +136,9 @@ function compactList(items: string[] | undefined, limit: number): string {
     .map((item) => truncateText(item, 260))
     .filter((item): item is string => !!item)
     .slice(0, limit);
-  return compact.length ? compact.map((item) => `- ${item}`).join('\n') : 'None';
+  return compact.length
+    ? compact.map((item) => `- ${item}`).join('\n')
+    : 'None';
 }
 
 function getRecord(value: unknown): Record<string, unknown> | undefined {
@@ -146,7 +167,9 @@ function compactRecords(
       return [name, ...details].filter(Boolean).join(' | ');
     })
     .filter((item): item is string => !!item);
-  return compact.length ? compact.map((item) => `- ${item}`).join('\n') : 'None';
+  return compact.length
+    ? compact.map((item) => `- ${item}`).join('\n')
+    : 'None';
 }
 
 function resolveStructuredOutputSchema(
@@ -1044,8 +1067,7 @@ export class AiService {
     ];
 
     const config =
-      worldSettings?.configJson &&
-      typeof worldSettings.configJson === 'object'
+      worldSettings?.configJson && typeof worldSettings.configJson === 'object'
         ? (worldSettings.configJson as WorldAiSettingsConfig)
         : undefined;
     if (config?.worldTonePrompt) {
@@ -1062,7 +1084,12 @@ export class AiService {
     const shouldInclude = (...keys: string[]) =>
       !sourceKey || keys.includes(sourceKey) || keys.includes('always');
     const contextLines = [
-      shouldInclude('truthsSelected', 'truthsQuestStarters', 'actionTheme', 'always')
+      shouldInclude(
+        'truthsSelected',
+        'truthsQuestStarters',
+        'actionTheme',
+        'always',
+      )
         ? ['World truths:', compactList(launch.worldTruths, 5)].join('\n')
         : '',
       shouldInclude('characterPaths', 'characterBackstory', 'team', 'always')
@@ -1160,6 +1187,252 @@ export class AiService {
       systemPromptDynamic,
       userPrompt,
       maxTokens: 700,
+    })) {
+      yield { text: chunk };
+    }
+  }
+
+  private buildLaunchOpeningScenePrompts(
+    body: LaunchOpeningSceneBody,
+    worldSettings: WorldAiSettingsLike | null,
+  ) {
+    const { context, sceneMode, incitingIncident, previousOpeningScenes } =
+      body;
+    const launch = context?.launchSetup ?? {};
+    const openingMode = sceneMode === 'prologue' ? 'Prologue' : 'In medias res';
+    const systemLines = [
+      'You are the Guide for an Ironsworn: Starforged campaign.',
+      'Create the opening scene for the Begin Your Adventure launch procedure from rulebook page 131.',
+      '',
+      'Opening mode guidance:',
+      '- Prologue: begin with a quieter or day-to-day moment that reveals the characters, their place in the setting, and the calm before the incident fully lands.',
+      '- In medias res: begin in the middle of immediate danger, pressure, mystery, or urgent action tied directly to the inciting incident.',
+      '',
+      'Requirements:',
+      '- Ground the scene in a specific place or situation from the established campaign context.',
+      '- Include concrete sensory detail and identify who or what is present.',
+      '- Present the immediate situation, question, danger, or demand the players can act on first.',
+      '- Tie the scene to the inciting incident without resolving it.',
+      '- Leave the players free to decide what their characters do.',
+      '',
+      'Write only the opening scene text. No title, no bullets, no markdown, no explanation of the rules.',
+      'Use 2 short paragraphs.',
+    ];
+
+    const config =
+      worldSettings?.configJson && typeof worldSettings.configJson === 'object'
+        ? (worldSettings.configJson as WorldAiSettingsConfig)
+        : undefined;
+    if (config?.worldTonePrompt) {
+      systemLines.push('', `Additional world tone: ${config.worldTonePrompt}`);
+    }
+    if (config?.assumptions) {
+      systemLines.push(
+        '',
+        `World assumptions: ${truncateText(config.assumptions, 700)}`,
+      );
+    }
+
+    const userPrompt = [
+      `Campaign: ${context?.campaignName ?? 'Unknown Campaign'} (${context?.campaignType ?? 'ai-guided'})`,
+      `Opening mode: ${openingMode}`,
+      `Inciting incident: ${truncateText(incitingIncident, 900) ?? 'None provided'}`,
+      previousOpeningScenes?.length
+        ? `Previous rejected or replaced opening scene. Do not repeat it:\n${compactList(previousOpeningScenes, 1)}`
+        : '',
+      '',
+      'World truths:',
+      compactList(launch.worldTruths, 4),
+      '',
+      'Characters:',
+      compactRecords(launch.characters, 4, [
+        'callsign',
+        'role',
+        'characteristics',
+      ]),
+      '',
+      'Starship:',
+      compactRecords(launch.starship ? [launch.starship] : undefined, 1, [
+        'history',
+        'quirks',
+      ]),
+      '',
+      'Sectors:',
+      compactRecords(launch.sectors, 2, ['region', 'trouble']),
+      '',
+      'Locations and settlements:',
+      compactRecords(launch.locations, 6, ['type']),
+      '',
+      'NPCs and connections:',
+      compactRecords(launch.npcs, 6, [
+        'role',
+        'disposition',
+        'goal',
+        'rank',
+        'callsign',
+      ]),
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    return {
+      systemPromptStatic: systemLines.join('\n'),
+      systemPromptDynamic: '',
+      userPrompt,
+    };
+  }
+
+  async *generateLaunchOpeningSceneStream(
+    body: LaunchOpeningSceneBody,
+  ): AsyncGenerator<{ text: string } | { _debug: object }> {
+    const worldSettings = body.worldId
+      ? await this.getWorldAiSettings(body.worldId)
+      : null;
+    const { systemPromptStatic, systemPromptDynamic, userPrompt } =
+      this.buildLaunchOpeningScenePrompts(body, worldSettings);
+    const model = this.resolveModel(
+      this.guideProviderName,
+      'launchOpeningScene',
+    );
+    yield {
+      _debug: {
+        provider: this.guideProviderName,
+        model,
+        systemPromptStatic,
+        systemPromptDynamic,
+        userPrompt,
+      },
+    };
+    for await (const chunk of this.guideProvider.generateTextStream({
+      model,
+      systemPromptStatic,
+      systemPromptDynamic,
+      userPrompt,
+      maxTokens: 700,
+    })) {
+      yield { text: chunk };
+    }
+  }
+
+  private buildLaunchVowPrompts(
+    body: LaunchVowBody,
+    worldSettings: WorldAiSettingsLike | null,
+  ) {
+    const {
+      context,
+      incitingIncident,
+      openingScene,
+      vowRank,
+      connectionName,
+      swearingCharacterName,
+      previousVows,
+    } = body;
+    const launch = context?.launchSetup ?? {};
+    const systemLines = [
+      'You are the Guide for an Ironsworn: Starforged campaign.',
+      'Create the shared starting vow for the Begin Your Adventure launch procedure from rulebook pages 132-135.',
+      '',
+      'Requirements:',
+      '- Make the vow a clear objective the protagonists can pursue now.',
+      '- Tie it directly to the inciting incident and opening scene.',
+      '- Keep the scope appropriate for a starting campaign vow and the selected rank.',
+      '- Make it concrete enough to track progress, but leave room for twists and player decisions.',
+      '- If a connection is provided, make the vow feel meaningfully sworn to or on behalf of that connection.',
+      '- Do not decide what the player characters do beyond the sworn objective.',
+      '',
+      'Write only the vow text. No title, no bullets, no markdown, no explanation of the rules.',
+      'Use one concise sentence. It should read naturally as a vow objective, not a recap.',
+    ];
+
+    const config =
+      worldSettings?.configJson && typeof worldSettings.configJson === 'object'
+        ? (worldSettings.configJson as WorldAiSettingsConfig)
+        : undefined;
+    if (config?.worldTonePrompt) {
+      systemLines.push('', `Additional world tone: ${config.worldTonePrompt}`);
+    }
+    if (config?.assumptions) {
+      systemLines.push(
+        '',
+        `World assumptions: ${truncateText(config.assumptions, 700)}`,
+      );
+    }
+
+    const userPrompt = [
+      `Campaign: ${context?.campaignName ?? 'Unknown Campaign'} (${context?.campaignType ?? 'ai-guided'})`,
+      `Vow rank: ${vowRank ?? 'Dangerous'}`,
+      swearingCharacterName
+        ? `Swearing character: ${swearingCharacterName}`
+        : '',
+      connectionName ? `Starting connection: ${connectionName}` : '',
+      `Inciting incident: ${truncateText(incitingIncident, 900) ?? 'None provided'}`,
+      `Opening scene: ${truncateText(openingScene, 900) ?? 'None provided'}`,
+      previousVows?.length
+        ? `Previous rejected or replaced vow. Do not repeat it:\n${compactList(previousVows, 1)}`
+        : '',
+      '',
+      'World truths:',
+      compactList(launch.worldTruths, 4),
+      '',
+      'Characters:',
+      compactRecords(launch.characters, 4, [
+        'callsign',
+        'role',
+        'characteristics',
+      ]),
+      '',
+      'Starship:',
+      compactRecords(launch.starship ? [launch.starship] : undefined, 1, [
+        'history',
+        'quirks',
+      ]),
+      '',
+      'Locations and settlements:',
+      compactRecords(launch.locations, 4, ['type']),
+      '',
+      'NPCs and connections:',
+      compactRecords(launch.npcs, 5, [
+        'role',
+        'disposition',
+        'goal',
+        'rank',
+        'callsign',
+      ]),
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    return {
+      systemPromptStatic: systemLines.join('\n'),
+      systemPromptDynamic: '',
+      userPrompt,
+    };
+  }
+
+  async *generateLaunchVowStream(
+    body: LaunchVowBody,
+  ): AsyncGenerator<{ text: string } | { _debug: object }> {
+    const worldSettings = body.worldId
+      ? await this.getWorldAiSettings(body.worldId)
+      : null;
+    const { systemPromptStatic, systemPromptDynamic, userPrompt } =
+      this.buildLaunchVowPrompts(body, worldSettings);
+    const model = this.resolveModel(this.guideProviderName, 'launchVow');
+    yield {
+      _debug: {
+        provider: this.guideProviderName,
+        model,
+        systemPromptStatic,
+        systemPromptDynamic,
+        userPrompt,
+      },
+    };
+    for await (const chunk of this.guideProvider.generateTextStream({
+      model,
+      systemPromptStatic,
+      systemPromptDynamic,
+      userPrompt,
+      maxTokens: 300,
     })) {
       yield { text: chunk };
     }

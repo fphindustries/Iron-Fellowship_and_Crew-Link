@@ -48,6 +48,7 @@ function useCampaignSocketInvalidation() {
       qc.invalidateQueries({ queryKey: campaignKeys.detail(campaignId) });
       qc.invalidateQueries({ queryKey: campaignKeys.assets(campaignId) });
       qc.invalidateQueries({ queryKey: campaignKeys.tracks(campaignId) });
+      qc.invalidateQueries({ queryKey: campaignKeys.starship(campaignId) });
       qc.invalidateQueries({
         queryKey: sessionLogKeys.active({ campaignId }),
       });

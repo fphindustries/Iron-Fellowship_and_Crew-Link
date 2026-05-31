@@ -110,7 +110,7 @@ describe('CampaignsService', () => {
 
       const result = await service.create('user-1', {
         name: 'New Campaign',
-        type: 'solo' as any,
+        type: 'solo',
       });
 
       expect(result).toEqual(newCampaign);

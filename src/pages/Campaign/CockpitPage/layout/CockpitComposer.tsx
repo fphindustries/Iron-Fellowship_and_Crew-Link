@@ -49,9 +49,12 @@ export function CockpitComposer() {
   }, [request]);
 
   const handleSelectSuggestion = (action: SuggestedAction) => {
-    setSelectedAction(action);
     setFreeform(action.label);
     setResolvedMove(null);
+    setSelectedAction(action);
+    setModalIntent(action.label);
+    setModalMoveName(action.moveName ?? null);
+    setModalOpen(true);
   };
 
   const handleResolveIntent = useCallback(async () => {
@@ -64,6 +67,9 @@ export function CockpitComposer() {
       if (result?.structuredData) {
         const data = result.structuredData as unknown as IntentToMoveOutput;
         setResolvedMove(data);
+        setModalIntent(freeform.trim());
+        setModalMoveName(data.moveName ?? null);
+        setModalOpen(true);
       }
     } finally {
       setResolving(false);
@@ -81,6 +87,14 @@ export function CockpitComposer() {
     setFreeform("");
     setResolvedMove(null);
     setSelectedAction(null);
+  };
+
+  const handleModalComplete = () => {
+    setModalOpen(false);
+    setFreeform("");
+    setResolvedMove(null);
+    setSelectedAction(null);
+    setSuggestions([]);
   };
 
   const movePreview = selectedAction
@@ -195,6 +209,7 @@ export function CockpitComposer() {
       <GuidedMoveModal
         open={modalOpen}
         onClose={handleModalClose}
+        onComplete={handleModalComplete}
         intent={modalIntent}
         moveName={modalMoveName}
       />

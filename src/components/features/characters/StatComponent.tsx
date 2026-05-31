@@ -11,6 +11,7 @@ import { useIsMobile } from "hooks/useIsMobile";
 import { useRoller } from "stores/appState/useRoller";
 import { ignoreApiError } from "config/api.config";
 import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
+import { StatRoll } from "types/DieRolls.type";
 
 export interface StatComponentProps {
   label: string;
@@ -23,7 +24,7 @@ export interface StatComponentProps {
     id: string;
   };
   playerContext?: string;
-  onRollComplete?: () => void;
+  onRollComplete?: (roll: StatRoll) => void;
 }
 
 export function StatComponent(props: StatComponentProps) {
@@ -110,9 +111,11 @@ export function StatComponent(props: StatComponentProps) {
       component={updateTrack || disableRoll ? "div" : ButtonBase}
       onClick={() => {
         if (!(updateTrack || disableRoll)) {
-          rollStat(label, value, moveInfo, adds, true, playerContext);
-          resetAdds.mutateAsync({ adds: 0 }).catch(ignoreApiError);
-          onRollComplete?.();
+          const roll = rollStat(label, value, moveInfo, adds, true, playerContext);
+          if (adds) {
+            resetAdds.mutateAsync({ adds: 0 }).catch(ignoreApiError);
+          }
+          onRollComplete?.(roll);
         }
       }}
     >

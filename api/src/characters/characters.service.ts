@@ -56,9 +56,14 @@ export class CharactersService {
       .limit(1);
     if (!char) throw new NotFoundException();
     if (char.userId !== userId) throw new ForbiddenException();
+    const allowedPatchKeys = new Set(Object.keys(schema.characters));
+    const sanitizedPatch = Object.fromEntries(
+      Object.entries(patch).filter(([key]) => allowedPatchKeys.has(key)),
+    ) as Partial<typeof schema.characters.$inferInsert>;
+    if (Object.keys(sanitizedPatch).length === 0) return char;
     const [updated] = await this.db
       .update(schema.characters)
-      .set(patch)
+      .set(sanitizedPatch)
       .where(eq(schema.characters.id, id))
       .returning();
     return updated;

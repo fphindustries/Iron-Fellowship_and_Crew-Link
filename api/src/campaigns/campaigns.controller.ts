@@ -267,6 +267,13 @@ export class CampaignsController {
     return result;
   }
 
+  @Delete(':campaignId/scene-events')
+  @UseGuards(CampaignMemberGuard)
+  async clearSceneEvents(@Param('campaignId') cid: string) {
+    await this.svc.clearSceneEvents(cid);
+    this.gateway.emit('updated', cid, {});
+  }
+
   @Get(':campaignId/starship')
   @UseGuards(CampaignMemberGuard)
   getStarship(@Param('campaignId') cid: string) {

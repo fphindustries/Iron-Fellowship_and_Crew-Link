@@ -251,7 +251,11 @@ interface AiGuideContext extends AiCampaignContext {
     canonFacts?: string[];
     npcIntents?: Record<
       string,
-      { currentIntent: string; hiddenAspects: string[]; firstImpressionRevealed?: boolean }
+      {
+        currentIntent: string;
+        hiddenAspects: string[];
+        firstImpressionRevealed?: boolean;
+      }
     >;
     tensionClocks?: Array<{
       label: string;
@@ -687,7 +691,9 @@ function buildSpotlightNudgePrompts(
 
   const userPrompt = [
     `Characters: ${charNames.join(', ') || 'unknown'}`,
-    quiet.length > 0 ? `Characters who have been quiet: ${quiet.join(', ')}` : '',
+    quiet.length > 0
+      ? `Characters who have been quiet: ${quiet.join(', ')}`
+      : '',
     context.freeformInput ? `Scene focus: ${context.freeformInput}` : '',
     '',
     'Suggest which quiet character to bring into focus and how.',

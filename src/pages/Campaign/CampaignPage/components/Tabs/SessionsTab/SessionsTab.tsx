@@ -42,8 +42,32 @@ import { useCampaignType } from "hooks/useCampaignType";
 import { useNavigate } from "react-router-dom";
 import { constructCampaignSheetPath, CAMPAIGN_ROUTES } from "pages/Campaign/routes";
 import { SessionPreflightDialog } from "pages/Campaign/CampaignPage/components/SessionPreflightDialog";
+import { defaultAIGuideState } from "types/AIGuideState.type";
+import { sceneEventKeys } from "hooks/queries/useSceneEventsQuery";
 
-function rowToSessionDocument(row: any): SessionDocument {
+type SessionRow = {
+  id: string;
+  characterId?: string | null;
+  campaignId?: string | null;
+  startedAt: string | Date;
+  endedAt?: string | Date | null;
+  title?: string | null;
+  isActive: boolean;
+  summary?: string | null;
+};
+
+type SessionEventRow = {
+  id: string;
+  sessionId: string;
+  characterId?: string | null;
+  characterName?: string | null;
+  createdBy?: string | null;
+  type: string;
+  dataJson?: Partial<SessionLogEvent> | null;
+  createdAt: string | Date;
+};
+
+function rowToSessionDocument(row: SessionRow): SessionDocument {
   return {
     characterId: row.characterId ?? undefined,
     campaignId: row.campaignId ?? undefined,
@@ -55,31 +79,44 @@ function rowToSessionDocument(row: any): SessionDocument {
   };
 }
 
-function rowToSessionEvent(row: any): SessionLogEvent {
+function rowToSessionEvent(row: SessionEventRow): SessionLogEvent {
   const data = row.dataJson ?? {};
   return {
+    ...data,
     type: row.type as SESSION_EVENT_TYPE,
     sessionId: row.sessionId,
-    timestamp: new Date(row.createdAt),
     characterId: row.characterId ?? null,
     characterName: row.characterName ?? "",
     uid: row.createdBy ?? "",
-    ...data,
+    timestamp: new Date(row.createdAt),
   } as SessionLogEvent;
+}
+
+function getEventTimestamp(event: SessionLogEvent): number {
+  const timestamp = event.timestamp;
+  if (timestamp instanceof Date) return timestamp.getTime();
+  return new Date(timestamp).getTime();
 }
 
 export function SessionsTab() {
   const campaignId = useStore(
     (s) => s.campaigns.currentCampaign.currentCampaignId
   );
+  const currentCampaignType = useStore(
+    (s) => s.campaigns.currentCampaign.currentCampaign?.type
+  );
   const activeSessionId = useStore((s) => s.sessionLog.activeSessionId);
   const activeEvents = useStore((s) => s.sessionLog.events);
 
   const { campaignType } = useCampaignType();
-  const isAIGuided = campaignType === CampaignType.AIGuided;
+  const isAIGuided =
+    currentCampaignType === CampaignType.AIGuided ||
+    campaignType === CampaignType.AIGuided;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const endSessionMutation = useEndSessionMutation();
+  const guideState = useStore((store) => store.aiGuide.state);
+  const saveGuideState = useStore((store) => store.aiGuide.saveGuideState);
 
   const [preflightOpen, setPreflightOpen] = useState(false);
 
@@ -90,7 +127,7 @@ export function SessionsTab() {
 
   const sessions: { id: string; session: SessionDocument }[] = useMemo(
     () =>
-      (sessionsData ?? []).map((row: any) => ({
+      ((sessionsData ?? []) as SessionRow[]).map((row) => ({
         id: row.id,
         session: rowToSessionDocument(row),
       })),
@@ -128,7 +165,7 @@ export function SessionsTab() {
   const pastEvents: { [key: string]: SessionLogEvent } = useMemo(() => {
     if (!pastEventsData) return {};
     const map: { [key: string]: SessionLogEvent } = {};
-    (pastEventsData as any[]).forEach((row: any) => {
+    (pastEventsData as SessionEventRow[]).forEach((row) => {
       map[row.id] = rowToSessionEvent(row);
     });
     return map;
@@ -139,13 +176,16 @@ export function SessionsTab() {
   const orderedEventKeys = useMemo(
     () =>
       Object.keys(displayEvents).sort(
-        (a, b) =>
-          displayEvents[a].timestamp.getTime() - displayEvents[b].timestamp.getTime()
+        (a, b) => getEventTimestamp(displayEvents[a]) - getEventTimestamp(displayEvents[b])
       ),
     [displayEvents]
   );
 
-  const { state: guideState, requestNarrative, requestFreeformNarrative } = useAIGuide();
+  const {
+    state: runtimeGuideState,
+    requestNarrative,
+    requestFreeformNarrative,
+  } = useAIGuide();
 
   const handleRequestNarrative = useCallback(
     (eventId: string, event: SessionLogEvent) => {
@@ -169,19 +209,44 @@ export function SessionsTab() {
     });
   };
 
-  const handleDeleteConfirm = () => {
+  const handleReturnToCockpit = () => {
+    if (!campaignId) return;
+    navigate(constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.PLAY));
+  };
+
+  const handleDeleteConfirm = async () => {
     if (!deleteTarget || !campaignId) return;
-    api
-      .del(`/api/sessions/${deleteTarget.id}`)
-      .then(() => {
-        qc.invalidateQueries({ queryKey: sessionLogKeys.list("campaign", campaignId) });
-      })
-      .catch(console.error);
-    if (selectedSessionId === deleteTarget.id) {
-      const remaining = sessions.filter((s) => s.id !== deleteTarget.id);
-      setSelectedSessionId(remaining[0]?.id);
+    const remaining = sessions.filter((s) => s.id !== deleteTarget.id);
+
+    try {
+      await api.del(`/api/sessions/${deleteTarget.id}`);
+      if (remaining.length === 0 && isAIGuided) {
+        await api.del(`/api/campaigns/${campaignId}/scene-events`);
+        await saveGuideState(campaignId, {
+          ...defaultAIGuideState,
+          focusMode: guideState?.focusMode ?? defaultAIGuideState.focusMode,
+        });
+      }
+      if (activeSessionId === deleteTarget.id || remaining.length === 0) {
+        useStore.setState((store) => {
+          store.sessionLog.activeSessionId = undefined;
+          store.sessionLog.activeSession = undefined;
+          store.sessionLog.events = {};
+        });
+      }
+      await qc.invalidateQueries({
+        queryKey: sessionLogKeys.list("campaign", campaignId),
+      });
+      await qc.invalidateQueries({
+        queryKey: sceneEventKeys.list(campaignId),
+      });
+      if (selectedSessionId === deleteTarget.id) {
+        setSelectedSessionId(remaining[0]?.id);
+      }
+      setDeleteTarget(undefined);
+    } catch (error) {
+      console.error(error);
     }
-    setDeleteTarget(undefined);
   };
 
   const formatDate = (date: Date) =>
@@ -282,9 +347,7 @@ export function SessionsTab() {
                           color="primary"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (campaignId) {
-                              navigate(constructCampaignSheetPath(campaignId, CAMPAIGN_ROUTES.PLAY));
-                            }
+                            handleReturnToCockpit();
                           }}
                           sx={{ p: 0.25 }}
                         >
@@ -331,6 +394,25 @@ export function SessionsTab() {
 
       {/* Event feed */}
       <Box display="flex" flexDirection="column" flexGrow={1} overflow="hidden">
+        {isSelectedActive && isAIGuided && (
+          <Box
+            px={1.5}
+            py={1}
+            borderBottom={1}
+            borderColor="divider"
+            display="flex"
+            justifyContent="flex-end"
+          >
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<PlayArrowIcon />}
+              onClick={handleReturnToCockpit}
+            >
+              Return to Cockpit
+            </Button>
+          </Box>
+        )}
         {!selectedSessionId ? (
           <EmptyState message="Select a session to view its events." />
         ) : orderedEventKeys.length === 0 ? (
@@ -351,8 +433,8 @@ export function SessionsTab() {
                   eventId={eventId}
                   event={displayEvents[eventId]}
                   onRequestNarrative={isSelectedActive ? handleRequestNarrative : undefined}
-                  narratingEventId={guideState.narratingEventId}
-                  streamingNarrativeText={guideState.narrativeText}
+                  narratingEventId={runtimeGuideState.narratingEventId}
+                  streamingNarrativeText={runtimeGuideState.narrativeText}
                 />
               )}
             />
@@ -363,7 +445,7 @@ export function SessionsTab() {
           <Box borderTop={1} borderColor="divider">
             <JournalInput
               onRequestGuide={requestFreeformNarrative}
-              guideIsStreaming={guideState.isStreaming}
+              guideIsStreaming={runtimeGuideState.isStreaming}
             />
           </Box>
         )}
@@ -391,6 +473,7 @@ export function SessionsTab() {
         <SessionPreflightDialog
           open={preflightOpen}
           campaignId={campaignId}
+          forceLaunchSetup={sessions.length === 0}
           onClose={() => setPreflightOpen(false)}
         />
       )}

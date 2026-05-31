@@ -152,8 +152,27 @@ export class AiController {
   }
 
   @Post('sector/content')
-  generateSectorContent(@Body() body: any) {
-    return this.svc.generateSectorContent(body);
+  async generateSectorContent(@Body() body: any, @Res() res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    // Send SSE keepalive pings so the proxy doesn't 504 during the AI call
+    const ping = setInterval(() => res.write(':ping\n\n'), 15_000);
+
+    try {
+      const result = await this.svc.generateSectorContent(body);
+      const { _debug, ...data } = result;
+      if (_debug) res.write(`data: ${JSON.stringify({ _debug })}\n\n`);
+      res.write(`data: ${JSON.stringify({ text: JSON.stringify(data) })}\n\n`);
+      res.write('data: [DONE]\n\n');
+    } catch (err) {
+      res.write(`data: ${JSON.stringify({ error: getErrorMessage(err) })}\n\n`);
+    } finally {
+      clearInterval(ping);
+      res.end();
+    }
   }
 
   @Post('launch/inciting-incident/stream')
@@ -170,6 +189,51 @@ export class AiController {
     } catch (err) {
       const message = getErrorMessage(err);
       console.error('Launch incident generation failed:', err);
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+    } finally {
+      res.end();
+    }
+  }
+
+  @Post('launch/opening-scene/stream')
+  async generateLaunchOpeningSceneStream(
+    @Body() body: any,
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+    try {
+      for await (const event of this.svc.generateLaunchOpeningSceneStream(
+        body,
+      )) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+      res.write('data: [DONE]\n\n');
+    } catch (err) {
+      const message = getErrorMessage(err);
+      console.error('Launch opening scene generation failed:', err);
+      res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+    } finally {
+      res.end();
+    }
+  }
+
+  @Post('launch/vow/stream')
+  async generateLaunchVowStream(@Body() body: any, @Res() res: Response) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+    try {
+      for await (const event of this.svc.generateLaunchVowStream(body)) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+      res.write('data: [DONE]\n\n');
+    } catch (err) {
+      const message = getErrorMessage(err);
+      console.error('Launch vow generation failed:', err);
       res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
     } finally {
       res.end();

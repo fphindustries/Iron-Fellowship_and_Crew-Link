@@ -69,9 +69,9 @@ describe('CharactersService', () => {
         ...createQueryResult([char]),
         limit: jest.fn().mockResolvedValue([char]),
       });
-      await expect(
-        service.update('char-1', 'intruder-2', {}),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.update('char-1', 'intruder-2', {})).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('returns updated character when user is the owner', async () => {
@@ -89,7 +89,7 @@ describe('CharactersService', () => {
       });
 
       const result = await service.update('char-1', 'user-1', {
-        name: 'Updated' as any,
+        name: 'Updated',
       });
       expect(result).toEqual(updated);
     });

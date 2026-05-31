@@ -3,16 +3,26 @@ import { Box, Chip, Stack, TextField, Typography } from "@mui/material";
 import { StatComponent } from "components/features/characters/StatComponent";
 import { useStore } from "stores/store";
 import { MoveAssetControl } from "./MoveAssetControl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useUpdateCharacterMutation } from "hooks/queries/useCharactersQuery";
+import { StatRoll } from "types/DieRolls.type";
 
 export interface MoveRollersProps {
   move: Datasworn.Move;
-  onRollComplete?: () => void;
+  onRollComplete?: (roll: StatRoll) => void;
+  initialPlayerContext?: string;
+  playerContext?: string;
+  onPlayerContextChange?: (value: string) => void;
 }
 
 export function MoveRollers(props: MoveRollersProps) {
-  const { move, onRollComplete } = props;
+  const {
+    move,
+    onRollComplete,
+    initialPlayerContext = "",
+    playerContext: controlledPlayerContext,
+    onPlayerContextChange,
+  } = props;
 
   const statRules = useStore((store) => store.rules.stats);
   const conditionMeterRules = useStore((store) => store.rules.conditionMeters);
@@ -47,7 +57,16 @@ export function MoveRollers(props: MoveRollersProps) {
   );
   const isSessionActive = !!activeSessionId;
 
-  const [playerContext, setPlayerContext] = useState("");
+  const [internalPlayerContext, setInternalPlayerContext] =
+    useState(initialPlayerContext);
+  const playerContext = controlledPlayerContext ?? internalPlayerContext;
+  const setPlayerContext = onPlayerContextChange ?? setInternalPlayerContext;
+
+  useEffect(() => {
+    if (controlledPlayerContext === undefined) {
+      setInternalPlayerContext(initialPlayerContext);
+    }
+  }, [controlledPlayerContext, initialPlayerContext]);
 
   const getConditionMeterValue = (conditionMeterKey: string): number => {
     const conditionMeter = conditionMeterRules[conditionMeterKey];
@@ -116,7 +135,7 @@ export function MoveRollers(props: MoveRollersProps) {
                   }}
                   disableRoll={rollDisabled}
                   playerContext={playerContext}
-                  onRollComplete={() => { setPlayerContext(""); onRollComplete?.(); }}
+                  onRollComplete={(roll) => { setPlayerContext(""); onRollComplete?.(roll); }}
                 />
               ) : (
                 <Chip
@@ -140,7 +159,7 @@ export function MoveRollers(props: MoveRollersProps) {
                   }}
                   disableRoll={rollDisabled}
                   playerContext={playerContext}
-                  onRollComplete={() => { setPlayerContext(""); onRollComplete?.(); }}
+                  onRollComplete={(roll) => { setPlayerContext(""); onRollComplete?.(roll); }}
                 />
               ) : (
                 <Chip

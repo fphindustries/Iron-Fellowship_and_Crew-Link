@@ -58,9 +58,9 @@ export function TimelineView() {
       {events.map((event) => {
         const payload = event.payloadJson as Record<string, unknown>;
         const text =
-          (payload.narrative as string) ??
-          (payload.content as string) ??
-          (payload.moveName as string) ??
+          getPayloadText(payload, "narrative") ||
+          getPayloadText(payload, "content") ||
+          getPayloadText(payload, "moveName") ||
           null;
 
         return (
@@ -118,4 +118,9 @@ export function TimelineView() {
       })}
     </Box>
   );
+}
+
+function getPayloadText(payload: Record<string, unknown>, key: string): string {
+  const value = payload[key];
+  return typeof value === "string" ? value.trim() : "";
 }

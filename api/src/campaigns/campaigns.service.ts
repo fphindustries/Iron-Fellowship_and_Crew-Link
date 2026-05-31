@@ -2,7 +2,6 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, inArray } from 'drizzle-orm';
@@ -411,5 +410,11 @@ export class CampaignsService {
       })
       .returning();
     return row;
+  }
+
+  async clearSceneEvents(campaignId: string) {
+    await this.db
+      .delete(schema.campaignSceneEvents)
+      .where(eq(schema.campaignSceneEvents.campaignId, campaignId));
   }
 }

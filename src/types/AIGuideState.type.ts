@@ -81,6 +81,11 @@ export interface LaunchSetupState {
     momentumApplied: number;
   };
   nextStepPrompt: string;
+  swearMoveObstacle?: {
+    text: string;
+    resolved: boolean;
+    source: "swear_miss";
+  };
 }
 
 export interface AIGuideState {

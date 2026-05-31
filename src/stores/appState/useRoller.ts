@@ -150,7 +150,7 @@ export function useRoller() {
         );
       }
 
-      return result;
+      return statRoll;
     },
     [
       addRollToLog,

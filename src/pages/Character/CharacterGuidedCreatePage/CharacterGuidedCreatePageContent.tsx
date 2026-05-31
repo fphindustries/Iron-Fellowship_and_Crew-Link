@@ -16,7 +16,6 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { PageContent, PageHeader } from "components/shared/Layout";
 import { useAppName } from "hooks/useAppName";
 import { Head } from "providers/HeadProvider/Head";
-import { useFieldArray, useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useStore } from "stores/store";
@@ -47,14 +46,6 @@ import {
 } from "hooks/queries/useCampaignsQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCreateFullCharacterMutation } from "hooks/queries/useCharactersQuery";
-
-interface GuidedForm {
-  enabledExpansionMap: Record<string, boolean>;
-  stats: Record<string, number>;
-  assets: AssetDocument[];
-  backstory?: string;
-  backgroundVow?: string;
-}
 
 const STEPS = [
   "Choose Your Paths",
@@ -90,13 +81,6 @@ export function CharacterGuidedCreatePageContent() {
   const addCharacterToCampaign = useUpdateCampaignCharacterMutation(
     campaignId ?? undefined
   );
-
-  const { control } = useForm<GuidedForm>();
-  const { append } = useFieldArray({
-    control,
-    name: "assets",
-    keyName: "hook-form-id",
-  });
 
   // Campaign context
   const { data: campaign } = useCampaignQuery(campaignId ?? undefined);
@@ -182,11 +166,11 @@ export function CharacterGuidedCreatePageContent() {
   const goBack = () => setActiveStep((s) => s - 1);
 
   const handlePathsComplete = (assets: AssetDocument[], role: string) => {
-    assets.forEach((a) => append(a));
     setCompletedPathNames(
       assets.map((a) => assetMap[a.id]?.name ?? "").filter(Boolean)
     );
-    setFormData((prev) => ({ ...prev, assets: [...prev.assets, ...assets], role }));
+    // Replace path assets (positions 0-1); preserve any previously chosen final asset
+    setFormData((prev) => ({ ...prev, assets: [...assets, ...prev.assets.slice(2)], role }));
     advance();
   };
 
@@ -204,7 +188,8 @@ export function CharacterGuidedCreatePageContent() {
 
   const handleFinalAssetComplete = (asset: AssetDocument) => {
     setCompletedFinalAssetName(assetMap[asset.id]?.name ?? undefined);
-    setFormData((prev) => ({ ...prev, assets: [...prev.assets, asset] }));
+    // Replace the final asset (position 2); preserve path assets at [0,1]
+    setFormData((prev) => ({ ...prev, assets: [...prev.assets.slice(0, 2), asset] }));
     advance();
   };
 

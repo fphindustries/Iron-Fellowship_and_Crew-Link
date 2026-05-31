@@ -43,7 +43,14 @@ import { getRoll } from "stores/appState/useRoller";
 import { useRoller } from "stores/appState/useRoller";
 import { momentumTrack } from "data/defaultTracks";
 import { generateLaunchIncidentStream } from "api/ai/generateLaunchIncident";
-import { LaunchIncidentSource, LaunchIncidentSourceKey } from "types/AI.type";
+import { generateLaunchOpeningSceneStream } from "api/ai/generateLaunchOpeningScene";
+import { generateLaunchVowStream } from "api/ai/generateLaunchVow";
+import { api } from "config/api.config";
+import {
+  LaunchCampaignContext,
+  LaunchIncidentSource,
+  LaunchIncidentSourceKey,
+} from "types/AI.type";
 import {
   buildBaseCampaignContext,
   buildGuideStateContext,
@@ -60,6 +67,7 @@ interface SessionPreflightDialogProps {
   open: boolean;
   campaignId: string;
   onClose: () => void;
+  forceLaunchSetup?: boolean;
 }
 
 const STEPS = ["Requirements", "Incident", "Scene", "Vow", "Swear"];
@@ -224,7 +232,7 @@ function formatSelectedWorldTruths(
 }
 
 export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
-  const { open, campaignId, onClose } = props;
+  const { open, campaignId, onClose, forceLaunchSetup = false } = props;
   const navigate = useNavigate();
   const { gameSystem } = useGameSystem();
   const showNewLocations = useNewMaps();
@@ -241,6 +249,7 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
   const [swearToConnection, setSwearToConnection] = useState(true);
   const [extraAdds, setExtraAdds] = useState(0);
+  const [startingObstacle, setStartingObstacle] = useState("");
   const [rollResult, setRollResult] = useState<
     | {
         action: number;
@@ -259,6 +268,10 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
   const [incidentGenerationError, setIncidentGenerationError] = useState("");
   const [lastIncidentSource, setLastIncidentSource] =
     useState<LaunchIncidentSource>();
+  const [isGeneratingOpeningScene, setIsGeneratingOpeningScene] = useState(false);
+  const [openingSceneGenerationError, setOpeningSceneGenerationError] = useState("");
+  const [isGeneratingVow, setIsGeneratingVow] = useState(false);
+  const [vowGenerationError, setVowGenerationError] = useState("");
 
   const hasCharacter = useStore(
     (store) =>
@@ -356,16 +369,22 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
   const allPassed = checks.every((c) => c.passed);
   const isGuideStateReady = loadedGuideCampaignId === campaignId;
   const launchAlreadyComplete =
-    isGuideStateReady && !!guideState?.launchSetup?.completedAt;
+    !forceLaunchSetup && isGuideStateReady && !!guideState?.launchSetup?.completedAt;
   const canContinue =
     (step === 0 && allPassed) ||
     (step === 1 && incitingIncident.trim().length > 0 && !isGeneratingIncident) ||
-    (step === 2 && openingScene.trim().length > 0) ||
+    (step === 2 &&
+      openingScene.trim().length > 0 &&
+      !isGeneratingOpeningScene) ||
     (step === 3 &&
       vowText.trim().length > 0 &&
       selectedNpcId &&
-      selectedCharacterId) ||
-    (step === 4 && !!rollResult);
+      selectedCharacterId &&
+      !isGeneratingVow) ||
+    (step === 4 &&
+      !!rollResult &&
+      (rollResult.outcome !== ROLL_RESULT.MISS ||
+        startingObstacle.trim().length > 0));
 
   useEffect(() => {
     if (open && campaignId && loadedGuideCampaignId !== campaignId) {
@@ -374,6 +393,26 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
         .finally(() => setLoadedGuideCampaignId(campaignId));
     }
   }, [campaignId, loadGuideState, loadedGuideCampaignId, open]);
+
+  useEffect(() => {
+    if (!open || !forceLaunchSetup) return;
+    setStep(0);
+    setIncitingIncident("");
+    setSceneMode("in_medias_res");
+    setOpeningScene("");
+    setVowText("");
+    setVowRank(Difficulty.Dangerous);
+    setSelectedNpcId("");
+    setSelectedCharacterId("");
+    setSwearToConnection(true);
+    setExtraAdds(0);
+    setRollResult(undefined);
+    setStartingObstacle("");
+    setIncidentGenerationError("");
+    setOpeningSceneGenerationError("");
+    setVowGenerationError("");
+    setLastIncidentSource(undefined);
+  }, [forceLaunchSetup, open]);
 
   useEffect(() => {
     if (!selectedNpcId && connectionNpcIds.length > 0) {
@@ -388,20 +427,29 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
     }
   }, [characters, selectedCharacterId]);
 
-  useEffect(() => {
-    if (!vowText && incitingIncident.trim()) {
-      setVowText(incitingIncident.trim());
-    }
-  }, [incitingIncident, vowText]);
-
   const handleClose = () => {
-    if (!isStarting && !isGeneratingIncident) onClose();
+    if (
+      !isStarting &&
+      !isGeneratingIncident &&
+      !isGeneratingOpeningScene &&
+      !isGeneratingVow
+    ) {
+      onClose();
+    }
   };
 
   const appendOracle = (label: string, oracleId: string) => {
     const result = rollOracleTable(oracleId, false)?.result;
     if (!result) return;
     setIncitingIncident((current) =>
+      [current.trim(), `${label}: ${result}`].filter(Boolean).join("\n")
+    );
+  };
+
+  const appendObstacleOracle = (label: string, oracleId: string) => {
+    const result = rollOracleTable(oracleId, false)?.result;
+    if (!result) return;
+    setStartingObstacle((current) =>
       [current.trim(), `${label}: ${result}`].filter(Boolean).join("\n")
     );
   };
@@ -434,10 +482,51 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
     return [];
   };
 
+  const buildLaunchContext = (): LaunchCampaignContext => {
+    const store = useStore.getState();
+    const baseContext = buildBaseCampaignContext(gameSystem, store);
+    return {
+      ...baseContext,
+      guideState: buildGuideStateContext(store),
+      launchSetup: {
+        worldTruths: formatSelectedWorldTruths(
+          truthDefinitions,
+          currentWorld?.newTruths
+        ),
+        characters: Object.values(characters).map((character) => ({
+          name: character.name,
+          callsign: character.callsign,
+          role: character.role,
+          pronouns: character.pronouns,
+          characteristics: character.characteristics,
+          backstory: character.backstory,
+        })),
+        starship,
+        sectors: Object.values(sectors).map((sector) => ({
+          name: sector.name,
+          region: sector.region,
+          trouble: sector.trouble,
+        })),
+        locations: Object.values(locations).map((location) => ({
+          name: location.name,
+          type: location.type,
+          fields: location.fields,
+        })),
+        npcs: Object.values(npcs).map((npc) => ({
+          name: npc.name,
+          role: npc.gmProperties?.role,
+          disposition: npc.gmProperties?.disposition,
+          goal: npc.gmProperties?.goal,
+          rank: npc.rank,
+          callsign: npc.callsign,
+        })),
+      },
+    };
+  };
+
   const generateIncidentWithAI = async () => {
     const source = pickLaunchIncidentSource(lastIncidentSource?.key);
     const previousIncident = incitingIncident.trim();
-    const shouldReplaceVow = !vowText.trim() || vowText.trim() === previousIncident;
     const oracleResults = buildLaunchOracleResults(source.key);
     setLastIncidentSource(source);
     setIncidentGenerationError("");
@@ -445,8 +534,6 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
     setIsGeneratingIncident(true);
 
     try {
-      const store = useStore.getState();
-      const baseContext = buildBaseCampaignContext(gameSystem, store);
       let fullText = "";
       const stream = generateLaunchIncidentStream({
         campaignId,
@@ -454,50 +541,13 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
         source,
         oracleResults,
         previousIncidents: previousIncident ? [previousIncident] : [],
-        context: {
-          ...baseContext,
-          guideState: buildGuideStateContext(store),
-          launchSetup: {
-            worldTruths: formatSelectedWorldTruths(
-              truthDefinitions,
-              currentWorld?.newTruths
-            ),
-            characters: Object.values(characters).map((character) => ({
-              name: character.name,
-              callsign: character.callsign,
-              role: character.role,
-              pronouns: character.pronouns,
-              characteristics: character.characteristics,
-              backstory: character.backstory,
-            })),
-            starship,
-            sectors: Object.values(sectors).map((sector) => ({
-              name: sector.name,
-              region: sector.region,
-              trouble: sector.trouble,
-            })),
-            locations: Object.values(locations).map((location) => ({
-              name: location.name,
-              type: location.type,
-              fields: location.fields,
-            })),
-            npcs: Object.values(npcs).map((npc) => ({
-              name: npc.name,
-              role: npc.gmProperties?.role,
-              disposition: npc.gmProperties?.disposition,
-              goal: npc.gmProperties?.goal,
-              rank: npc.rank,
-              callsign: npc.callsign,
-            })),
-          },
-        },
+        context: buildLaunchContext(),
       });
 
       for await (const chunk of stream) {
         fullText += chunk;
         setIncitingIncident(fullText);
       }
-      if (shouldReplaceVow) setVowText(fullText.trim());
     } catch (err) {
       console.error("Failed to generate inciting incident:", err);
       const message = err instanceof Error ? err.message : "Generation failed";
@@ -507,6 +557,75 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
       setIncitingIncident(previousIncident);
     } finally {
       setIsGeneratingIncident(false);
+    }
+  };
+
+  const generateOpeningSceneWithAI = async () => {
+    const previousOpeningScene = openingScene.trim();
+    setOpeningSceneGenerationError("");
+    setOpeningScene("");
+    setIsGeneratingOpeningScene(true);
+
+    try {
+      let fullText = "";
+      const stream = generateLaunchOpeningSceneStream({
+        campaignId,
+        worldId,
+        sceneMode,
+        incitingIncident: incitingIncident.trim(),
+        previousOpeningScenes: previousOpeningScene ? [previousOpeningScene] : [],
+        context: buildLaunchContext(),
+      });
+
+      for await (const chunk of stream) {
+        fullText += chunk;
+        setOpeningScene(fullText);
+      }
+    } catch (err) {
+      console.error("Failed to generate opening scene:", err);
+      const message = err instanceof Error ? err.message : "Generation failed";
+      setOpeningSceneGenerationError(
+        `Could not generate an opening scene: ${message}. Try again or write one manually.`
+      );
+      setOpeningScene(previousOpeningScene);
+    } finally {
+      setIsGeneratingOpeningScene(false);
+    }
+  };
+
+  const generateVowWithAI = async () => {
+    const previousVow = vowText.trim();
+    setVowGenerationError("");
+    setVowText("");
+    setIsGeneratingVow(true);
+
+    try {
+      let fullText = "";
+      const stream = generateLaunchVowStream({
+        campaignId,
+        worldId,
+        incitingIncident: incitingIncident.trim(),
+        openingScene: openingScene.trim(),
+        vowRank,
+        connectionName: selectedNpc?.name,
+        swearingCharacterName: selectedCharacter?.name,
+        previousVows: previousVow ? [previousVow] : [],
+        context: buildLaunchContext(),
+      });
+
+      for await (const chunk of stream) {
+        fullText += chunk;
+        setVowText(fullText);
+      }
+    } catch (err) {
+      console.error("Failed to generate launch vow:", err);
+      const message = err instanceof Error ? err.message : "Generation failed";
+      setVowGenerationError(
+        `Could not generate a vow: ${message}. Try again or write one manually.`
+      );
+      setVowText(previousVow);
+    } finally {
+      setIsGeneratingVow(false);
     }
   };
 
@@ -535,12 +654,28 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
       adds,
       matchedNegativeMomentum,
     });
+    if (outcome !== ROLL_RESULT.MISS) {
+      setStartingObstacle("");
+    }
   };
 
   const handleStart = async () => {
     if (!selectedCharacter || !selectedNpc || !rollResult) return;
+    const obstacleText = startingObstacle.trim();
+    if (rollResult.outcome === ROLL_RESULT.MISS && !obstacleText) return;
+    const swearMoveObstacle =
+      rollResult.outcome === ROLL_RESULT.MISS
+        ? {
+            text: obstacleText,
+            resolved: false,
+            source: "swear_miss" as const,
+          }
+        : undefined;
     setIsStarting(true);
     try {
+      if (forceLaunchSetup) {
+        await api.del(`/api/campaigns/${campaignId}/scene-events`);
+      }
       const trackRow = await createCampaignTrack.mutateAsync({
         type: TrackTypes.Vow,
         dataJson: {
@@ -610,6 +745,9 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
           `Connection: ${selectedNpc.name}`,
           swearToConnection ? "Sworn to a connection: +1" : "",
           nextStepPrompt(rollResult.outcome),
+          swearMoveObstacle
+            ? `Starting obstacle: ${swearMoveObstacle.text}`
+            : "",
         ]
           .filter(Boolean)
           .join("\n"),
@@ -637,21 +775,37 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
           momentumApplied,
         },
         nextStepPrompt: nextStepPrompt(rollResult.outcome),
+        swearMoveObstacle,
       };
+      const createdAt = new Date().toISOString();
+      const outcomeLine = `${resultLabel(rollResult.outcome)}: ${nextStepPrompt(
+        rollResult.outcome
+      )}`;
       await saveGuideState(campaignId, {
         ...currentGuideState,
         launchSetup,
         currentScene: {
           title: sceneMode === "prologue" ? "Prologue" : "In Medias Res",
           description: [
+            "## Inciting Incident",
+            incitingIncident.trim(),
+            "",
+            "## Opening Scene",
             openingScene.trim(),
             "",
-            `Inciting incident: ${incitingIncident.trim()}`,
-            `Sworn vow: ${vowText.trim()} (${vowRank})`,
-            `${resultLabel(rollResult.outcome)}: ${nextStepPrompt(rollResult.outcome)}`,
+            "## Starting Vow",
+            `${vowText.trim()} (${vowRank})`,
+            "",
+            "## Swear an Iron Vow",
+            outcomeLine,
+            ...(swearMoveObstacle
+              ? ["", "## Starting Obstacle", swearMoveObstacle.text]
+              : []),
           ].join("\n"),
           unresolvedQuestions:
-            rollResult.outcome === ROLL_RESULT.HIT
+            swearMoveObstacle
+              ? [swearMoveObstacle.text]
+              : rollResult.outcome === ROLL_RESULT.HIT
               ? []
               : [nextStepPrompt(rollResult.outcome)],
         },
@@ -662,16 +816,34 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
             text: `Inciting incident: ${incitingIncident.trim()}`,
             source: "launch",
             status: "confirmed",
-            createdAt: new Date().toISOString(),
+            createdAt,
           },
           {
             id: `${Date.now()}-vow`,
             text: `Opening vow: ${vowText.trim()}`,
             source: "launch",
             status: "confirmed",
-            createdAt: new Date().toISOString(),
+            createdAt,
           },
+          ...(swearMoveObstacle
+            ? [
+                {
+                  id: `${Date.now()}-vow-obstacle`,
+                  text: `Starting vow obstacle: ${swearMoveObstacle.text}`,
+                  source: "launch",
+                  status: "confirmed" as const,
+                  createdAt,
+                },
+              ]
+            : []),
         ],
+        sceneChallengeState: swearMoveObstacle
+          ? {
+              objective: `Overcome the starting obstacle before the vow can truly begin: ${swearMoveObstacle.text}`,
+              progress: 0,
+              complicationsIntroduced: [],
+            }
+          : currentGuideState.sceneChallengeState,
       });
 
       onClose();
@@ -838,10 +1010,29 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
                     setSceneMode(e.target.value as LaunchSetupState["sceneMode"])
                   }
                   fullWidth
+                  disabled={isGeneratingOpeningScene}
                 >
                   <MenuItem value="in_medias_res">In medias res</MenuItem>
                   <MenuItem value="prologue">Prologue</MenuItem>
                 </TextField>
+                <Stack direction="row" gap={1} flexWrap="wrap">
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<CasinoIcon />}
+                    onClick={generateOpeningSceneWithAI}
+                    disabled={
+                      isGeneratingOpeningScene ||
+                      isGeneratingIncident ||
+                      !incitingIncident.trim()
+                    }
+                  >
+                    {openingScene.trim() ? "Try Another" : "Generate with AI"}
+                  </Button>
+                </Stack>
+                {openingSceneGenerationError && (
+                  <Alert severity="error">{openingSceneGenerationError}</Alert>
+                )}
                 <TextField
                   label="Opening Scene"
                   value={openingScene}
@@ -849,6 +1040,7 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
                   multiline
                   minRows={5}
                   fullWidth
+                  disabled={isGeneratingOpeningScene}
                   helperText="Describe where play begins and what the characters immediately face."
                 />
               </>
@@ -862,6 +1054,7 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
                   value={selectedNpcId}
                   onChange={(e) => setSelectedNpcId(e.target.value)}
                   fullWidth
+                  disabled={isGeneratingVow}
                 >
                   {connectionNpcIds.map((npcId) => (
                     <MenuItem key={npcId} value={npcId}>
@@ -875,6 +1068,7 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
                   value={selectedCharacterId}
                   onChange={(e) => setSelectedCharacterId(e.target.value)}
                   fullWidth
+                  disabled={isGeneratingVow}
                 >
                   {Object.keys(characters).map((characterId) => (
                     <MenuItem key={characterId} value={characterId}>
@@ -882,6 +1076,24 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
                     </MenuItem>
                   ))}
                 </TextField>
+                <Stack direction="row" gap={1} flexWrap="wrap">
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<CasinoIcon />}
+                    onClick={generateVowWithAI}
+                    disabled={
+                      isGeneratingVow ||
+                      !incitingIncident.trim() ||
+                      !openingScene.trim() ||
+                      !selectedNpcId ||
+                      !selectedCharacterId
+                    }
+                  >
+                    {vowText.trim() ? "Try Another" : "Generate with AI"}
+                  </Button>
+                </Stack>
+                {vowGenerationError && <Alert severity="error">{vowGenerationError}</Alert>}
                 <TextField
                   label="Vow"
                   value={vowText}
@@ -889,6 +1101,7 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
                   multiline
                   minRows={3}
                   fullWidth
+                  disabled={isGeneratingVow}
                 />
                 <TextField
                   label="Rank"
@@ -896,6 +1109,7 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
                   value={vowRank}
                   onChange={(e) => setVowRank(e.target.value as Difficulty)}
                   fullWidth
+                  disabled={isGeneratingVow}
                 >
                   <MenuItem value={Difficulty.Troublesome}>Troublesome</MenuItem>
                   <MenuItem value={Difficulty.Dangerous}>Dangerous</MenuItem>
@@ -939,6 +1153,66 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
                     {nextStepPrompt(rollResult.outcome)}
                   </Alert>
                 )}
+                {rollResult?.outcome === ROLL_RESULT.MISS && (
+                  <Stack spacing={1.5}>
+                    <Alert severity="warning">
+                      Define the obstacle before starting the session. The vow
+                      cannot truly begin until this is overcome, and resolving it
+                      should not mark progress on the vow.
+                    </Alert>
+                    <Stack direction="row" gap={1} flexWrap="wrap">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<CasinoIcon />}
+                        onClick={() =>
+                          appendObstacleOracle(
+                            "Action",
+                            "starforged/oracles/core/action"
+                          )
+                        }
+                      >
+                        Action
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<CasinoIcon />}
+                        onClick={() =>
+                          appendObstacleOracle(
+                            "Theme",
+                            "starforged/oracles/core/theme"
+                          )
+                        }
+                      >
+                        Theme
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<CasinoIcon />}
+                        onClick={() =>
+                          appendObstacleOracle(
+                            "Character Goal",
+                            "starforged/oracles/characters/goal"
+                          )
+                        }
+                      >
+                        Character Goal
+                      </Button>
+                    </Stack>
+                    <TextField
+                      label="Starting Obstacle"
+                      value={startingObstacle}
+                      onChange={(e) => setStartingObstacle(e.target.value)}
+                      multiline
+                      minRows={3}
+                      fullWidth
+                      required
+                      helperText="Describe the danger, demand, or revelation that must be dealt with before the quest can move forward."
+                    />
+                  </Stack>
+                )}
               </>
             )}
           </Stack>
@@ -948,7 +1222,12 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
         <Button
           onClick={handleClose}
           color="inherit"
-          disabled={isStarting || isGeneratingIncident}
+          disabled={
+            isStarting ||
+            isGeneratingIncident ||
+            isGeneratingOpeningScene ||
+            isGeneratingVow
+          }
         >
           Cancel
         </Button>
@@ -960,7 +1239,13 @@ export function SessionPreflightDialog(props: SessionPreflightDialogProps) {
           <>
             <Button
               onClick={() => setStep((current) => Math.max(0, current - 1))}
-              disabled={step === 0 || isStarting || isGeneratingIncident}
+              disabled={
+                step === 0 ||
+                isStarting ||
+                isGeneratingIncident ||
+                isGeneratingOpeningScene ||
+                isGeneratingVow
+              }
               color="inherit"
             >
               Back

@@ -177,42 +177,67 @@ export interface LaunchIncidentRequest {
   source: LaunchIncidentSource;
   oracleResults?: string[];
   previousIncidents?: string[];
-  context: AiCampaignContext & {
-    launchSetup?: {
-      worldTruths: string[];
-      characters: Array<{
-        name: string;
-        callsign?: string;
-        role?: string;
-        pronouns?: string;
-        characteristics?: string;
-        backstory?: string;
-      }>;
-      starship?: {
-        name?: string | null;
-        history?: string | null;
-        quirks?: string[];
-      } | null;
-      sectors: Array<{
-        name: string;
-        region?: string;
-        trouble?: string;
-      }>;
-      locations: Array<{
-        name: string;
-        type?: string;
-        fields?: Record<string, string>;
-      }>;
-      npcs: Array<{
-        name: string;
-        role?: string;
-        disposition?: string;
-        goal?: string;
-        rank?: string;
-        callsign?: string;
-      }>;
-    };
+  context: LaunchCampaignContext;
+}
+
+export type LaunchSceneMode = "prologue" | "in_medias_res";
+
+export type LaunchCampaignContext = AiCampaignContext & {
+  launchSetup?: {
+    worldTruths: string[];
+    characters: Array<{
+      name: string;
+      callsign?: string;
+      role?: string;
+      pronouns?: string;
+      characteristics?: string;
+      backstory?: string;
+    }>;
+    starship?: {
+      name?: string | null;
+      history?: string | null;
+      quirks?: string[];
+    } | null;
+    sectors: Array<{
+      name: string;
+      region?: string;
+      trouble?: string;
+    }>;
+    locations: Array<{
+      name: string;
+      type?: string;
+      fields?: Record<string, string>;
+    }>;
+    npcs: Array<{
+      name: string;
+      role?: string;
+      disposition?: string;
+      goal?: string;
+      rank?: string;
+      callsign?: string;
+    }>;
   };
+};
+
+export interface LaunchOpeningSceneRequest {
+  campaignId: string;
+  worldId?: string;
+  sceneMode: LaunchSceneMode;
+  incitingIncident: string;
+  previousOpeningScenes?: string[];
+  context: LaunchCampaignContext;
+}
+
+export interface LaunchVowRequest {
+  campaignId: string;
+  worldId?: string;
+  incitingIncident: string;
+  openingScene: string;
+  vowRank: string;
+  connectionName?: string;
+  swearingCharacterName?: string;
+  previousVows?: string[];
+  context: LaunchCampaignContext;
 }
 
 export interface BookkeeperVowUpdate {
