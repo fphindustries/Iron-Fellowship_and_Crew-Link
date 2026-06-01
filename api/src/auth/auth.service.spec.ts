@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { UnauthorizedException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
@@ -19,7 +19,10 @@ describe('AuthService', () => {
       if (key === 'APP_URL') return 'http://localhost:3001';
       return '';
     }),
-    get: jest.fn().mockReturnValue(''),
+    get: jest.fn((key: string) => {
+      if (key === 'MAGIC_LINK_AUTH_ENABLED') return 'true';
+      return '';
+    }),
   };
   const mockMail = { sendMagicLink: jest.fn().mockResolvedValue(undefined) };
 
@@ -89,6 +92,17 @@ describe('AuthService', () => {
   });
 
   describe('verifyMagicLink', () => {
+    it('throws NotFoundException when magic link auth is disabled', async () => {
+      mockConfig.get.mockImplementationOnce((key: string) => {
+        if (key === 'MAGIC_LINK_AUTH_ENABLED') return 'false';
+        return '';
+      });
+
+      await expect(service.verifyMagicLink('token')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
     it('throws UnauthorizedException for an invalid or expired token', async () => {
       mockWhere.mockReturnValueOnce({
         ...createQueryResult([]),
@@ -131,6 +145,17 @@ describe('AuthService', () => {
   });
 
   describe('sendMagicLink', () => {
+    it('throws NotFoundException when magic link auth is disabled', async () => {
+      mockConfig.get.mockImplementationOnce((key: string) => {
+        if (key === 'MAGIC_LINK_AUTH_ENABLED') return 'false';
+        return '';
+      });
+
+      await expect(service.sendMagicLink('test@example.com')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
     it('creates a token and sends the email', async () => {
       const user = { id: 'u1', email: 'test@example.com' };
       // findOrCreateUser → limit query

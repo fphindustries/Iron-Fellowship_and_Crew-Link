@@ -17,6 +17,7 @@ import { Link } from "react-router-dom";
 import { BASE_ROUTES, basePaths } from "routes";
 import { useSnackbar } from "providers/SnackbarProvider/useSnackbar";
 import { getErrorMessage } from "functions/getErrorMessage";
+import { magicLinkAuthEnabled } from "config/auth.config";
 
 export interface LoginOrSignupPageProps {
   isLoginPage: boolean;
@@ -130,47 +131,51 @@ export function LoginOrSignupPage(props: LoginOrSignupPageProps) {
               >
                 {isLoginPage ? "Login with" : "Sign Up using"} Google
               </Button>
-              <Divider>OR</Divider>
-              <Stack spacing={2}>
-                <Typography variant={"h6"}>Passwordless Sign in</Typography>
-                <Alert severity={"info"}>
-                  {!isLoginPage &&
-                    "Get a sign in link emailed to you each time you log in. "}
-                  You must open the link on the same device you clicked{" "}
-                  {'"Send sign in link"'} on.
-                </Alert>
-                {errorMessage && (
-                  <Alert severity={"error"}>
-                    <AlertTitle>Error Sending Sign In Link</AlertTitle>
-                    {errorMessage}
-                  </Alert>
-                )}
-                <TextField
-                  label={"Email Address"}
-                  type={"email"}
-                  value={email}
-                  onChange={(evt) => setEmail(evt.currentTarget.value)}
-                ></TextField>
-                {!isLoginPage && (
-                  <TextField
-                    label={"Name"}
-                    helperText={
-                      "This will be visible to other players in a campaign."
-                    }
-                    value={name}
-                    onChange={(evt) => setName(evt.currentTarget.value)}
-                  />
-                )}
-                <Box display={"flex"} justifyContent={"flex-end"}>
-                  <Button
-                    variant={"contained"}
-                    onClick={() => handleMagicLinkSignup()}
-                    disabled={linkSendLoading}
-                  >
-                    Send Sign In Link
-                  </Button>
-                </Box>
-              </Stack>
+              {magicLinkAuthEnabled && (
+                <>
+                  <Divider>OR</Divider>
+                  <Stack spacing={2}>
+                    <Typography variant={"h6"}>Passwordless Sign in</Typography>
+                    <Alert severity={"info"}>
+                      {!isLoginPage &&
+                        "Get a sign in link emailed to you each time you log in. "}
+                      You must open the link on the same device you clicked{" "}
+                      {'"Send sign in link"'} on.
+                    </Alert>
+                    {errorMessage && (
+                      <Alert severity={"error"}>
+                        <AlertTitle>Error Sending Sign In Link</AlertTitle>
+                        {errorMessage}
+                      </Alert>
+                    )}
+                    <TextField
+                      label={"Email Address"}
+                      type={"email"}
+                      value={email}
+                      onChange={(evt) => setEmail(evt.currentTarget.value)}
+                    ></TextField>
+                    {!isLoginPage && (
+                      <TextField
+                        label={"Name"}
+                        helperText={
+                          "This will be visible to other players in a campaign."
+                        }
+                        value={name}
+                        onChange={(evt) => setName(evt.currentTarget.value)}
+                      />
+                    )}
+                    <Box display={"flex"} justifyContent={"flex-end"}>
+                      <Button
+                        variant={"contained"}
+                        onClick={() => handleMagicLinkSignup()}
+                        disabled={linkSendLoading}
+                      >
+                        Send Sign In Link
+                      </Button>
+                    </Box>
+                  </Stack>
+                </>
+              )}
             </>
           ) : (
             <Alert severity="info">

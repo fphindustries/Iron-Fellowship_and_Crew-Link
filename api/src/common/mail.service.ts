@@ -4,24 +4,15 @@ import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
-  private readonly transporter: nodemailer.Transporter;
+  private transporter?: nodemailer.Transporter;
   private readonly from: string;
 
   constructor(private readonly config: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: config.getOrThrow<string>('SMTP_HOST'),
-      port: config.get<number>('SMTP_PORT', 587),
-      secure: config.get<boolean>('SMTP_SECURE', false),
-      auth: {
-        user: config.get<string>('SMTP_USER'),
-        pass: config.get<string>('SMTP_PASS'),
-      },
-    });
     this.from = config.get<string>('SMTP_FROM', 'no-reply@starforged.app');
   }
 
   async sendMagicLink(to: string, link: string) {
-    await this.transporter.sendMail({
+    await this.getTransporter().sendMail({
       from: this.from,
       to,
       subject: 'Your sign-in link',
@@ -31,5 +22,21 @@ export class MailService {
       `,
       text: `Sign in here (expires in 15 minutes): ${link}`,
     });
+  }
+
+  private getTransporter() {
+    if (!this.transporter) {
+      this.transporter = nodemailer.createTransport({
+        host: this.config.getOrThrow<string>('SMTP_HOST'),
+        port: this.config.get<number>('SMTP_PORT', 587),
+        secure: this.config.get<boolean>('SMTP_SECURE', false),
+        auth: {
+          user: this.config.get<string>('SMTP_USER'),
+          pass: this.config.get<string>('SMTP_PASS'),
+        },
+      });
+    }
+
+    return this.transporter;
   }
 }

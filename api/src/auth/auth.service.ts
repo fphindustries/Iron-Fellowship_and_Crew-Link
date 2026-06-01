@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -52,6 +52,7 @@ export class AuthService {
   }
 
   async sendMagicLink(email: string) {
+    if (!this.isMagicLinkAuthEnabled()) throw new NotFoundException();
     const user = await this.findOrCreateUser(email, email.split('@')[0]);
     const rawToken = randomBytes(32).toString('hex');
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
@@ -70,6 +71,7 @@ export class AuthService {
   }
 
   async verifyMagicLink(rawToken: string) {
+    if (!this.isMagicLinkAuthEnabled()) throw new NotFoundException();
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
     const now = new Date();
 
@@ -109,5 +111,9 @@ export class AuthService {
       .where(eq(schema.users.id, userId))
       .limit(1);
     return user ? toUserProfile(user) : null;
+  }
+
+  private isMagicLinkAuthEnabled() {
+    return this.config.get<string>('MAGIC_LINK_AUTH_ENABLED') === 'true';
   }
 }

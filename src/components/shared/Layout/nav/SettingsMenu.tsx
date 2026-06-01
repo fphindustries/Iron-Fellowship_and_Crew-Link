@@ -35,6 +35,7 @@ import UsernameIcon from "@mui/icons-material/AccountCircle";
 import TokenIcon from "@mui/icons-material/Contacts";
 import { CustomTokenDialog } from "./CustomTokenDialog/CustomTokenDialog";
 import { activeFeatureFlags } from "hooks/featureFlags/activeFeatureFlags";
+import { magicLinkAuthEnabled } from "config/auth.config";
 
 export function SettingsMenu() {
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
@@ -192,7 +193,7 @@ export function SettingsMenu() {
             <ListItemText>Switch System</ListItemText>
           </MenuItem>
         )}
-        {isLocal && (
+        {isLocal && magicLinkAuthEnabled && (
           <MenuItem onClick={() => setCustomTokenDialogOpen(true)}>
             <ListItemIcon>
               <TokenIcon />
@@ -214,7 +215,7 @@ export function SettingsMenu() {
         handleClose={() => setUsernameDialogOpen(false)}
         updating
       />
-      {isLocal && (
+      {isLocal && magicLinkAuthEnabled && (
         <CustomTokenDialog
           open={customTokenDialogOpen}
           onClose={() => setCustomTokenDialogOpen(false)}

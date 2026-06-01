@@ -8,6 +8,7 @@ import {
   UseGuards,
   Req,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response, Request } from 'express';
@@ -44,6 +45,7 @@ export class AuthController {
 
   @Post('magic-link/send')
   async sendMagicLink(@Body('email') email: string) {
+    if (!this.isMagicLinkAuthEnabled()) throw new NotFoundException();
     if (!email) throw new UnauthorizedException('Email required');
     await this.authService.sendMagicLink(email);
     return { ok: true };
@@ -51,6 +53,7 @@ export class AuthController {
 
   @Get('magic-link/verify')
   async verifyMagicLink(@Query('token') token: string, @Res() res: any) {
+    if (!this.isMagicLinkAuthEnabled()) throw new NotFoundException();
     const user = await this.authService.verifyMagicLink(token);
     const { accessToken, refreshToken } = this.authService.issueTokens(
       user.id,
@@ -58,6 +61,18 @@ export class AuthController {
     );
     this.setCookies(res, accessToken, refreshToken);
     res.redirect(this.config.getOrThrow<string>('FRONTEND_URL'));
+  }
+
+  @Post('magic-link/verify')
+  async verifyMagicLinkToken(@Body('token') token: string, @Res() res: any) {
+    if (!this.isMagicLinkAuthEnabled()) throw new NotFoundException();
+    const user = await this.authService.verifyMagicLink(token);
+    const { accessToken, refreshToken } = this.authService.issueTokens(
+      user.id,
+      user.email,
+    );
+    this.setCookies(res, accessToken, refreshToken);
+    res.json({ ok: true });
   }
 
   @Get('me')
@@ -110,5 +125,9 @@ export class AuthController {
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+  }
+
+  private isMagicLinkAuthEnabled() {
+    return this.config.get<string>('MAGIC_LINK_AUTH_ENABLED') === 'true';
   }
 }

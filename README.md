@@ -59,6 +59,13 @@ Thank you to...
 
 [See CONTRIBUTING.MD](./CONTRIBUTING.md)
 
+## Configuration
+
+Magic link authentication is disabled by default. To enable it, set
+`VITE_MAGIC_LINK_AUTH_ENABLED=true` for the frontend and
+`MAGIC_LINK_AUTH_ENABLED=true` for the API, then configure the API SMTP
+variables.
+
 ## Licensing
 
 ### Ironsworn
