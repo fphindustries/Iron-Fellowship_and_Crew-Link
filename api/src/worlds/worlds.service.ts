@@ -105,21 +105,32 @@ export class WorldsService {
   }
 
   async updateLocation(
+    worldId: string,
     id: string,
     patch: Partial<typeof schema.worldLocations.$inferInsert>,
   ) {
     const [updated] = await this.db
       .update(schema.worldLocations)
       .set({ ...patch, updatedAt: new Date() })
-      .where(eq(schema.worldLocations.id, id))
+      .where(
+        and(
+          eq(schema.worldLocations.id, id),
+          eq(schema.worldLocations.worldId, worldId),
+        ),
+      )
       .returning();
     return updated;
   }
 
-  async removeLocation(id: string) {
+  async removeLocation(worldId: string, id: string) {
     await this.db
       .delete(schema.worldLocations)
-      .where(eq(schema.worldLocations.id, id));
+      .where(
+        and(
+          eq(schema.worldLocations.id, id),
+          eq(schema.worldLocations.worldId, worldId),
+        ),
+      );
   }
 
   // ─── NPCs ─────────────────────────────────────────────────────────────────
@@ -143,19 +154,26 @@ export class WorldsService {
   }
 
   async updateNpc(
+    worldId: string,
     id: string,
     patch: Partial<typeof schema.worldNpcs.$inferInsert>,
   ) {
     const [updated] = await this.db
       .update(schema.worldNpcs)
       .set({ ...patch, updatedAt: new Date() })
-      .where(eq(schema.worldNpcs.id, id))
+      .where(
+        and(eq(schema.worldNpcs.id, id), eq(schema.worldNpcs.worldId, worldId)),
+      )
       .returning();
     return updated;
   }
 
-  async removeNpc(id: string) {
-    await this.db.delete(schema.worldNpcs).where(eq(schema.worldNpcs.id, id));
+  async removeNpc(worldId: string, id: string) {
+    await this.db
+      .delete(schema.worldNpcs)
+      .where(
+        and(eq(schema.worldNpcs.id, id), eq(schema.worldNpcs.worldId, worldId)),
+      );
   }
 
   // ─── Lore ─────────────────────────────────────────────────────────────────
@@ -179,19 +197,26 @@ export class WorldsService {
   }
 
   async updateLore(
+    worldId: string,
     id: string,
     patch: Partial<typeof schema.worldLore.$inferInsert>,
   ) {
     const [updated] = await this.db
       .update(schema.worldLore)
       .set({ ...patch, updatedAt: new Date() })
-      .where(eq(schema.worldLore.id, id))
+      .where(
+        and(eq(schema.worldLore.id, id), eq(schema.worldLore.worldId, worldId)),
+      )
       .returning();
     return updated;
   }
 
-  async removeLore(id: string) {
-    await this.db.delete(schema.worldLore).where(eq(schema.worldLore.id, id));
+  async removeLore(worldId: string, id: string) {
+    await this.db
+      .delete(schema.worldLore)
+      .where(
+        and(eq(schema.worldLore.id, id), eq(schema.worldLore.worldId, worldId)),
+      );
   }
 
   // ─── Sectors ──────────────────────────────────────────────────────────────
@@ -215,21 +240,32 @@ export class WorldsService {
   }
 
   async updateSector(
+    worldId: string,
     id: string,
     patch: Partial<typeof schema.worldSectors.$inferInsert>,
   ) {
     const [updated] = await this.db
       .update(schema.worldSectors)
       .set(patch)
-      .where(eq(schema.worldSectors.id, id))
+      .where(
+        and(
+          eq(schema.worldSectors.id, id),
+          eq(schema.worldSectors.worldId, worldId),
+        ),
+      )
       .returning();
     return updated;
   }
 
-  async removeSector(id: string) {
+  async removeSector(worldId: string, id: string) {
     await this.db
       .delete(schema.worldSectors)
-      .where(eq(schema.worldSectors.id, id));
+      .where(
+        and(
+          eq(schema.worldSectors.id, id),
+          eq(schema.worldSectors.worldId, worldId),
+        ),
+      );
   }
 
   // ─── Sector Notes ─────────────────────────────────────────────────────────

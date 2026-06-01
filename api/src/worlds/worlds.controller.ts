@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { WorldOwnerGuard } from '../common/guards/world-owner.guard';
+import { WorldAccessGuard } from '../common/guards/world-access.guard';
 import { WorldsService } from './worlds.service';
 import { WorldGateway } from '../realtime/world.gateway';
 
@@ -42,7 +43,7 @@ export class WorldsController {
   }
 
   @Patch(':worldId')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async update(@Param('worldId') id: string, @Body() body: any) {
     const patch: Record<string, unknown> = { ...body };
     // Client sends camelCase aliases; remap to Drizzle schema field names.
@@ -78,7 +79,7 @@ export class WorldsController {
   }
 
   @Post(':worldId/locations')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async createLocation(@Param('worldId') wid: string, @Body() body: any) {
     const result = await this.svc.createLocation(wid, body);
     this.gateway.emit('updated', wid, {});
@@ -86,21 +87,21 @@ export class WorldsController {
   }
 
   @Patch(':worldId/locations/:id')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async updateLocation(
     @Param('worldId') wid: string,
     @Param('id') id: string,
     @Body() body: any,
   ) {
-    const result = await this.svc.updateLocation(id, body);
+    const result = await this.svc.updateLocation(wid, id, body);
     this.gateway.emit('updated', wid, {});
     return result;
   }
 
   @Delete(':worldId/locations/:id')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async removeLocation(@Param('worldId') wid: string, @Param('id') id: string) {
-    await this.svc.removeLocation(id);
+    await this.svc.removeLocation(wid, id);
     this.gateway.emit('updated', wid, {});
   }
 
@@ -112,7 +113,7 @@ export class WorldsController {
   }
 
   @Post(':worldId/npcs')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async createNpc(@Param('worldId') wid: string, @Body() body: any) {
     const result = await this.svc.createNpc(wid, body);
     this.gateway.emit('updated', wid, {});
@@ -120,21 +121,21 @@ export class WorldsController {
   }
 
   @Patch(':worldId/npcs/:id')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async updateNpc(
     @Param('worldId') wid: string,
     @Param('id') id: string,
     @Body() body: any,
   ) {
-    const result = await this.svc.updateNpc(id, body);
+    const result = await this.svc.updateNpc(wid, id, body);
     this.gateway.emit('updated', wid, {});
     return result;
   }
 
   @Delete(':worldId/npcs/:id')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async removeNpc(@Param('worldId') wid: string, @Param('id') id: string) {
-    await this.svc.removeNpc(id);
+    await this.svc.removeNpc(wid, id);
     this.gateway.emit('updated', wid, {});
   }
 
@@ -146,7 +147,7 @@ export class WorldsController {
   }
 
   @Post(':worldId/lore')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async createLore(@Param('worldId') wid: string, @Body() body: any) {
     const result = await this.svc.createLore(wid, body);
     this.gateway.emit('updated', wid, {});
@@ -154,21 +155,21 @@ export class WorldsController {
   }
 
   @Patch(':worldId/lore/:id')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async updateLore(
     @Param('worldId') wid: string,
     @Param('id') id: string,
     @Body() body: any,
   ) {
-    const result = await this.svc.updateLore(id, body);
+    const result = await this.svc.updateLore(wid, id, body);
     this.gateway.emit('updated', wid, {});
     return result;
   }
 
   @Delete(':worldId/lore/:id')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async removeLore(@Param('worldId') wid: string, @Param('id') id: string) {
-    await this.svc.removeLore(id);
+    await this.svc.removeLore(wid, id);
     this.gateway.emit('updated', wid, {});
   }
 
@@ -180,7 +181,7 @@ export class WorldsController {
   }
 
   @Post(':worldId/sectors')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async createSector(@Param('worldId') wid: string, @Body() body: any) {
     const result = await this.svc.createSector(wid, body);
     this.gateway.emit('updated', wid, {});
@@ -188,28 +189,28 @@ export class WorldsController {
   }
 
   @Patch(':worldId/sectors/:id')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async updateSector(
     @Param('worldId') wid: string,
     @Param('id') id: string,
     @Body() body: any,
   ) {
-    const result = await this.svc.updateSector(id, body);
+    const result = await this.svc.updateSector(wid, id, body);
     this.gateway.emit('updated', wid, {});
     return result;
   }
 
   @Delete(':worldId/sectors/:id')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async removeSector(@Param('worldId') wid: string, @Param('id') id: string) {
-    await this.svc.removeSector(id);
+    await this.svc.removeSector(wid, id);
     this.gateway.emit('updated', wid, {});
   }
 
   // ─── Sector Notes and Locations ───────────────────────────────────────────
 
   @Patch(':worldId/sectors/:sectorId/notes')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async upsertSectorNotes(
     @Param('worldId') wid: string,
     @Param('sectorId') sid: string,
@@ -230,7 +231,7 @@ export class WorldsController {
   }
 
   @Post(':worldId/sectors/:sectorId/locations')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async createSectorLocation(
     @Param('worldId') wid: string,
     @Param('sectorId') sid: string,
@@ -242,7 +243,7 @@ export class WorldsController {
   }
 
   @Patch(':worldId/sectors/:sectorId/locations/:locationId')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async updateSectorLocation(
     @Param('worldId') wid: string,
     @Param('locationId') lid: string,
@@ -254,7 +255,7 @@ export class WorldsController {
   }
 
   @Delete(':worldId/sectors/:sectorId/locations/:locationId')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async removeSectorLocation(
     @Param('worldId') wid: string,
     @Param('locationId') lid: string,
@@ -271,7 +272,7 @@ export class WorldsController {
   }
 
   @Patch(':worldId/locations/:locationId/private-notes')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async upsertLocationPrivateNotes(
     @Param('worldId') wid: string,
     @Param('locationId') lid: string,
@@ -291,7 +292,7 @@ export class WorldsController {
   }
 
   @Patch(':worldId/locations/:locationId/notes')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async upsertLocationPublicNotes(
     @Param('worldId') wid: string,
     @Param('locationId') lid: string,
@@ -313,7 +314,7 @@ export class WorldsController {
   }
 
   @Patch(':worldId/npcs/:npcId/private-notes')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async upsertNpcPrivateNotes(
     @Param('worldId') wid: string,
     @Param('npcId') nid: string,
@@ -330,7 +331,7 @@ export class WorldsController {
   }
 
   @Patch(':worldId/npcs/:npcId/notes')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async upsertNpcPublicNotes(
     @Param('worldId') wid: string,
     @Param('npcId') nid: string,
@@ -352,7 +353,7 @@ export class WorldsController {
   }
 
   @Patch(':worldId/lore/:loreId/private-notes')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async upsertLorePrivateNotes(
     @Param('worldId') wid: string,
     @Param('loreId') lid: string,
@@ -369,7 +370,7 @@ export class WorldsController {
   }
 
   @Patch(':worldId/lore/:loreId/notes')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async upsertLorePublicNotes(
     @Param('worldId') wid: string,
     @Param('loreId') lid: string,
@@ -391,7 +392,7 @@ export class WorldsController {
   }
 
   @Patch(':worldId/ai-settings')
-  @UseGuards(WorldOwnerGuard)
+  @UseGuards(WorldAccessGuard)
   async upsertAiSettings(@Param('worldId') wid: string, @Body() body: any) {
     const result = await this.svc.upsertWorldAiSettings(wid, body);
     this.gateway.emit('updated', wid, {});
