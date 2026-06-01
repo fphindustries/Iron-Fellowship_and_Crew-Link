@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, inArray } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { DB } from '../db/database.module';
 import { SessionsService } from '../sessions/sessions.service';
@@ -26,13 +26,9 @@ export class CharactersService {
       .where(eq(schema.characters.userId, userId));
   }
 
-  async findOne(id: string) {
-    const [char] = await this.db
-      .select()
-      .from(schema.characters)
-      .where(eq(schema.characters.id, id))
-      .limit(1);
-    if (!char) throw new NotFoundException();
+  async findOne(id: string, userId?: string) {
+    const char = await this.findCharacterOrThrow(id);
+    if (userId) await this.assertCanAccessCharacter(char, userId);
     return char;
   }
 
@@ -49,13 +45,8 @@ export class CharactersService {
     userId: string,
     patch: Partial<typeof schema.characters.$inferInsert>,
   ) {
-    const [char] = await this.db
-      .select()
-      .from(schema.characters)
-      .where(eq(schema.characters.id, id))
-      .limit(1);
-    if (!char) throw new NotFoundException();
-    if (char.userId !== userId) throw new ForbiddenException();
+    const char = await this.findCharacterOrThrow(id);
+    await this.assertCanAccessCharacter(char, userId);
     const allowedPatchKeys = new Set(Object.keys(schema.characters));
     const sanitizedPatch = Object.fromEntries(
       Object.entries(patch).filter(([key]) => allowedPatchKeys.has(key)),
@@ -81,35 +72,70 @@ export class CharactersService {
   }
 
   // Assets
-  async getAssets(characterId: string) {
+  async getAssets(characterId: string, userId?: string) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     return this.db
       .select()
       .from(schema.characterAssets)
       .where(eq(schema.characterAssets.characterId, characterId));
   }
-  async addAsset(characterId: string, dataJson: object) {
+  async addAsset(characterId: string, dataJson: object, userId?: string) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     const [asset] = await this.db
       .insert(schema.characterAssets)
       .values({ characterId, dataJson })
       .returning();
     return asset;
   }
-  async updateAsset(id: string, dataJson: object) {
+  async updateAsset(
+    characterId: string,
+    id: string,
+    dataJson: object,
+    userId?: string,
+  ) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     const [asset] = await this.db
       .update(schema.characterAssets)
       .set({ dataJson })
-      .where(eq(schema.characterAssets.id, id))
+      .where(
+        and(
+          eq(schema.characterAssets.id, id),
+          eq(schema.characterAssets.characterId, characterId),
+        ),
+      )
       .returning();
     return asset;
   }
-  async removeAsset(id: string) {
+  async removeAsset(characterId: string, id: string, userId?: string) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     await this.db
       .delete(schema.characterAssets)
-      .where(eq(schema.characterAssets.id, id));
+      .where(
+        and(
+          eq(schema.characterAssets.id, id),
+          eq(schema.characterAssets.characterId, characterId),
+        ),
+      );
   }
 
   // Tracks
-  async getTracks(characterId: string) {
+  async getTracks(characterId: string, userId?: string) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     return this.db
       .select()
       .from(schema.characterTracks)
@@ -118,36 +144,72 @@ export class CharactersService {
   async addTrack(
     characterId: string,
     data: Omit<typeof schema.characterTracks.$inferInsert, 'characterId'>,
+    userId?: string,
   ) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     const [track] = await this.db
       .insert(schema.characterTracks)
       .values({ ...data, characterId })
       .returning();
     return track;
   }
-  async updateTrack(id: string, dataJson: object) {
+  async updateTrack(
+    characterId: string,
+    id: string,
+    dataJson: object,
+    userId?: string,
+  ) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     const [track] = await this.db
       .update(schema.characterTracks)
       .set({ dataJson })
-      .where(eq(schema.characterTracks.id, id))
+      .where(
+        and(
+          eq(schema.characterTracks.id, id),
+          eq(schema.characterTracks.characterId, characterId),
+        ),
+      )
       .returning();
     return track;
   }
-  async removeTrack(id: string) {
+  async removeTrack(characterId: string, id: string, userId?: string) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     await this.db
       .delete(schema.characterTracks)
-      .where(eq(schema.characterTracks.id, id));
+      .where(
+        and(
+          eq(schema.characterTracks.id, id),
+          eq(schema.characterTracks.characterId, characterId),
+        ),
+      );
   }
 
   // ─── Sessions ──────────────────────────────────────────────────────────────
 
-  getSessions(characterId: string) {
+  async getSessions(characterId: string, userId?: string) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     return this.sessions.findAllForCharacter(characterId);
   }
 
   // ─── Combat ────────────────────────────────────────────────────────────────
 
-  async getActiveCombat(characterId: string) {
+  async getActiveCombat(characterId: string, userId?: string) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     const rows = await this.db
       .select()
       .from(schema.combats)
@@ -162,7 +224,11 @@ export class CharactersService {
     return rows[0] ?? null;
   }
 
-  async createCombat(characterId: string, dataJson: object) {
+  async createCombat(characterId: string, dataJson: object, userId?: string) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     const [row] = await this.db
       .insert(schema.combats)
       .values({ characterId, dataJson, active: true })
@@ -170,22 +236,92 @@ export class CharactersService {
     return row;
   }
 
-  async updateCombat(id: string, dataJson: object) {
+  async updateCombat(
+    characterId: string,
+    id: string,
+    dataJson: object,
+    userId?: string,
+  ) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     const [row] = await this.db
       .update(schema.combats)
       .set({ dataJson })
-      .where(eq(schema.combats.id, id))
+      .where(
+        and(
+          eq(schema.combats.id, id),
+          eq(schema.combats.characterId, characterId),
+        ),
+      )
       .returning();
     return row;
   }
 
-  async endCombat(id: string) {
+  async endCombat(characterId: string, id: string, userId?: string) {
+    if (userId) {
+      const char = await this.findCharacterOrThrow(characterId);
+      await this.assertCanAccessCharacter(char, userId);
+    }
     const [row] = await this.db
       .update(schema.combats)
       .set({ active: false, endedAt: new Date() })
-      .where(eq(schema.combats.id, id))
+      .where(
+        and(
+          eq(schema.combats.id, id),
+          eq(schema.combats.characterId, characterId),
+        ),
+      )
       .returning();
     if (!row) throw new NotFoundException('Combat not found');
     return row;
+  }
+
+  private async findCharacterOrThrow(id: string) {
+    const [char] = await this.db
+      .select()
+      .from(schema.characters)
+      .where(eq(schema.characters.id, id))
+      .limit(1);
+    if (!char) throw new NotFoundException();
+    return char;
+  }
+
+  private async assertCanAccessCharacter(
+    char: typeof schema.characters.$inferSelect,
+    userId: string,
+  ) {
+    if (char.userId === userId) return;
+    if (await this.isCampaignMemberForCharacter(char, userId)) return;
+    throw new ForbiddenException();
+  }
+
+  private async isCampaignMemberForCharacter(
+    char: typeof schema.characters.$inferSelect,
+    userId: string,
+  ) {
+    const campaignIds = new Set<string>();
+    if (char.campaignId) campaignIds.add(char.campaignId);
+
+    const links = await this.db
+      .select({ campaignId: schema.campaignCharacters.campaignId })
+      .from(schema.campaignCharacters)
+      .where(eq(schema.campaignCharacters.characterId, char.id));
+    links.forEach((link) => campaignIds.add(link.campaignId));
+
+    if (campaignIds.size === 0) return false;
+
+    const memberships = await this.db
+      .select()
+      .from(schema.campaignMembers)
+      .where(
+        and(
+          eq(schema.campaignMembers.userId, userId),
+          inArray(schema.campaignMembers.campaignId, [...campaignIds]),
+        ),
+      );
+
+    return memberships.length > 0;
   }
 }

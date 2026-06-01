@@ -74,6 +74,30 @@ describe('CharactersService', () => {
       );
     });
 
+    it('allows a campaign member to update a campaign character', async () => {
+      const char = { id: 'char-1', userId: 'owner-1', campaignId: null };
+      const updated = { id: 'char-1', userId: 'owner-1', momentum: 4 };
+
+      mockWhere.mockReturnValueOnce({
+        ...createQueryResult([char]),
+        limit: jest.fn().mockResolvedValue([char]),
+      });
+      mockWhere.mockReturnValueOnce(createQueryResult([{ campaignId: 'camp-1' }]));
+      mockWhere.mockReturnValueOnce(
+        createQueryResult([{ campaignId: 'camp-1', userId: 'member-1' }]),
+      );
+      mockWhere.mockReturnValueOnce({
+        ...createQueryResult([updated]),
+        returning: jest.fn().mockResolvedValue([updated]),
+      });
+
+      const result = await service.update('char-1', 'member-1', {
+        momentum: 4,
+      });
+
+      expect(result).toEqual(updated);
+    });
+
     it('returns updated character when user is the owner', async () => {
       const char = { id: 'char-1', userId: 'user-1' };
       const updated = { id: 'char-1', userId: 'user-1', name: 'Updated' };
